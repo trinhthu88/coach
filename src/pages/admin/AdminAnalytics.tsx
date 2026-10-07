@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { averageCanonicalCompletion, canonicalAtRisk, fetchAdminCanonicalProgress } from "@/lib/adminCanonicalProgress";
+import { fetchAdminCompletionRate } from "@/lib/adminCanonicalProgress";
 import { Loader2, Star, TrendingUp, Award, Users, MessagesSquare, Flag } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AdminPageHeader, Kpi, SectionCard, MiniBar, Pill, Avatar, EngagementCell } from "./_shared";
@@ -12,8 +12,6 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useAdminProgrammes, useAdminProgrammeEngagement } from "@/hooks/admin/useAdminProgrammeEngagement";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
-import type { Tables } from "@/integrations/supabase/types";
-import { fetchAdminSatisfaction } from "@/lib/satisfaction";
 
 type CompetencyKey =
   | "ethical_practice"
@@ -48,32 +46,29 @@ interface AnalyticsCoachProfileRow {
   peer_coaching_opt_in: boolean | null;
 }
 
-interface AnalyticsSessionRow {
-  enrollment_id: string | null;
-  coach_id: string;
-  coachee_id: string;
-  status: string;
-  duration_minutes: number | null;
-}
-
-interface AnalyticsPeerSessionRow {
-  enrollment_id: string | null;
-  peer_coach_id: string;
-  peer_coachee_id: string;
-  status: string;
-  duration_minutes: number | null;
-}
-
-interface AnalyticsEnrollmentRow {
-  id: string;
-  user_id: string;
-  status: string;
+/** admin_analytics_summary() (20261007001100). */
+interface AnalyticsSummary {
+  coaching_sessions: number;
+  mentoring_sessions: number;
+  peer_units: number;
+  practice_sessions: number;
+  total_minutes: number;
+  learners_enrolled: number;
+  at_risk: number;
+  satisfaction: { average: number | null; rated: number; distribution: number[] };
+  top_coaches: { coach_id: string; name: string | null; delivered: number; coachees: number; rating: number | null }[];
+  practice_by_coach: { coach_id: string; name: string | null; given: number; received: number; avg_competency: number | null }[];
+  practice_feedback_count: number;
+  competency_avg: Record<string, number>;
 }
 
 interface AnalyticsData {
   platform: {
     sessTotal: number;
+    /** Canonical Peer units (dyad sessions, one per learner and requirement). */
     peerTotal: number;
+    /** Coach-pool practice: earns no unit, shown apart. */
+    practiceTotal: number;
     totalHours: number;
     /** Canonical 1-5 satisfaction average over all four modules; null when nothing is rated. */
     avgRating: number | null;
@@ -82,8 +77,8 @@ interface AnalyticsData {
     totalCoaches: number;
     peerOptIns: number;
   };
-  coachee: { active: number; enrolled: number; progressAvg: number; atRisk: number; totalSessions: number };
-  coach: { topCoaches: { id: string; name: string; delivered: number; coachees: number; rating: number }[] };
+  coachee: { active: number; enrolled: number; progressAvg: number | null; atRisk: number; totalSessions: number };
+  coach: { topCoaches: { id: string; name: string; delivered: number; coachees: number; rating: number | null }[] };
   peer: {
     rows: { id: string; name: string; given: number; received: number; avgComp: number }[];
     totalSessions: number;
@@ -137,138 +132,61 @@ export default function AdminAnalytics() {
   useEffect(() => {
     (async () => {
       setLoading(true);
-      const [
-        { data: roles },
-        { data: profiles },
-        { data: cps },
-        { data: sess },
-        { data: peer },
-        { data: comp },
-        { data: enr },
-      ] = await Promise.all([
+      // Every session, hour, at-risk and satisfaction number is the server's
+      // (admin_analytics_summary, 20261007001100): held sessions over the
+      // reporting population, Peer in canonical units, coach-pool practice
+      // apart, at risk by the Sponsor rule. Account counts stay here.
+      const [{ data: roles }, { data: profiles }, { data: cps }, summaryRes, progressAvg] = await Promise.all([
         supabase.from("user_roles").select("user_id, role"),
         supabase.from("profiles").select("id, full_name, status"),
         supabase.from("coach_profiles").select("id, rating_avg, peer_coaching_opt_in"),
-        supabase.from("sessions").select("enrollment_id, coach_id, coachee_id, status, duration_minutes"),
-        supabase.from("peer_sessions").select("enrollment_id, peer_coach_id, peer_coachee_id, status, duration_minutes"),
-        supabase.from("peer_session_competency_feedback").select("*"),
-         supabase.from("programme_enrollments").select("id, user_id, status"),
+        supabase.rpc("admin_analytics_summary"),
+        fetchAdminCompletionRate(),
       ]);
-
+      if (summaryRes.error) {
+        toast.error(summaryRes.error.message);
+        setLoading(false);
+        return;
+      }
+      const summary = summaryRes.data as unknown as AnalyticsSummary;
       const profById = new Map((profiles || []).map((p: AnalyticsProfileRow) => [p.id, p]));
-      const cpById = new Map((cps || []).map((c: AnalyticsCoachProfileRow) => [c.id, c]));
       const coachIds = (roles || []).filter(r => r.role === "coach").map(r => r.user_id);
       const coacheeIds = (roles || []).filter(r => r.role === "coachee").map(r => r.user_id);
-      const validEnrollmentIds = new Set((enr || []).map((e: AnalyticsEnrollmentRow) => e.id));
-      const scopedSess = (sess || []).filter((s: AnalyticsSessionRow) => s.enrollment_id && validEnrollmentIds.has(s.enrollment_id));
-      const scopedPeer = (peer || []).filter((s: AnalyticsPeerSessionRow) => s.enrollment_id && validEnrollmentIds.has(s.enrollment_id));
-
-      // Platform KPIs
-      const sessTotal = scopedSess.filter((s) => s.status === "completed").length;
-      const peerTotal = scopedPeer.filter((s) => s.status === "completed").length;
-      // Satisfaction is the canonical 1–5 aggregate over ALL four modules
-      // (Coaching, Peer Coaching, Mentoring, Triads) — the same number the
-      // Sponsor and the admin enrollment detail show — never a client-side
-      // average of one module's rating column.
-      const satisfaction = await fetchAdminSatisfaction([...validEnrollmentIds]);
-      const avgRating = satisfaction.average;
-      const dist = satisfaction.distribution;
-      const totalHours = [...scopedSess, ...scopedPeer]
-        .filter((s: AnalyticsSessionRow | AnalyticsPeerSessionRow) => s.status === "completed")
-        .reduce((a: number, s: AnalyticsSessionRow | AnalyticsPeerSessionRow) => a + (s.duration_minutes || 0) / 60, 0);
-
-      // Coachee analytics
-      const coacheeSessDone = new Map<string, number>();
-      const coacheeSessBooked = new Map<string, number>();
-       scopedSess.forEach((s: AnalyticsSessionRow) => {
-        if (s.status === "completed") coacheeSessDone.set(s.coachee_id, (coacheeSessDone.get(s.coachee_id) || 0) + 1);
-        if (["pending_coach_approval", "confirmed"].includes(s.status)) coacheeSessBooked.set(s.coachee_id, (coacheeSessBooked.get(s.coachee_id) || 0) + 1);
-      });
-      // Programme completion and at-risk status come from the canonical engine
-      // (the same numbers and effective status Learner and Sponsor see).
-      const progressRows = await fetchAdminCanonicalProgress((enr || []).map((e: AnalyticsEnrollmentRow) => e.id));
-      const activeCoachees = coacheeIds.filter(id => profById.get(id)?.status === "active").length;
-      const enrolled = new Set((enr || []).map((e: AnalyticsEnrollmentRow) => e.user_id)).size;
-      const progressAvg = averageCanonicalCompletion(progressRows);
-      const atRisk = canonicalAtRisk(progressRows).length;
-
-      // Coach analytics (delivered)
-      const coachDelivered = new Map<string, number>();
-      const coachUnique = new Map<string, Set<string>>();
-       scopedSess.forEach((s: AnalyticsSessionRow) => {
-        if (s.status === "completed") coachDelivered.set(s.coach_id, (coachDelivered.get(s.coach_id) || 0) + 1);
-        if (["confirmed", "completed"].includes(s.status)) {
-          const set = coachUnique.get(s.coach_id) || new Set();
-          set.add(s.coachee_id);
-          coachUnique.set(s.coach_id, set);
-        }
-      });
-      const topCoaches = coachIds.map(id => {
-        const p = profById.get(id);
-        const cp = cpById.get(id);
-        return {
-          id, name: p?.full_name || "—",
-          delivered: coachDelivered.get(id) || 0,
-          coachees: (coachUnique.get(id) || new Set()).size,
-          rating: Number(cp?.rating_avg || 0),
-        };
-      }).sort((a, b) => b.delivered - a.delivered).slice(0, 10);
-
-      // Peer analytics — only opt-ins
-      const peerCoaches = coachIds.filter(id => cpById.get(id)?.peer_coaching_opt_in);
-      const peerGiven = new Map<string, number>();
-      const peerReceived = new Map<string, number>();
-       scopedPeer.forEach((s: AnalyticsPeerSessionRow) => {
-        if (s.status === "completed") {
-          peerGiven.set(s.peer_coach_id, (peerGiven.get(s.peer_coach_id) || 0) + 1);
-          peerReceived.set(s.peer_coachee_id, (peerReceived.get(s.peer_coachee_id) || 0) + 1);
-        }
-      });
-      // Per-peer-coach competency averages (received as peer-coach)
-      const peerCompByCoach = new Map<string, { sums: Record<string, number>; counts: Record<string, number> }>();
-      (comp || []).forEach((r: Tables<"peer_session_competency_feedback">) => {
-        const acc = peerCompByCoach.get(r.peer_coach_id) || { sums: {}, counts: {} };
-        COMPETENCY_LABELS.forEach(c => {
-          const value = r[c.key];
-          if (value != null) {
-            acc.sums[c.key] = (acc.sums[c.key] || 0) + value;
-            acc.counts[c.key] = (acc.counts[c.key] || 0) + 1;
-          }
-        });
-        peerCompByCoach.set(r.peer_coach_id, acc);
-      });
-      const peerRows = peerCoaches.map(id => {
-        const acc = peerCompByCoach.get(id);
-        const avg = acc ? COMPETENCY_LABELS.reduce((a, c) => a + ((acc.sums[c.key] || 0) / (acc.counts[c.key] || 1)), 0) / COMPETENCY_LABELS.length : 0;
-        return {
-          id, name: profById.get(id)?.full_name || "—",
-          given: peerGiven.get(id) || 0,
-          received: peerReceived.get(id) || 0,
-          avgComp: avg,
-        };
-      }).sort((a, b) => b.given - a.given);
-
-      // Aggregate competency averages (platform)
-      const aggSums: Record<string, number> = {};
-      const aggCounts: Record<string, number> = {};
-      (comp || []).forEach((r: Tables<"peer_session_competency_feedback">) => {
-        COMPETENCY_LABELS.forEach(c => {
-          const value = r[c.key];
-          if (value != null) {
-            aggSums[c.key] = (aggSums[c.key] || 0) + value;
-            aggCounts[c.key] = (aggCounts[c.key] || 0) + 1;
-          }
-        });
-      });
-      const compAvg: Record<string, number> = {};
-      Object.keys(aggSums).forEach(k => { compAvg[k] = aggSums[k] / aggCounts[k]; });
+      const peerOptIns = (cps || []).filter((c: AnalyticsCoachProfileRow) => c.peer_coaching_opt_in).length;
 
       setData({
-        platform: { sessTotal, peerTotal, totalHours, avgRating, dist, totalCoachees: coacheeIds.length, totalCoaches: coachIds.length, peerOptIns: peerCoaches.length },
-        coachee: { active: activeCoachees, enrolled, progressAvg, atRisk, totalSessions: sessTotal },
-        coach: { topCoaches },
-        peer: { rows: peerRows, totalSessions: peerTotal, totalFeedback: (comp || []).length },
-        compAvg,
+        platform: {
+          sessTotal: summary.coaching_sessions,
+          peerTotal: summary.peer_units,
+          practiceTotal: summary.practice_sessions,
+          totalHours: summary.total_minutes / 60,
+          avgRating: summary.satisfaction.average,
+          dist: summary.satisfaction.distribution,
+          totalCoachees: coacheeIds.length,
+          totalCoaches: coachIds.length,
+          peerOptIns,
+        },
+        coachee: {
+          active: coacheeIds.filter(id => profById.get(id)?.status === "active").length,
+          enrolled: summary.learners_enrolled,
+          progressAvg,
+          atRisk: summary.at_risk,
+          totalSessions: summary.coaching_sessions,
+        },
+        coach: {
+          topCoaches: summary.top_coaches.map((c) => ({
+            id: c.coach_id, name: c.name || "—", delivered: c.delivered, coachees: c.coachees,
+            rating: c.rating == null ? null : Number(c.rating),
+          })),
+        },
+        peer: {
+          rows: summary.practice_by_coach.map((r) => ({
+            id: r.coach_id, name: r.name || "—", given: r.given, received: r.received, avgComp: r.avg_competency ?? 0,
+          })),
+          totalSessions: summary.practice_sessions,
+          totalFeedback: summary.practice_feedback_count,
+        },
+        compAvg: summary.competency_avg,
       });
       setLoading(false);
     })();
@@ -282,9 +200,10 @@ export default function AdminAnalytics() {
     <div>
       <AdminPageHeader eyebrow={t("analytics.eyebrow")} title={t("analytics.title")} emphasize={t("analytics.titleEmphasis")} subtitle={t("analytics.subtitle")} />
 
-      <div className="mb-4 grid gap-3 sm:grid-cols-4">
+      <div className="mb-4 grid gap-3 sm:grid-cols-3 lg:grid-cols-5">
         <Kpi label={t("analytics.coachingSessions")} value={data.platform.sessTotal} icon={Award} tone="primary" />
         <Kpi label={t("analytics.peerSessions")} value={data.platform.peerTotal} icon={MessagesSquare} tone="accent" />
+        <Kpi label={t("analytics.practiceSessions")} value={data.platform.practiceTotal} icon={MessagesSquare} tone="accent" />
         <Kpi label={t("analytics.totalHours")} value={data.platform.totalHours.toFixed(0)} icon={TrendingUp} tone="success" />
         <Kpi label={t("analytics.avgRating")} value={data.platform.avgRating == null ? "—" : data.platform.avgRating.toFixed(2)} icon={Star} tone="warning" />
       </div>
@@ -345,8 +264,8 @@ export default function AdminAnalytics() {
           </div>
           <SectionCard label={t("analytics.averageProgrammeProgress")}>
             <div className="flex items-center gap-3">
-              <div className="flex-1"><MiniBar pct={data.coachee.progressAvg} tone={data.coachee.progressAvg >= 70 ? "success" : "primary"} /></div>
-              <span className="text-sm font-semibold">{Math.round(data.coachee.progressAvg)}%</span>
+              <div className="flex-1"><MiniBar pct={data.coachee.progressAvg ?? 0} tone={(data.coachee.progressAvg ?? 0) >= 70 ? "success" : "primary"} /></div>
+              <span className="text-sm font-semibold">{data.coachee.progressAvg == null ? "—" : `${data.coachee.progressAvg}%`}</span>
             </div>
             <p className="mt-2 text-[11px] text-muted-foreground">{t("analytics.averageAcrossEnrolled")}</p>
           </SectionCard>
@@ -366,7 +285,7 @@ export default function AdminAnalytics() {
                     <span className="font-medium sm:col-span-5">{c.name}</span>
                     <span className="text-muted-foreground sm:col-span-3">{t("analytics.coacheesCount", { count: c.coachees })}</span>
                     <span className="text-muted-foreground sm:col-span-2">{t("analytics.sessionsCount", { count: c.delivered })}</span>
-                    <span className="inline-flex items-center gap-1 text-muted-foreground sm:col-span-2 sm:justify-end sm:text-right"><Star className="h-3 w-3 fill-warning text-warning" /> {c.rating.toFixed(1)}</span>
+                    <span className="inline-flex items-center gap-1 text-muted-foreground sm:col-span-2 sm:justify-end sm:text-right"><Star className="h-3 w-3 fill-warning text-warning" /> {c.rating == null ? "—" : c.rating.toFixed(1)}</span>
                   </div>
                 ))}
               </div>

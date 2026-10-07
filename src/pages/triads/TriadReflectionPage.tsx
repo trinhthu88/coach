@@ -15,6 +15,7 @@ import { useTriadSessionEntry } from "@/hooks/triads/useMyTriads";
 import {
   useTriadReflection,
   useTriadReflectionQuestions,
+  useTriadSessionAssessed,
   useTriadSessionReflections,
   type TriadReflectionQuestion,
   type TriadReflectionSection,
@@ -40,6 +41,7 @@ export default function TriadReflectionPage() {
   const { questions, loading: questionsLoading } = useTriadReflectionQuestions(sessionId);
   const { reflections, loading: reflectionsLoading } = useTriadSessionReflections(sessionId);
   const { submitReflection, submitting } = useTriadReflection();
+  const { assessed } = useTriadSessionAssessed(sessionId);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [satisfaction, setSatisfaction] = useState(0);
   // Roles rotate and the canonical model stores no per-session role, so the
@@ -124,6 +126,12 @@ export default function TriadReflectionPage() {
         <h1 className="font-display mt-2 text-[1.9rem] leading-[1.08] tracking-[-0.02em]">{t("reflection.title")}</h1>
         <p className="mt-1.5 text-sm text-muted-foreground">{t("reflection.subtitle")}</p>
       </div>
+
+      {assessed && (
+        <p data-testid="triad-assessed-notice" className="rounded-[14px] border border-[#e8e2d8] bg-[#faf8f4] px-[18px] py-[12px] text-[12.5px] text-[#4a463f]">
+          {t("reflection.assessedNotice")}
+        </p>
+      )}
 
       {memberNames && (
         <div className="rounded-[14px] bg-primary-soft px-[18px] py-[14px] text-[12.5px] text-[#1d5a6b]">

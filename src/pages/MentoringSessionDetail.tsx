@@ -23,6 +23,7 @@ import { useMentoringSessionCore } from "@/hooks/mentoring/useMentoringSessionCo
 import { useMentoringPrepFile } from "@/hooks/mentoring/useMentoringPrepFile";
 import { useMentoringFeedback } from "@/hooks/mentoring/useMentoringFeedback";
 import { MentorFeedbackForm } from "@/components/mentoring/MentorFeedbackForm";
+import { MentoringCancelButton } from "@/components/mentoring/MentoringCancelButton";
 import { getFriendlyErrorMessage } from "@/lib/errors";
 import { getSessionStatusMeta as getStatusMeta } from "@/lib/sessionStatusMeta";
 import { SessionDetailHero } from "@/components/sessions/SessionDetailHero";
@@ -43,6 +44,7 @@ export default function MentoringSessionDetail() {
     saveNotes,
     confirmSession,
     completeSession,
+    cancelSession,
     reload,
   } = useMentoringSessionCore({ sessionId });
 
@@ -81,6 +83,12 @@ export default function MentoringSessionDetail() {
   const handleConfirm = async () => {
     const { error } = await confirmSession();
     if (error) toast.error(getFriendlyErrorMessage(error, t));
+  };
+
+  const handleCancel = async (reason: string | undefined) => {
+    const { error } = await cancelSession(reason);
+    if (error) toast.error(getFriendlyErrorMessage(error, t));
+    return { error };
   };
 
   const handleComplete = async () => {
@@ -157,6 +165,13 @@ export default function MentoringSessionDetail() {
                 {saving ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-1 h-4 w-4" />}
                 {t("sessionDetail.confirmSession")}
               </Button>
+            )}
+            {isMentee && (session.status === "pending_coach_approval" || session.status === "confirmed") && (
+              <MentoringCancelButton
+                startTime={session.start_time}
+                onCancel={handleCancel}
+                className="rounded-full border-white/30 bg-white/5 text-white hover:bg-white/10 hover:text-white"
+              />
             )}
             {isMentor && session.status === "confirmed" && (
               <Button

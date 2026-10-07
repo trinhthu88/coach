@@ -125,7 +125,8 @@ export function SessionGoalRatings({ sessionId, enrollmentId, sourceActivityType
       p_enrollment_id: enrollmentId,
       p_title: payload.title,
       p_description: payload.description ?? "",
-      p_target_date: payload.target_date ?? null,
+      // NULL = no target date; the generated type cannot say the date parameter takes NULL.
+      p_target_date: (payload.target_date ?? null) as string,
       p_start_rating: payload.start_rating,
       p_target_rating: payload.target_rating,
     });

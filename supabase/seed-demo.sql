@@ -257,6 +257,8 @@ BEGIN
   UPDATE public.organizations SET industry = coalesce(industry, 'Manufacturing & Distribution'),
     hq_country = coalesce(hq_country, 'Viet Nam'), timezone = coalesce(timezone, 'Asia/Ho_Chi_Minh')
   WHERE id = 'd0000000-0000-4000-8000-00000000bbbb';
+  -- Both are demo organisations: out of every Admin rollup (20261007000800).
+  UPDATE public.organizations SET is_demo = true WHERE id IN (v_a, 'd0000000-0000-4000-8000-00000000bbbb');
 
   INSERT INTO _orgs VALUES ('A', v_a), ('B', 'd0000000-0000-4000-8000-00000000bbbb');
 

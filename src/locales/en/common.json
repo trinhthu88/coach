@@ -131,7 +131,9 @@
     "mentoring": "Mentoring",
     "training": "Training & Learning",
     "trainingContent": "Training content",
-    "triads": "Triads"
+    "triads": "Triads",
+    "assessments": "Assessments",
+    "finalAssessment": "Final Assessment"
   },
   "navGroups": {
     "sponsor": "Sponsor",

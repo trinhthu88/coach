@@ -1,3 +1,5 @@
+import type { CanonicalModuleUnits } from "@/lib/adminCanonicalProgress";
+
 export type Status = "pending_approval" | "active" | "rejected" | "suspended" | "reach_limit";
 
 export interface CoacheeRow {
@@ -6,9 +8,10 @@ export interface CoacheeRow {
   email: string;
   status: Status;
   created_at: string;
-  booked: number;
-  done: number;
-  selected_coaches: { id: string; name: string }[];
+  /** Coaching units of the learner's current enrollment (canonical); null without one. */
+  coaching_units: CanonicalModuleUnits | null;
+  /** Coaching units booked (live sessions holding a requirement), canonical; null without one. */
+  coaching_booked_units: number | null;
 }
 
 export interface CoachOpt {
@@ -24,16 +27,15 @@ export interface CoachListRow {
   status: Status;
   created_at: string;
   approval_status: string;
+  /** Held Coaching sessions this Coach delivered (admin_coach_delivery_summary). */
   sessions_completed: number;
   coachees_count: number;
-  rating_avg: number;
+  rating_avg: number | null;
   country_based: string | null;
   years_experience: number | null;
-  // Coach-as-coachee limit from the active programme module; null = unlimited.
-  coach_limit: number | null;
-  coach_used: number;
-  peer_limit: number | null;
-  peer_used: number;
+  // Coach as learner: the canonical module rows of their own enrollment
+  // (admin_canonical_enrollment_progress). Null when not enrolled.
+  coaching_units: CanonicalModuleUnits | null;
+  peer_units: CanonicalModuleUnits | null;
   coach_programme_name: string | null;
-  assigned_coaches: { id: string; name: string }[];
 }

@@ -31,12 +31,14 @@ export function initials(name: string) {
 
 export type HealthSignal = "healthy" | "watch" | "attention";
 
-/** Needs attention above 30% at-risk, Watch above 15%, else Healthy. */
-export function healthSignal(atRiskCount: number, total: number): HealthSignal {
-  if (total === 0) return "healthy";
-  const ratio = atRiskCount / total;
-  if (ratio > 0.3) return "attention";
-  if (ratio > 0.15) return "watch";
+/**
+ * The server's health signal (sponsor_health_signal, decision 8: green at 0%,
+ * amber up to 15%, red above 15% of leaders needing attention) as the pill's
+ * tone. Nothing is computed here.
+ */
+export function fromServerHealthSignal(signal: string | null | undefined): HealthSignal {
+  if (signal === "red") return "attention";
+  if (signal === "amber") return "watch";
   return "healthy";
 }
 

@@ -2,18 +2,8 @@ name: Database validation
 
 on:
   push:
-    branches:
-      - remediation-p0-p1-retimestamp
+    branches: [main]
   pull_request:
-    branches:
-      - remediation-p0-p1-retimestamp
-    paths:
-      - 'supabase/**'
-      - 'src/integrations/supabase/types.ts'
-      - 'scripts/validate-db.sh'
-      - 'scripts/validate-local-auth.mjs'
-      - 'package*.json'
-      - '.github/workflows/database-validation.yml'
   workflow_dispatch:
 
 jobs:

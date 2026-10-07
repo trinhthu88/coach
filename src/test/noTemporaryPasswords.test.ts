@@ -56,10 +56,11 @@ describe("one identity onboarding pattern (rule 6)", () => {
   it("every admin provisioning path calls the one service, admin-provision-user", () => {
     const invokes = code
       .flatMap((f) => [...readFileSync(f, "utf8").matchAll(/functions\.invoke\(\s*["']([a-z-]*(invite|provision)[a-z-]*)["']/g)].map((m) => `${relative(root, f)} -> ${m[1]}`));
-    expect(invokes.every((i) => i.endsWith("-> admin-provision-user") || i.includes("coach-invite-coachee"))).toBe(true);
+    expect(invokes.every((i) => i.endsWith("-> admin-provision-user"))).toBe(true);
     expect(invokes.some((i) => i.endsWith("-> admin-provision-user"))).toBe(true);
     // The retired parallel paths do not come back.
-    for (const dir of ["admin-invite-users", "admin-bulk-invite-users", "invite-sponsor"]) {
+    // coach-invite-coachee: coaches refer clients instead (20261006170000).
+    for (const dir of ["admin-invite-users", "admin-bulk-invite-users", "invite-sponsor", "coach-invite-coachee"]) {
       expect(() => readdirSync(join(root, "supabase/functions", dir))).toThrow();
     }
   });

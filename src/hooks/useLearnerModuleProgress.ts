@@ -16,7 +16,6 @@ export function useLearnerModuleProgress(enrollmentId: string | null | undefined
     queryFn: async () => {
       const { data, error } = await supabase.rpc("learner_module_progress", {
         p_enrollment_id: enrollmentId as string,
-        p_as_of: new Date().toISOString().slice(0, 10),
       });
       if (error) throw error;
       return (data ?? []) as LearnerModuleProgressRow[];

@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams, useSearchParams, useLocation } from "reac
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { SESSION_DURATIONS as DURATIONS, formatSlotTime as fmtTime, toDateKey as dateKey } from "@/lib/bookingUtils";
-import { SLOT_TIME_ZONE, slotInstant } from "@/lib/slotTime";
+import { SLOT_TIME_ZONE, slotInstant, slotTodayKey } from "@/lib/slotTime";
 import { useAuth } from "@/context/AuthContext";
 import { useEnrollmentContext } from "@/hooks/useEnrollmentContext";
 import { Card } from "@/components/ui/card";
@@ -27,8 +27,7 @@ import { addDays, format, startOfDay } from "date-fns";
 import { toast } from "sonner";
 import { getFriendlyErrorMessage } from "@/lib/errors";
 import { trackEvent } from "@/lib/analytics";
-import { DEFAULT_SESSION_LIMIT } from "@/lib/constants";
-import { canSubmitBooking, isOverSessionLimit } from "./bookingEligibility";
+import { canSubmitBooking } from "./bookingEligibility";
 import { computeStartOptions } from "./bookingSlots";
 import {
   useNextCoachingRequirement,
@@ -65,8 +64,6 @@ interface Slot {
   end_time: string;
 }
 
-const CONTACT_EMAIL = "contact@clariva.club";
-
 export default function BookSession() {
   const { t } = useTranslation("sessions");
   const { coachId } = useParams<{ coachId: string }>();
@@ -75,7 +72,7 @@ export default function BookSession() {
   const rescheduleId = searchParams.get("reschedule");
   const location = useLocation();
   const rescheduleTopic = (location.state as { topic?: string } | null)?.topic;
-  const { user, role } = useAuth();
+  const { user } = useAuth();
   const { selectedEnrollment, selectionError } = useEnrollmentContext(user?.id, searchParams.get("enrollmentId"));
   const enrollmentId = selectedEnrollment?.id;
   const navigate = useNavigate();
@@ -92,14 +89,12 @@ export default function BookSession() {
   const [selectedStart, setSelectedStart] = useState<string | null>(null);
   const [topic, setTopic] = useState(rescheduleTopic || "");
   const [submitting, setSubmitting] = useState(false);
-  const [usage, setUsage] = useState<{ monthly_limit: number | null; used_this_month: number } | null>(
-    null
-  );
   const [bookerBusy, setBookerBusy] = useState<{ start: number; end: number }[]>([]);
-  // Authoritative "can I book this coach" answer from public.can_book_session(), the same
-  // function the `sessions` INSERT RLS policies call — see RULES.md and
-  // supabase/migrations/20260810150000_can_book_session_rpc.sql. null = not checked yet
-  // (peer mode isn't gated by this function; loading state before the RPC resolves).
+  // Authoritative "can I book this coach" answer: can_book_session() for a new
+  // Coaching booking (a free requirement + the cohort pool + the goal gate,
+  // 20261005130000), can_book_peer_session() in peer mode. null = not checked
+  // (still loading, or a Coaching reschedule, which reschedule_coaching_session
+  // decides on the server).
   const [eligible, setEligible] = useState<boolean | null>(null);
 
   // Canonical Coaching readers. The requirement being booked, and the cohort
@@ -107,14 +102,11 @@ export default function BookSession() {
   const { data: nextRequirement, isLoading: requirementLoading } =
     useNextCoachingRequirement(mode === "coaching" ? enrollmentId : null);
   const { data: coachPool } = useCohortCoachPool(mode === "coaching" ? enrollmentId : null);
-  // Programme Coaching quantity is the cohort requirement count, never a
-  // per-person allowance. This screen used to read
-  // programme_modules.config.receive_limit and count completed sessions
-  // itself -- a second answer to "how many Coaching sessions do I have",
-  // which 20260920150000 retired as an authority.
-  const { data: coachingProgress } = useCanonicalCoachingProgress(
-    mode === "coaching" && role !== "coach" ? enrollmentId : null,
-  );
+  // Programme Coaching quantity is the canonical module row, never a
+  // per-person allowance -- for a Coach booking as a learner too. This screen
+  // used to read a module-config allowance (and, in peer mode, a monthly cap
+  // with a hard-coded default) and count sessions itself.
+  const { data: coachingProgress } = useCanonicalCoachingProgress(mode === "coaching" ? enrollmentId : null);
   const invalidateCoaching = useInvalidateCoaching();
   // Booking and rescheduling go through the canonical module hooks so they
   // carry its shared cache-invalidation list; calling the RPCs inline here
@@ -166,7 +158,7 @@ export default function BookSession() {
         return;
       }
       try {
-        const today = new Date().toISOString().slice(0, 10);
+        const today = slotTodayKey();
         const slotQuery = supabase
           .from("coach_availability")
           .select("id, slot_date, start_time, end_time, slot_type")
@@ -227,66 +219,12 @@ export default function BookSession() {
 
         if (user) {
           if (mode === "peer") {
-            // Peer mode: use new RPC for peer-only monthly limit. This is relationship 3
-            // (open opt-in pool, see RULES.md) — not covered by can_book_session(), which
-            // only governs the two curated-allowlist relationships on `sessions`.
-            const { data: u } = await supabase.rpc("get_peer_session_usage", {
+            const { data: canPeerBook } = await supabase.rpc("can_book_peer_session", {
+              p_peer_coach_id: coachId,
               p_enrollment_id: activeEnrollmentId,
             });
-            const row = Array.isArray(u) ? u[0] : u;
-             // null = unlimited (the programme has no peer monthly_limit set) —
-            // only fall back to DEFAULT_SESSION_LIMIT when the RPC returned no row at all.
-             const peerLimit: number | null = row ? row.monthly_limit : DEFAULT_SESSION_LIMIT;
-             const peerUsed = row?.used_count ?? 0;
-            setUsage({ monthly_limit: peerLimit, used_this_month: peerUsed });
-             const { data: canPeerBook } = await supabase.rpc("can_book_peer_session", {
-               p_peer_coach_id: coachId,
-               p_enrollment_id: activeEnrollmentId,
-             });
-             setEligible(canPeerBook ?? false);
-          } else {
-            if (role === "coach") {
-              // Coach booking as a coachee: limits and usage are scoped to the
-              // explicitly selected programme enrollment.
-              const [{ data: enrollment }, coachCount] = await Promise.all([
-                supabase
-                  .from("programme_enrollments")
-                  .select("id, programme_id")
-                  .eq("id", activeEnrollmentId)
-                  .eq("user_id", user.id)
-                  .maybeSingle(),
-                supabase
-                  .from("sessions")
-                  .select("id", { count: "exact", head: true })
-                  .eq("coachee_id", user.id)
-                  .eq("enrollment_id", activeEnrollmentId)
-                  .eq("status", "completed"),
-              ]);
-              const { data: module } = enrollment
-                ? await supabase
-                    .from("programme_modules")
-                    .select("config")
-                    .eq("programme_id", enrollment.programme_id)
-                    .eq("module", "coaching")
-                    .eq("enabled", true)
-                    .maybeSingle()
-                : { data: null };
-              const config = (module?.config || {}) as { receive_limit?: number | null };
-              const monthlyLimit: number | null = enrollment
-                ? config.receive_limit ?? null
-                : DEFAULT_SESSION_LIMIT;
-              setUsage({
-                monthly_limit: monthlyLimit,
-                used_this_month: coachCount.count || 0,
-              });
-            } else {
-              // Programme Coaching usage is canonical and comes from
-              // useCanonicalCoachingProgress below; nothing is computed here.
-            }
-
-            // Authoritative eligibility gate (allowlist + limit + status), regardless of
-            // mode above — see can_book_session() in
-            // supabase/migrations/20260810150000_can_book_session_rpc.sql.
+            setEligible(canPeerBook ?? false);
+          } else if (!rescheduleId) {
             const { data: canBook } = await supabase.rpc("check_can_book_session", {
               p_coach_id: coachId,
               p_enrollment_id: activeEnrollmentId,
@@ -301,7 +239,7 @@ export default function BookSession() {
         setLoading(false);
       }
     })();
-  }, [coachId, user, mode, role, enrollmentId, retryKey]);
+  }, [coachId, user, mode, enrollmentId, rescheduleId, retryKey]);
 
   const datesWithSlots = useMemo(() => new Set(slots.map((s) => s.slot_date)), [slots]);
   const week = useMemo(
@@ -321,7 +259,6 @@ export default function BookSession() {
 
   useEffect(() => setSelectedStart(null), [selectedDate, duration]);
 
-  const overLimit = isOverSessionLimit(usage);
   // Booking goal gate (server rule, enrollment_goal_gate). A Coaching
   // reschedule moves an existing booking and is exempt server-side, so it is
   // not disabled here either.
@@ -329,10 +266,8 @@ export default function BookSession() {
   const goalGateApplies = goalGateBlocked && !(mode === "coaching" && rescheduleId);
   const canSubmit =
     !!enrollmentId && !goalGateApplies && canSubmitBooking({ selectedDate, selectedStart, topic, eligible });
-  // eligible === false but the numbers don't show overLimit: something other than the
-  // session cap is blocking (allowlist changed, status changed) — the usage-based banner
-  // below wouldn't explain it, so show a distinct message instead of nothing.
-  const ineligibleForOtherReason = eligible === false && !overLimit;
+  // The goal gate has its own panel; any other refusal gets the generic one.
+  const showIneligible = eligible === false && !goalGateApplies;
 
   const handleBook = async () => {
     if (!user || !coach || !selectedDate || !selectedStart || !topic.trim() || !enrollmentId) return;
@@ -411,11 +346,8 @@ export default function BookSession() {
       return toast.error(getFriendlyErrorMessage(error, t));
     }
     // Coaching reschedules are atomic inside reschedule_coaching_session, so
-    // there is no old booking left to close out here. Peer mode keeps the
-    // previous best-effort behaviour because it has no canonical equivalent.
-    if (rescheduleId && mode === "peer") {
-      await supabase.from("sessions").update({ status: "rescheduled" }).eq("id", rescheduleId);
-    }
+    // there is no old booking left to close out here. Peer sessions have no
+    // learner reschedule: the app never writes a session row directly.
     invalidateCoaching();
     toast.success(
       mode === "peer"
@@ -561,25 +493,14 @@ export default function BookSession() {
           <Badge className="bg-success/10 text-success hover:bg-success/10">
             <ShieldCheck className="mr-1 h-3 w-3" /> {t("bookSession.coachSummary.verifiedExpert")}
           </Badge>
-          {(coachingProgress || usage) && (
+          {coachingProgress && (
             <div className="flex items-start gap-2 rounded-xl bg-muted/40 p-3 text-xs">
               <Info className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-              <span>
-                {t("bookSession.coachSummary.usagePrefix")}{" "}
-                <strong>
-                  {coachingProgress
-                    ? coachingProgress.completedUnits + coachingProgress.bookedUnits
-                    : usage?.used_this_month}
-                </strong>{" "}
-                {t("bookSession.coachSummary.usageOfYour")}{" "}
-                <strong>
-                  {coachingProgress
-                    ? coachingProgress.requiredUnits
-                    : usage?.monthly_limit === null
-                      ? t("bookSession.coachSummary.unlimited")
-                      : usage?.monthly_limit}
-                </strong>{" "}
-                {mode === "peer" ? t("bookSession.modeWord.peer") : t("bookSession.modeWord.coaching")} {t("bookSession.coachSummary.usageSuffix")}
+              <span data-testid="coaching-requirement-progress">
+                {t("bookSession.coachSummary.requirementProgress", {
+                  done: coachingProgress.completedUnits + coachingProgress.bookedUnits,
+                  required: coachingProgress.requiredUnits,
+                })}
               </span>
             </div>
           )}
@@ -615,27 +536,7 @@ export default function BookSession() {
             )}
           </div>
 
-          {overLimit && (mode === "peer" || role === "coach") ? (
-            <div className="flex items-start gap-2 rounded-lg border border-warning/30 bg-warning/10 px-3 py-2 text-sm text-warning">
-              <Info className="mt-0.5 h-4 w-4 shrink-0" />
-              <span>
-                {t("bookSession.freePlanNotice.prefix", { limit: usage?.monthly_limit, modeWord: mode === "peer" ? t("bookSession.modeWord.peer") : t("bookSession.modeWord.coaching") })}{" "}
-                <a href={`mailto:${CONTACT_EMAIL}`} className="font-semibold underline">
-                  {CONTACT_EMAIL}
-                </a>{" "}
-                {t("bookSession.freePlanNotice.suffix")}
-              </span>
-            </div>
-          ) : (
-            overLimit && (
-              <div className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-                <AlertCircle className="h-4 w-4" />
-                {t("bookSession.limitReached", { used: usage?.used_this_month, limit: usage?.monthly_limit })}
-              </div>
-            )
-          )}
-
-          {ineligibleForOtherReason && (
+          {showIneligible && (
             <div className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
               <AlertCircle className="h-4 w-4" />
               {t("bookSession.ineligible")}

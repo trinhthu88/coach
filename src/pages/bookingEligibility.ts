@@ -1,19 +1,11 @@
 /**
  * Booking-eligibility gate for the "Confirm Booking" button in BookSession.tsx.
  *
- * `isOverSessionLimit` is display-only now (drives the "X of Y sessions used"
- * banner) — the real limit + allowlist gate is `public.can_book_session()` in
- * supabase/migrations/20260810150000_can_book_session_rpc.sql, called via the
- * `check_can_book_session` RPC and passed in as `eligible`. That single DB
- * function is also what the `sessions` INSERT RLS policies call, so the
- * frontend no longer keeps its own copy of the allowlist/limit rule — it just
- * asks the DB whether booking is allowed and reflects the answer.
+ * `eligible` is the server's answer (check_can_book_session /
+ * can_book_peer_session): a free requirement + the cohort pool + the goal gate
+ * (20261005130000). The frontend keeps no copy of that rule and no session
+ * allowance of its own -- it reflects the answer.
  */
-export function isOverSessionLimit(usage: { monthly_limit: number | null; used_this_month: number } | null): boolean {
-  if (!usage || usage.monthly_limit === null) return false; // null = unlimited
-  return usage.used_this_month >= usage.monthly_limit;
-}
-
 export function canSubmitBooking(opts: {
   selectedDate: unknown;
   selectedStart: string | null;

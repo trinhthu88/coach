@@ -28,8 +28,8 @@ select has_function(
 select has_function(
   'public',
   'admin_update_coach_configuration',
-  array['uuid','text','text','uuid[]','uuid','uuid','uuid','uuid'],
-  'Admin Coach edits are transactional across profile, allowlist, and enrollment'
+  array['uuid','text','text','uuid','uuid','uuid','uuid'],
+  'Admin Coach edits are transactional across profile and enrollment (no allowlist since 20261007000900)'
 );
 select has_function(
   'public',

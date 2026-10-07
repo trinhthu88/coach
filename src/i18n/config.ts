@@ -23,6 +23,7 @@ export const NAMESPACES = [
   "mentoring",
   "training",
   "triads",
+  "assessments",
 ] as const;
 
 type Namespace = (typeof NAMESPACES)[number];
@@ -50,6 +51,7 @@ const translationLoaders: Record<SupportedLanguage, Record<Namespace, Translatio
     mentoring: () => import("@/locales/en/mentoring.json"),
     training: () => import("@/locales/en/training.json"),
     triads: () => import("@/locales/en/triads.json"),
+    assessments: () => import("@/locales/en/assessments.json"),
   },
   vi: {
     common: () => import("@/locales/vi/common.json"),
@@ -67,6 +69,7 @@ const translationLoaders: Record<SupportedLanguage, Record<Namespace, Translatio
     mentoring: () => import("@/locales/vi/mentoring.json"),
     training: () => import("@/locales/vi/training.json"),
     triads: () => import("@/locales/vi/triads.json"),
+    assessments: () => import("@/locales/vi/assessments.json"),
   },
 };
 

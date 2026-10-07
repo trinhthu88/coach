@@ -3,7 +3,7 @@
 -- (20260928100000_requirement_calendar, 20260928110000_goal_setting_period,
 -- 20260928120000_organisation_enrollments_and_integrity).
 --
--- Fixture (as of current_date):
+-- Fixture (as of public.programme_today()):
 --   programme: Coaching 4, Mentoring 2, Peer 2, Triads 2, Training 8 selected
 --              weeks (+ a 9th week that is NOT selected) = 18 requirements;
 --              learning_components = all four child types
@@ -83,21 +83,21 @@ insert into public.programme_modules (programme_id, module, enabled, config) val
 
 insert into public.cohorts (id, name, programme_id, organization_id, start_date, end_date)
 values ('d9900000-0000-4000-8000-000000000001', 'Calendar Shared Cohort', 'c9900000-0000-4000-8000-000000000001',
-  'b9900000-0000-4000-8000-00000000000a', current_date - 30, current_date + 200);
+  'b9900000-0000-4000-8000-00000000000a', public.programme_today() - 30, public.programme_today() + 200);
 
 select set_config('request.jwt.claim.sub', 'a9900000-0000-4000-8000-000000000001', true);
 select set_config('request.jwt.claim.role', 'authenticated', true);
 select public.admin_set_cohort_module_deadlines('d9900000-0000-4000-8000-000000000001', jsonb_build_array(
-  jsonb_build_object('programme_id', 'c9900000-0000-4000-8000-000000000001', 'module', 'coaching', 'completion_deadline', (current_date - 5)::text),
-  jsonb_build_object('programme_id', 'c9900000-0000-4000-8000-000000000001', 'module', 'mentoring', 'completion_deadline', (current_date + 10)::text),
-  jsonb_build_object('programme_id', 'c9900000-0000-4000-8000-000000000001', 'module', 'peer_coaching', 'completion_deadline', (current_date + 60)::text),
-  jsonb_build_object('programme_id', 'c9900000-0000-4000-8000-000000000001', 'module', 'triads', 'completion_deadline', (current_date + 90)::text)));
+  jsonb_build_object('programme_id', 'c9900000-0000-4000-8000-000000000001', 'module', 'coaching', 'completion_deadline', (public.programme_today() - 5)::text),
+  jsonb_build_object('programme_id', 'c9900000-0000-4000-8000-000000000001', 'module', 'mentoring', 'completion_deadline', (public.programme_today() + 10)::text),
+  jsonb_build_object('programme_id', 'c9900000-0000-4000-8000-000000000001', 'module', 'peer_coaching', 'completion_deadline', (public.programme_today() + 60)::text),
+  jsonb_build_object('programme_id', 'c9900000-0000-4000-8000-000000000001', 'module', 'triads', 'completion_deadline', (public.programme_today() + 90)::text)));
 
 insert into public.programme_enrollments (id, programme_id, user_id, cohort_id, organization_id, status, start_date)
 select ('e9900000-0000-4000-8000-0000000000' || n)::uuid, 'c9900000-0000-4000-8000-000000000001',
   ('a9900000-0000-4000-8000-0000000000' || n)::uuid, 'd9900000-0000-4000-8000-000000000001',
   case when n <= 13 then 'b9900000-0000-4000-8000-00000000000a' else 'b9900000-0000-4000-8000-00000000000b' end::uuid,
-  'active', current_date - 30
+  'active', public.programme_today() - 30
 from unnest(array[11, 12, 13, 14, 15]) n;
 
 -- Learner 12: an active rated goal, one completed Coaching session (on
@@ -140,7 +140,7 @@ select c.enrollment_id,
   count(*)::int as required, count(*) filter (where c.is_completed)::int as completed,
   count(*) filter (where c.is_due_as_of)::int as due, count(*) filter (where c.is_overdue)::int as overdue
 from public.programme_enrollments e
-cross join lateral public.canonical_enrollment_requirement_calendar(e.id, current_date) c
+cross join lateral public.canonical_enrollment_requirement_calendar(e.id, public.programme_today()) c
 where e.cohort_id = 'd9900000-0000-4000-8000-000000000001'
 group by c.enrollment_id;
 
@@ -169,14 +169,14 @@ select is(
 select is(
   (select due_on from public.cohort_requirement_dates d join public.training_weeks tw on tw.id = d.training_week_id
    where d.cohort_id = 'd9900000-0000-4000-8000-000000000001' and tw.week_number = 3),
-  current_date - 16, 'a Training week defaults to its pacing date (cohort start + (week - 1) * 7)');
+  public.programme_today() - 16, 'a Training week defaults to its pacing date (cohort start + (week - 1) * 7)');
 select is(
   (select count(*)::int from public.requirement_integrity_issues() i
    where i.cohort_id = 'd9900000-0000-4000-8000-000000000001' or i.programme_id = 'c9900000-0000-4000-8000-000000000001'),
   0, 'the fixture has no requirement integrity issue');
 select throws_ok(
   $$insert into public.cohort_requirement_dates (cohort_id, programme_id, module, ordinal, due_on, generation_method, materialized_via)
-    values ('d9900000-0000-4000-8000-000000000001', 'c9900000-0000-4000-8000-000000000001', 'training', 9, current_date, 'manual', 'admin_save')$$,
+    values ('d9900000-0000-4000-8000-000000000001', 'c9900000-0000-4000-8000-000000000001', 'training', 9, public.programme_today(), 'manual', 'admin_save')$$,
   '23514', null, 'a Training requirement must name its week');
 
 -- ---------------------------------------------------------------------------
@@ -187,24 +187,24 @@ select is(
   array[18, 0, 9, 9],
   'nothing completed: required 18, completed 0, due 9 (Coaching 4 + Training weeks 1-5), overdue 9');
 select is(
-  (select count(*)::int from public.canonical_enrollment_requirement_calendar('e9900000-0000-4000-8000-000000000011', current_date)
-   where is_overdue and (due_on > current_date or is_completed)),
+  (select count(*)::int from public.canonical_enrollment_requirement_calendar('e9900000-0000-4000-8000-000000000011', public.programme_today())
+   where is_overdue and (due_on > public.programme_today() or is_completed)),
   0, 'no future or completed requirement is overdue');
 select is(
-  (select count(*)::int from public.canonical_enrollment_requirement_calendar('e9900000-0000-4000-8000-000000000011', current_date + 365)
+  (select count(*)::int from public.canonical_enrollment_requirement_calendar('e9900000-0000-4000-8000-000000000011', public.programme_today() + 365)
    where is_overdue),
   18, 'once every date has passed, all 18 are overdue');
 select is(
   (select array[required_units, completed_units, due_units, overdue_units]
-   from public.canonical_enrollment_progress('e9900000-0000-4000-8000-000000000011', current_date)),
+   from public.canonical_enrollment_progress('e9900000-0000-4000-8000-000000000011', public.programme_today())),
   (select array[required, completed, due, overdue] from cal_totals where enrollment_id = 'e9900000-0000-4000-8000-000000000011'),
   'canonical enrollment progress equals the calendar');
 select is(
-  (select requirement_label from public.canonical_enrollment_requirement_calendar('e9900000-0000-4000-8000-000000000011', current_date)
+  (select requirement_label from public.canonical_enrollment_requirement_calendar('e9900000-0000-4000-8000-000000000011', public.programme_today())
    where module = 'training' and requirement_index = 2),
   'Week 2: Calendar week 2', 'Training requirements carry their week label');
 select is(
-  (select requirement_label from public.canonical_enrollment_requirement_calendar('e9900000-0000-4000-8000-000000000011', current_date)
+  (select requirement_label from public.canonical_enrollment_requirement_calendar('e9900000-0000-4000-8000-000000000011', public.programme_today())
    where module = 'coaching' and requirement_index = 3),
   'Coaching Session 3', 'session requirements carry their unit label');
 
@@ -216,20 +216,20 @@ select is(
   array[18, 2, 9, 7],
   'partial leader: Coaching 1 + Week 1 completed, both due: overdue 7');
 select is(
-  (select array[is_completed, is_overdue]::text from public.canonical_enrollment_requirement_calendar('e9900000-0000-4000-8000-000000000012', current_date)
+  (select array[is_completed, is_overdue]::text from public.canonical_enrollment_requirement_calendar('e9900000-0000-4000-8000-000000000012', public.programme_today())
    where module = 'coaching' and requirement_index = 1),
   '{t,f}', 'a completed requirement is never overdue');
 select is(
-  (select completion_source from public.canonical_enrollment_requirement_calendar('e9900000-0000-4000-8000-000000000012', current_date)
+  (select completion_source from public.canonical_enrollment_requirement_calendar('e9900000-0000-4000-8000-000000000012', public.programme_today())
    where module = 'coaching' and requirement_index = 1),
   'coaching_session', 'the calendar names the completion source');
 select is(
   (select array_agg(array[required_units, completed_units, due_units, overdue_units] order by module)
-   from public.canonical_module_progress('e9900000-0000-4000-8000-000000000012', current_date)),
+   from public.canonical_module_progress('e9900000-0000-4000-8000-000000000012', public.programme_today())),
   (select array_agg(t order by module) from (
      select c.module, array[count(*)::int, count(*) filter (where c.is_completed)::int,
             count(*) filter (where c.is_due_as_of)::int, count(*) filter (where c.is_overdue)::int] as t
-     from public.canonical_enrollment_requirement_calendar('e9900000-0000-4000-8000-000000000012', current_date) c
+     from public.canonical_enrollment_requirement_calendar('e9900000-0000-4000-8000-000000000012', public.programme_today()) c
      group by c.module) x),
   'module progress is the per-module aggregate of the calendar');
 
@@ -237,19 +237,19 @@ select is(
 -- 4. Checkpoints derive from the calendar (L)
 -- ---------------------------------------------------------------------------
 select is(
-  (select count(*)::int from jsonb_array_elements(public.canonical_enrollment_journey('e9900000-0000-4000-8000-000000000011', current_date)) cp
+  (select count(*)::int from jsonb_array_elements(public.canonical_enrollment_journey('e9900000-0000-4000-8000-000000000011', public.programme_today())) cp
    where (cp->>'required_units')::int <> (
-     select count(*) from public.canonical_enrollment_requirement_calendar('e9900000-0000-4000-8000-000000000011', current_date) c
+     select count(*) from public.canonical_enrollment_requirement_calendar('e9900000-0000-4000-8000-000000000011', public.programme_today()) c
      where c.due_on <= (cp->>'due_on')::date)),
   0, 'every checkpoint total = calendar requirements due on or before that date');
 select is(
   (select array_agg((cp->>'required_units')::int order by (cp->>'due_on')::date)
-   from jsonb_array_elements(public.canonical_enrollment_journey('e9900000-0000-4000-8000-000000000011', current_date)) cp),
+   from jsonb_array_elements(public.canonical_enrollment_journey('e9900000-0000-4000-8000-000000000011', public.programme_today())) cp),
   array[1, 2, 3, 4, 8, 9, 10, 12, 13, 14, 16, 18],
   'cumulative checkpoints: weeks 1-4, Coaching x4 on its deadline, week 5, week 6, Mentoring x2, weeks 7-8, Peer x2, Triads x2');
 select is(
-  (select (cp->>'completed_units')::int from jsonb_array_elements(public.canonical_enrollment_journey('e9900000-0000-4000-8000-000000000012', current_date)) cp
-   where (cp->>'due_on')::date = current_date - 5),
+  (select (cp->>'completed_units')::int from jsonb_array_elements(public.canonical_enrollment_journey('e9900000-0000-4000-8000-000000000012', public.programme_today())) cp
+   where (cp->>'due_on')::date = public.programme_today() - 5),
   2, 'partial leader: 2 of the 8 requirements due by the Coaching deadline are fulfilled');
 
 -- ---------------------------------------------------------------------------
@@ -258,33 +258,33 @@ select is(
 select public.admin_set_cohort_requirement_dates('d9900000-0000-4000-8000-000000000001', jsonb_build_array(
   jsonb_build_object('requirement_id', (select id from public.cohort_requirement_dates
     where cohort_id = 'd9900000-0000-4000-8000-000000000001' and module = 'coaching' and ordinal = 4),
-    'due_on', (current_date + 30)::text)));
+    'due_on', (public.programme_today() + 30)::text)));
 
 select is(
   (select array_agg(due_on order by ordinal) from public.cohort_requirement_dates
    where cohort_id = 'd9900000-0000-4000-8000-000000000001' and module = 'coaching'),
-  array[current_date - 5, current_date - 5, current_date - 5, current_date + 30],
+  array[public.programme_today() - 5, public.programme_today() - 5, public.programme_today() - 5, public.programme_today() + 30],
   'Coaching Session 4 has its own date; sessions 1-3 keep the module default');
 select is(
   (select array[count(*)::int, count(*) filter (where is_due_as_of)::int, count(*) filter (where is_overdue)::int]
-   from public.canonical_enrollment_requirement_calendar('e9900000-0000-4000-8000-000000000011', current_date)),
+   from public.canonical_enrollment_requirement_calendar('e9900000-0000-4000-8000-000000000011', public.programme_today())),
   array[18, 8, 8], 'moving one requirement changes due and overdue, never required');
 select ok(
-  exists (select 1 from jsonb_array_elements(public.canonical_enrollment_journey('e9900000-0000-4000-8000-000000000011', current_date)) cp
-          where (cp->>'due_on')::date = current_date + 30 and cp->'module_scope' ? 'coaching'),
+  exists (select 1 from jsonb_array_elements(public.canonical_enrollment_journey('e9900000-0000-4000-8000-000000000011', public.programme_today())) cp
+          where (cp->>'due_on')::date = public.programme_today() + 30 and cp->'module_scope' ? 'coaching'),
   'the moved requirement opens its own checkpoint');
 select is(
   (select array[count(*)::int, count(*) filter (where is_due_as_of)::int, count(*) filter (where is_overdue)::int]
-   from public.sponsor_leader_requirement_calendar('e9900000-0000-4000-8000-000000000011', current_date)),
+   from public.sponsor_leader_requirement_calendar('e9900000-0000-4000-8000-000000000011', public.programme_today())),
   array[0, 0, 0], 'an admin (not a sponsor) gets nothing from the sponsor wrapper');
 
 -- Moving the module default moves only the requirements that follow it.
 select public.admin_set_cohort_module_deadlines('d9900000-0000-4000-8000-000000000001', jsonb_build_array(
-  jsonb_build_object('programme_id', 'c9900000-0000-4000-8000-000000000001', 'module', 'coaching', 'completion_deadline', (current_date - 3)::text)));
+  jsonb_build_object('programme_id', 'c9900000-0000-4000-8000-000000000001', 'module', 'coaching', 'completion_deadline', (public.programme_today() - 3)::text)));
 select is(
   (select array_agg(due_on order by ordinal) from public.cohort_requirement_dates
    where cohort_id = 'd9900000-0000-4000-8000-000000000001' and module = 'coaching'),
-  array[current_date - 3, current_date - 3, current_date - 3, current_date + 30],
+  array[public.programme_today() - 3, public.programme_today() - 3, public.programme_today() - 3, public.programme_today() + 30],
   'a new module default moves the non-overridden requirements and leaves the Admin date alone');
 select is(
   (select is_overridden from public.cohort_requirement_dates
@@ -295,28 +295,28 @@ select is(
 select public.admin_set_cohort_requirement_dates('d9900000-0000-4000-8000-000000000001', jsonb_build_array(
   jsonb_build_object('requirement_id', (select d.id from public.cohort_requirement_dates d join public.training_weeks tw on tw.id = d.training_week_id
     where d.cohort_id = 'd9900000-0000-4000-8000-000000000001' and tw.week_number = 4),
-    'due_on', (current_date + 3)::text)));
+    'due_on', (public.programme_today() + 3)::text)));
 select is(
-  (select array[required_units, due_units, overdue_units] from public.canonical_module_progress('e9900000-0000-4000-8000-000000000011', current_date)
+  (select array[required_units, due_units, overdue_units] from public.canonical_module_progress('e9900000-0000-4000-8000-000000000011', public.programme_today())
    where module = 'training'),
   array[8, 4, 4], 'Week 4 in the future: Training required 8, due 4, overdue 4');
 select ok(
-  exists (select 1 from jsonb_array_elements(public.canonical_enrollment_journey('e9900000-0000-4000-8000-000000000011', current_date)) cp
-          where (cp->>'due_on')::date = current_date + 3 and cp->>'label' = 'Calendar week 4'),
+  exists (select 1 from jsonb_array_elements(public.canonical_enrollment_journey('e9900000-0000-4000-8000-000000000011', public.programme_today())) cp
+          where (cp->>'due_on')::date = public.programme_today() + 3 and cp->>'label' = 'Calendar week 4'),
   'the Week 4 date is a checkpoint labelled with the week');
 select is(
   (select min(d) from (select (x->>'due_on')::date as d
-     from jsonb_array_elements(public.canonical_learning_breakdown('e9900000-0000-4000-8000-000000000011', current_date)) x) y),
+     from jsonb_array_elements(public.canonical_learning_breakdown('e9900000-0000-4000-8000-000000000011', public.programme_today())) x) y),
   null::date, 'the breakdown exposes counts only (no per-item dates)');
 
 -- A cohort week override no longer moves an Admin-dated week, but still moves a default one.
 insert into public.cohort_week_overrides (cohort_id, training_week_id, unlock_date, is_visible) values
-  ('d9900000-0000-4000-8000-000000000001', '79900000-0000-4000-8000-000000000004', current_date - 1, true),
-  ('d9900000-0000-4000-8000-000000000001', '79900000-0000-4000-8000-000000000005', current_date + 1, true);
+  ('d9900000-0000-4000-8000-000000000001', '79900000-0000-4000-8000-000000000004', public.programme_today() - 1, true),
+  ('d9900000-0000-4000-8000-000000000001', '79900000-0000-4000-8000-000000000005', public.programme_today() + 1, true);
 select is(
   (select array_agg(d.due_on order by tw.week_number) from public.cohort_requirement_dates d join public.training_weeks tw on tw.id = d.training_week_id
    where d.cohort_id = 'd9900000-0000-4000-8000-000000000001' and tw.week_number in (4, 5)),
-  array[current_date + 3, current_date + 1],
+  array[public.programme_today() + 3, public.programme_today() + 1],
   'a week override moves only the week that follows its default');
 
 -- Reset returns a requirement to its default.
@@ -326,13 +326,13 @@ select public.admin_set_cohort_requirement_dates('d9900000-0000-4000-8000-000000
 select is(
   (select array[due_on::text, is_overridden::text] from public.cohort_requirement_dates
    where cohort_id = 'd9900000-0000-4000-8000-000000000001' and module = 'coaching' and ordinal = 4),
-  array[(current_date - 3)::text, 'false'], 'a reset requirement follows the module default again');
+  array[(public.programme_today() - 3)::text, 'false'], 'a reset requirement follows the module default again');
 
 select throws_ok(
   format($$select public.admin_set_cohort_requirement_dates('d9900000-0000-4000-8000-000000000001',
     jsonb_build_array(jsonb_build_object('requirement_id', '%s', 'due_on', '%s')))$$,
     (select id from public.cohort_requirement_dates where cohort_id = 'd9900000-0000-4000-8000-000000000001' and module = 'mentoring' and ordinal = 1),
-    current_date + 400),
+    public.programme_today() + 400),
   '22023', null, 'a requirement date outside the cohort window is refused');
 select is(
   (select count(*)::int from public.admin_cohort_requirement_schedule('d9900000-0000-4000-8000-000000000001')),
@@ -340,39 +340,39 @@ select is(
 select is(
   (select array[requirement_label, default_due_on::text] from public.admin_cohort_requirement_schedule('d9900000-0000-4000-8000-000000000001')
    where module = 'training' and requirement_index = 1),
-  array['Week 1: Calendar week 1', (current_date - 30)::text], 'the Admin schedule shows each week''s label and default date');
+  array['Week 1: Calendar week 1', (public.programme_today() - 30)::text], 'the Admin schedule shows each week''s label and default date');
 
 -- ---------------------------------------------------------------------------
 -- 6. Training / Learning child breakdown (S15, S16, S17)
 -- ---------------------------------------------------------------------------
 select is(
   (select jsonb_object_agg(x->>'key', (x->>'required_units')::int)
-   from jsonb_array_elements(public.canonical_learning_breakdown('e9900000-0000-4000-8000-000000000012', current_date)) x),
+   from jsonb_array_elements(public.canonical_learning_breakdown('e9900000-0000-4000-8000-000000000012', public.programme_today())) x),
   '{"skill_cards": 8, "quizzes": 8, "reflections": 8, "daily_prompts": 2}'::jsonb,
   'breakdown: every configured child type, hidden and unselected items excluded');
 select is(
   (select jsonb_object_agg(x->>'key', (x->>'completed_units')::int)
-   from jsonb_array_elements(public.canonical_learning_breakdown('e9900000-0000-4000-8000-000000000012', current_date)) x),
+   from jsonb_array_elements(public.canonical_learning_breakdown('e9900000-0000-4000-8000-000000000012', public.programme_today())) x),
   '{"skill_cards": 1, "quizzes": 1, "reflections": 1, "daily_prompts": 1}'::jsonb,
   'breakdown completion counts evidence per child type');
 select is(
-  (select training_required_units from public.canonical_enrollment_progress('e9900000-0000-4000-8000-000000000012', current_date)),
+  (select training_required_units from public.canonical_enrollment_progress('e9900000-0000-4000-8000-000000000012', public.programme_today())),
   8, 'child evidence never inflates Training beyond its 8 weeks');
 
 update public.programme_modules
 set config = jsonb_set(config, '{learning_components}', '["skill_cards","quizzes","reflections"]')
 where programme_id = 'c9900000-0000-4000-8000-000000000001' and module = 'training';
 select is(
-  (select (x->>'required_units')::int from jsonb_array_elements(public.canonical_learning_breakdown('e9900000-0000-4000-8000-000000000012', current_date)) x
+  (select (x->>'required_units')::int from jsonb_array_elements(public.canonical_learning_breakdown('e9900000-0000-4000-8000-000000000012', public.programme_today())) x
    where x->>'key' = 'daily_prompts'),
   0, 'a child type not selected in learning_components is excluded');
 
 update public.training_weeks set is_visible = false where id = '79900000-0000-4000-8000-000000000008';
 select is(
-  (select array[training_required_units, required_units] from public.canonical_enrollment_progress('e9900000-0000-4000-8000-000000000012', current_date)),
+  (select array[training_required_units, required_units] from public.canonical_enrollment_progress('e9900000-0000-4000-8000-000000000012', public.programme_today())),
   array[7, 17], 'a hidden week is not a requirement');
 select is(
-  (select (x->>'required_units')::int from jsonb_array_elements(public.canonical_learning_breakdown('e9900000-0000-4000-8000-000000000012', current_date)) x
+  (select (x->>'required_units')::int from jsonb_array_elements(public.canonical_learning_breakdown('e9900000-0000-4000-8000-000000000012', public.programme_today())) x
    where x->>'key' = 'quizzes'),
   7, 'a hidden week''s children are excluded');
 update public.training_weeks set is_visible = true where id = '79900000-0000-4000-8000-000000000008';
@@ -390,7 +390,7 @@ update public.programme_modules set config = jsonb_set(config, '{required_units}
 where programme_id = 'c9900000-0000-4000-8000-000000000001' and module = 'training';
 insert into public.programme_enrollments (id, programme_id, user_id, cohort_id, organization_id, status, start_date)
 values ('e9900000-0000-4000-8000-000000000099', 'c9900000-0000-4000-8000-000000000001',
-  'a9900000-0000-4000-8000-000000000004', 'd9900000-0000-4000-8000-000000000001', null, 'active', current_date);
+  'a9900000-0000-4000-8000-000000000004', 'd9900000-0000-4000-8000-000000000001', null, 'active', public.programme_today());
 select ok(
   exists (select 1 from public.admin_requirement_integrity_issues()
           where issue = 'enrollment_without_organization' and enrollment_id = 'e9900000-0000-4000-8000-000000000099'),
@@ -406,10 +406,10 @@ select is(
   array['b9900000-0000-4000-8000-00000000000a', 'b9900000-0000-4000-8000-00000000000b']::uuid[],
   'two organisations share the same cohort');
 select is(
-  (select count(*)::int from public.admin_organization_enrollments('b9900000-0000-4000-8000-00000000000a', current_date)),
+  (select count(*)::int from public.admin_organization_enrollments('b9900000-0000-4000-8000-00000000000a', public.programme_today())),
   3, 'admin: organisation A lists its three enrollments');
 select is(
-  (select count(*)::int from public.admin_organization_enrollments('b9900000-0000-4000-8000-00000000000b', current_date)),
+  (select count(*)::int from public.admin_organization_enrollments('b9900000-0000-4000-8000-00000000000b', public.programme_today())),
   2, 'admin: organisation B lists its two enrollments');
 select is(
   (select array[ongoing_enrollments, ongoing_leaders] from public.admin_organization_leader_summary()
@@ -418,9 +418,9 @@ select is(
    where organization_id = 'b9900000-0000-4000-8000-00000000000a' and status in ('active', 'at_risk', 'paused')),
   'organisation leader count equals its canonical ongoing enrollments');
 select is(
-  (select array[required_units, completed_units, due_units, overdue_units] from public.admin_organization_enrollments('b9900000-0000-4000-8000-00000000000a', current_date)
+  (select array[required_units, completed_units, due_units, overdue_units] from public.admin_organization_enrollments('b9900000-0000-4000-8000-00000000000a', public.programme_today())
    where enrollment_id = 'e9900000-0000-4000-8000-000000000012'),
-  (select array[required_units, completed_units, due_units, overdue_units] from public.canonical_enrollment_progress('e9900000-0000-4000-8000-000000000012', current_date)),
+  (select array[required_units, completed_units, due_units, overdue_units] from public.canonical_enrollment_progress('e9900000-0000-4000-8000-000000000012', public.programme_today())),
   'the organisation list shows canonical progress');
 
 -- ---------------------------------------------------------------------------
@@ -430,7 +430,7 @@ create temp table role_calendar (role text, required int, completed int, due int
 insert into role_calendar
 select 'admin', count(*), count(*) filter (where is_completed), count(*) filter (where is_due_as_of),
   count(*) filter (where is_overdue), min(organization_id::text)::uuid
-from public.admin_enrollment_requirement_calendar('e9900000-0000-4000-8000-000000000012', current_date);
+from public.admin_enrollment_requirement_calendar('e9900000-0000-4000-8000-000000000012', public.programme_today());
 create temp table role_progress on commit drop as
 select 'admin'::text as role, required_units, completed_units, due_units, overdue_units
 from public.admin_canonical_enrollment_progress(array['e9900000-0000-4000-8000-000000000012'::uuid]);
@@ -439,19 +439,19 @@ select set_config('request.jwt.claim.sub', 'a9900000-0000-4000-8000-000000000012
 insert into role_calendar
 select 'learner', count(*), count(*) filter (where is_completed), count(*) filter (where is_due_as_of),
   count(*) filter (where is_overdue), min(organization_id::text)::uuid
-from public.learner_requirement_calendar('e9900000-0000-4000-8000-000000000012', current_date);
+from public.learner_requirement_calendar('e9900000-0000-4000-8000-000000000012', public.programme_today());
 insert into role_progress
 select 'learner', required_units, completed_units, due_units, overdue_units
-from public.learner_canonical_progress('e9900000-0000-4000-8000-000000000012', current_date);
+from public.learner_canonical_progress('e9900000-0000-4000-8000-000000000012', public.programme_today());
 
 select set_config('request.jwt.claim.sub', 'a9900000-0000-4000-8000-000000000002', true);
 insert into role_calendar
 select 'sponsor', count(*), count(*) filter (where is_completed), count(*) filter (where is_due_as_of),
   count(*) filter (where is_overdue), min(organization_id::text)::uuid
-from public.sponsor_leader_requirement_calendar('e9900000-0000-4000-8000-000000000012', current_date);
+from public.sponsor_leader_requirement_calendar('e9900000-0000-4000-8000-000000000012', public.programme_today());
 insert into role_progress
 select 'sponsor', required_units, completed_units, due_units, overdue_units
-from public.sponsor_canonical_enrollment_metadata(null, 'e9900000-0000-4000-8000-000000000012', current_date);
+from public.sponsor_canonical_enrollment_metadata(null, 'e9900000-0000-4000-8000-000000000012', public.programme_today());
 
 select is((select count(distinct (required, completed, due, overdue, org))::int from role_calendar), 1,
   'admin, learner and sponsor calendars agree on required / completed / due / overdue and organisation');
@@ -464,43 +464,43 @@ select is(
   'sponsor header numbers equal the sponsor calendar');
 select is(
   (select array_agg((cp->>'required_units')::int || '/' || (cp->>'completed_units')::int order by cp->>'due_on')
-   from jsonb_array_elements(public.sponsor_canonical_leader_journey('e9900000-0000-4000-8000-000000000012', current_date)) cp),
+   from jsonb_array_elements(public.sponsor_canonical_leader_journey('e9900000-0000-4000-8000-000000000012', public.programme_today())) cp),
   (select array_agg((cp->>'required_units')::int || '/' || (cp->>'completed_units')::int order by cp->>'due_on')
-   from jsonb_array_elements(public.canonical_enrollment_journey('e9900000-0000-4000-8000-000000000012', current_date)) cp),
+   from jsonb_array_elements(public.canonical_enrollment_journey('e9900000-0000-4000-8000-000000000012', public.programme_today())) cp),
   'sponsor checkpoints equal the canonical journey');
 
 -- ---------------------------------------------------------------------------
 -- 10. Sponsor isolation (S7, S8) and privacy (S17)
 -- ---------------------------------------------------------------------------
 select is(
-  (select array_agg(enrollment_id order by enrollment_id) from public.sponsor_canonical_enrollment_progress('d9900000-0000-4000-8000-000000000001', current_date)),
+  (select array_agg(enrollment_id order by enrollment_id) from public.sponsor_canonical_enrollment_progress('d9900000-0000-4000-8000-000000000001', public.programme_today())),
   array['e9900000-0000-4000-8000-000000000011', 'e9900000-0000-4000-8000-000000000012', 'e9900000-0000-4000-8000-000000000013']::uuid[],
   'sponsor A sees only organisation A''s leaders in the shared cohort');
 select is(
-  (select count(*)::int from public.sponsor_leader_requirement_calendar('e9900000-0000-4000-8000-000000000014', current_date)),
+  (select count(*)::int from public.sponsor_leader_requirement_calendar('e9900000-0000-4000-8000-000000000014', public.programme_today())),
   0, 'sponsor A cannot read an organisation B leader''s calendar');
-select is(public.sponsor_canonical_leader_journey('e9900000-0000-4000-8000-000000000014', current_date), '[]'::jsonb,
+select is(public.sponsor_canonical_leader_journey('e9900000-0000-4000-8000-000000000014', public.programme_today()), '[]'::jsonb,
   'sponsor A cannot read an organisation B leader''s checkpoints');
 select ok(
-  position('PRIVATE-' in coalesce(public.sponsor_canonical_leader_experience('e9900000-0000-4000-8000-000000000012', current_date)::text, '')) = 0
-  and position('PRIVATE-' in (select coalesce(jsonb_agg(to_jsonb(c))::text, '') from public.sponsor_leader_requirement_calendar('e9900000-0000-4000-8000-000000000012', current_date) c)) = 0
-  and position('PRIVATE-' in (select coalesce(jsonb_agg(to_jsonb(m))::text, '') from public.sponsor_canonical_enrollment_metadata(null, 'e9900000-0000-4000-8000-000000000012', current_date) m)) = 0,
+  position('PRIVATE-' in coalesce(public.sponsor_canonical_leader_experience('e9900000-0000-4000-8000-000000000012', public.programme_today())::text, '')) = 0
+  and position('PRIVATE-' in (select coalesce(jsonb_agg(to_jsonb(c))::text, '') from public.sponsor_leader_requirement_calendar('e9900000-0000-4000-8000-000000000012', public.programme_today()) c)) = 0
+  and position('PRIVATE-' in (select coalesce(jsonb_agg(to_jsonb(m))::text, '') from public.sponsor_canonical_enrollment_metadata(null, 'e9900000-0000-4000-8000-000000000012', public.programme_today()) m)) = 0,
   'no sponsor RPC returns learner quiz notes or prompt answers');
 select is(
-  (select array[goal_count::numeric, goal_progress_pct] from public.sponsor_canonical_enrollment_metadata(null, 'e9900000-0000-4000-8000-000000000012', current_date)),
+  (select array[goal_count::numeric, goal_progress_pct] from public.sponsor_canonical_enrollment_metadata(null, 'e9900000-0000-4000-8000-000000000012', public.programme_today())),
   array[1::numeric, (select progress_pct from public.canonical_goal_progress('e9900000-0000-4000-8000-000000000012'))],
   'sponsor goal aggregate is derived from the enrollment''s real goal');
 select is(
-  (select goal_count::int from public.sponsor_canonical_enrollment_metadata(null, 'e9900000-0000-4000-8000-000000000011', current_date)),
+  (select goal_count::int from public.sponsor_canonical_enrollment_metadata(null, 'e9900000-0000-4000-8000-000000000011', public.programme_today())),
   0, '"No goal set" only where the enrollment truly has no goal');
 
 select set_config('request.jwt.claim.sub', 'a9900000-0000-4000-8000-000000000003', true);
 select is(
-  (select array_agg(enrollment_id order by enrollment_id) from public.sponsor_canonical_enrollment_progress('d9900000-0000-4000-8000-000000000001', current_date)),
+  (select array_agg(enrollment_id order by enrollment_id) from public.sponsor_canonical_enrollment_progress('d9900000-0000-4000-8000-000000000001', public.programme_today())),
   array['e9900000-0000-4000-8000-000000000014', 'e9900000-0000-4000-8000-000000000015']::uuid[],
   'sponsor B sees only organisation B''s leaders in the shared cohort');
 select is(
-  (select count(*)::int from public.sponsor_leader_requirement_calendar('e9900000-0000-4000-8000-000000000012', current_date)),
+  (select count(*)::int from public.sponsor_leader_requirement_calendar('e9900000-0000-4000-8000-000000000012', public.programme_today())),
   0, 'sponsor B cannot read an organisation A leader''s calendar');
 select throws_ok(
   $$select public.admin_set_cohort_requirement_dates('d9900000-0000-4000-8000-000000000001', '[]'::jsonb)$$,
@@ -511,13 +511,13 @@ select throws_ok(
 -- ---------------------------------------------------------------------------
 select is(
   (public.enrollment_goal_gate_state('e9900000-0000-4000-8000-000000000011')->>'goal_setup_deadline')::date,
-  current_date - 23, 'goal-setting deadline defaults to cohort start + 7');
-update public.cohorts set goal_setting_opens_on = current_date - 35, goal_setting_due_on = current_date - 10
+  public.programme_today() - 23, 'goal-setting deadline defaults to cohort start + 7');
+update public.cohorts set goal_setting_opens_on = public.programme_today() - 35, goal_setting_due_on = public.programme_today() - 10
 where id = 'd9900000-0000-4000-8000-000000000001';
 select is(
   array[(public.enrollment_goal_gate_state('e9900000-0000-4000-8000-000000000011')->>'goal_setting_opens_on')::date,
         (public.enrollment_goal_gate_state('e9900000-0000-4000-8000-000000000011')->>'goal_setup_deadline')::date],
-  array[current_date - 35, current_date - 10], 'the cohort''s goal-setting period is the configured one');
+  array[public.programme_today() - 35, public.programme_today() - 10], 'the cohort''s goal-setting period is the configured one');
 select is((public.enrollment_goal_gate_state('e9900000-0000-4000-8000-000000000012')->>'goal_setup_overdue')::boolean, false,
   'a learner with an active goal is not overdue on goal setting');
 select is(

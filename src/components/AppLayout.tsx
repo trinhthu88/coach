@@ -11,6 +11,7 @@ import {
   ChevronsRight,
   IdCard,
   CalendarClock,
+  ClipboardCheck,
   ClipboardList,
   Compass,
   UsersRound,
@@ -95,6 +96,7 @@ const NAV: NavItem[] = [
 
   // Coachee — Learning
   { to: "/training", labelKey: "nav.training", icon: BookOpen, roles: ["coachee"], module: "training", groupKey: "navGroups.learning" },
+  { to: "/final-assessment", labelKey: "nav.finalAssessment", icon: ClipboardCheck, roles: ["coachee"], module: "final_assessment", groupKey: "navGroups.learning" },
 
   // Coachee — Communication
   { to: "/messages", labelKey: "nav.messages", icon: MessageSquare, roles: ["coachee"], groupKey: "navGroups.communication" },
@@ -135,6 +137,7 @@ const NAV: NavItem[] = [
   // Learning (coach — coachee has its own entry above)
   { to: "/training", labelKey: "nav.training", icon: BookOpen, roles: ["coach"], module: "training", groupKey: "navGroups.learning" },
   { to: "/triads", labelKey: "nav.triads", icon: Users, roles: ["coach"], module: "triads", groupKey: "navGroups.learning" },
+  { to: "/final-assessment", labelKey: "nav.finalAssessment", icon: ClipboardCheck, roles: ["coach"], module: "final_assessment", groupKey: "navGroups.learning" },
 
   // Admin — Overview
   { to: "/admin", labelKey: "nav.dashboard", icon: LayoutDashboard, roles: ["admin"], groupKey: "navGroups.overview" },
@@ -152,6 +155,7 @@ const NAV: NavItem[] = [
   { to: "/admin/cohorts", labelKey: "nav.cohorts", icon: Network, roles: ["admin"], groupKey: "navGroups.programmes" },
   { to: "/admin/training-content", labelKey: "nav.trainingContent", icon: FileText, roles: ["admin"], groupKey: "navGroups.programmes" },
   { to: "/admin/triads", labelKey: "nav.triads", icon: Users, roles: ["admin"], groupKey: "navGroups.programmes" },
+  { to: "/admin/assessments", labelKey: "nav.assessments", icon: ClipboardCheck, roles: ["admin"], groupKey: "navGroups.programmes" },
 
   // Admin — Operations
   { to: "/admin/sponsor-reports", labelKey: "nav.sponsorReports", icon: FileText, roles: ["admin"], groupKey: "navGroups.operations" },

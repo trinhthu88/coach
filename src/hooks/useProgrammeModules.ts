@@ -11,7 +11,8 @@ export type ProgrammeModuleType =
   | "training"
   | "quiz"
   | "assessment"
-  | "daily_prompt";
+  | "daily_prompt"
+  | "final_assessment";
 
 interface ProgrammeModule {
   module: ProgrammeModuleType;

@@ -93,8 +93,20 @@ describe("booking goal gate — every booking path enforces the one rule", () =>
   });
 
   it("the Mentoring pre-check reports the gate", () => {
+    // Since 20261005130000 the gate is part of the eligibility rule itself
+    // (a free requirement + the cohort pool + the goal gate); the client
+    // wrapper only binds the caller.
+    expect(stripComments(lastDefinition("can_book_mentoring_session_reason")!.body)).toMatch(
+      /enrollment_goal_gate_blocked\(p_enrollment_id\)\s*THEN\s*RETURN 'goal_required_before_booking'/,
+    );
     expect(stripComments(lastDefinition("check_can_book_mentoring_session_reason_for_enrollment")!.body)).toMatch(
-      /'goal_required_before_booking'/,
+      /can_book_mentoring_session_reason\(auth\.uid\(\), p_mentor_id, p_enrollment_id\)/,
+    );
+  });
+
+  it("Coaching eligibility includes the gate", () => {
+    expect(stripComments(lastDefinition("can_book_session")!.body)).toMatch(
+      /RETURN NOT public\.enrollment_goal_gate_blocked\(p_enrollment_id\)/,
     );
   });
 

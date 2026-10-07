@@ -10,13 +10,16 @@ import { useJourneyProgramme } from "@/hooks/journey/useJourneyProgramme";
 import { useFlatActionItems, type FlatAction } from "@/hooks/journey/useFlatActionItems";
 import { useCoachSummaries } from "@/hooks/journey/useCoachSummaries";
 import {
-  useGoalRatingRows,
   useProgrammeWeeks,
   useSessionRatingSeries,
   usePendingReflection,
 } from "@/hooks/journey/useJourneyDerived";
 import type { JourneySession } from "@/hooks/journey/types";
-import { useLearnerCanonicalProgress } from "@/hooks/useLearnerCanonicalProgress";
+import {
+  useLearnerCanonicalEngagement,
+  useLearnerCanonicalGoalProgress,
+  useLearnerCanonicalProgress,
+} from "@/hooks/useLearnerCanonicalProgress";
 import { canonicalCompletionPct } from "@/lib/programmeProfile";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -31,6 +34,8 @@ import { GoalWheel, GoalScoreCards } from "./journey/GoalWheel";
 import { PageHeader } from "@/components/ui/page-header";
 import { ACCENTS } from "./journey/journeyDisplay";
 import { SectionHeader } from "./journey/SectionHeader";
+import { AssessmentFeedbackSection } from "@/components/assessments/AssessmentFeedbackSection";
+import { LearnerFinalAssessmentSection } from "@/components/assessments/FinalAssessmentResults";
 import { EmptyGoals } from "./journey/EmptyGoals";
 import { GoalAccordion } from "./journey/GoalAccordion";
 import { ActionGroups } from "./journey/ActionGroups";
@@ -83,7 +88,7 @@ export default function CoachMyJourney() {
   const { ratings, sessionRatings, saveRating } = ratingsApi;
   const { coachingSessions, peerSessions, coachNames, toggleAction: toggleActionRaw } = sessionsApi;
   const { reflections, deleteReflection } = reflectionsApi;
-  const { programme, usage, coaching } = programmeApi;
+  const { programme, coaching } = programmeApi;
 
   const loading =
     goalsApi.loading || ratingsApi.loading || sessionsApi.loading || reflectionsApi.loading || programmeApi.loading;
@@ -104,7 +109,32 @@ export default function CoachMyJourney() {
   // required activities / required activities), not a goal-milestone ratio.
   const canonical = useLearnerCanonicalProgress(programmeApi.programme?.enrollmentId);
   const completionPct = canonicalCompletionPct(canonical.progress?.full_completion_pct);
-  const { ratingRows, avgGoalProgress } = useGoalRatingRows(goals, ratings);
+  // The same canonical reads as CoacheeJourney: per-goal progress
+  // (canonical_goal_progress) and the enrollment's average
+  // (canonical_enrollment_engagement.goal_progress_pct) -- never a ratio
+  // computed from ratings in the browser.
+  const enrollmentId = programmeApi.programme?.enrollmentId;
+  const goalProgressApi = useLearnerCanonicalGoalProgress(enrollmentId);
+  const { engagement } = useLearnerCanonicalEngagement(enrollmentId);
+  const ratingRows = useMemo(
+    () =>
+      goals.map((g) => {
+        const r = ratings[g.id];
+        return {
+          goalId: g.id,
+          title: g.title,
+          start: r?.start_rating ?? null,
+          current: r?.current_rating ?? null,
+          target: r?.target_rating ?? null,
+          progress: goalProgressApi.progressByGoal[g.id] ?? null,
+        };
+      }),
+    [goals, ratings, goalProgressApi.progressByGoal]
+  );
+  const avgGoalProgress = engagement.goal_progress_pct == null ? null : Math.round(Number(engagement.goal_progress_pct));
+  // Next session and upcoming Coaching: the canonical Coaching utilisation.
+  const coachingUtilisation = canonical.experience.coachingUtilisation;
+  const coachingModule = canonical.modules.find((m) => m.module === "coaching");
   // Canonical Start→Target rating progress — same formula and per-goal
   // values Sponsor's goal_progress_pct aggregates, not milestone ratio.
   const goalProgress = (goalId: string) => ratingRows.find((r) => r.goalId === goalId)?.progress ?? null;
@@ -117,7 +147,6 @@ export default function CoachMyJourney() {
     .filter((s) => new Date(s.start_time) < now || ["cancelled", "completed"].includes(s.status))
     .sort((a, b) => +new Date(b.start_time) - +new Date(a.start_time));
 
-  const nextSession = upcoming[0];
 
   const coachSummaries = useCoachSummaries(sessions, coachNames, now);
 
@@ -172,17 +201,19 @@ export default function CoachMyJourney() {
         <Metric label={t("coachMyJourney.metrics.actionsDone")} value={String(aiDone)} sub={aiOverdue ? t("coachMyJourney.metrics.actionsDoneSubOverdue", { count: aiOverdue }) : t("coachMyJourney.metrics.actionsDoneSubTotal", { count: aiTotal })} subClass={aiOverdue ? "text-destructive" : ""} />
         <Metric
           label={t("coachMyJourney.metrics.sessionsReceived")}
+          // Canonical Coaching units (learner_canonical_progress), never a
+          // count of session rows over a configured limit.
           value={
-            usage
-              ? `${sessions.filter((s) => s.status === "completed").length} / ${usage.monthly_limit}`
-              : `${sessions.filter((s) => s.status === "completed").length}`
+            canonical.progress
+              ? `${canonical.progress.coaching_completed_units} / ${canonical.progress.coaching_required_units}`
+              : "—"
           }
-          sub={t("coachMyJourney.metrics.sessionsReceivedSub", { count: upcoming.length })}
+          sub={t("coachMyJourney.metrics.sessionsReceivedSub", { count: coachingUtilisation?.booked_units ?? 0 })}
         />
         <Metric
           label={t("coachMyJourney.metrics.nextSession")}
-          value={nextSession ? format(new Date(nextSession.start_time), "MMM d") : "—"}
-          sub={nextSession ? format(new Date(nextSession.start_time), "p") : t("coachMyJourney.metrics.nothingScheduled")}
+          value={coachingUtilisation?.next_session_at ? format(new Date(coachingUtilisation.next_session_at), "MMM d") : "—"}
+          sub={coachingUtilisation?.next_session_at ? format(new Date(coachingUtilisation.next_session_at), "p") : t("coachMyJourney.metrics.nothingScheduled")}
         />
       </div>
 
@@ -191,10 +222,12 @@ export default function CoachMyJourney() {
         programme={programme}
         programmeWeeks={programmeWeeks}
         coachSummaries={coachSummaries}
-        coaching={coaching}
+        coaching={coaching ? { ...coaching, completionPct: coachingModule?.full_completion_pct ?? null } : coaching}
         avgGoalProgress={avgGoalProgress}
       />
       {programme?.enrollmentId && <LearnerProgrammeJourney enrollmentId={programme.enrollmentId} variant="full" />}
+      <LearnerFinalAssessmentSection enrollmentId={programme?.enrollmentId} />
+      <AssessmentFeedbackSection enrollmentId={programme?.enrollmentId} />
 
       <div>
         <SectionHeader title={t("developmentJourney.title")} />
@@ -258,6 +291,7 @@ export default function CoachMyJourney() {
                   onDeleteMilestone={goalsApi.deleteMilestone}
                   defaultOpen={i === 0}
                   rating={ratingRows.find((r) => r.goalId === g.id)}
+                  progressPct={goalProgress(g.id)}
                   onRatingChange={(patch) => saveRating(g.id, patch)}
                   showCompletionMarks
                 />
@@ -322,6 +356,7 @@ export default function CoachMyJourney() {
                     showLinkedActions
                     defaultOpen={i === 0}
                     rating={ratingRows.find((r) => r.goalId === g.id)}
+                    progressPct={goalProgress(g.id)}
                     onRatingChange={(patch) => saveRating(g.id, patch)}
                     showCompletionMarks
                   />

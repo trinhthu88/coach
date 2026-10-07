@@ -12,7 +12,6 @@ import {
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter,
 } from "@/components/ui/sheet";
-import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import {
   Loader2, Search, FileDown, FileUp, Eye, Star, Users, Pencil, Save, UserPlus,
@@ -22,7 +21,12 @@ import { AdminImportDialog } from "@/components/admin/AdminImportDialog";
 import { getFriendlyErrorMessage } from "@/lib/errors";
 import { resolveCurrentEnrollment } from "@/lib/enrollmentResolver";
 import { transitionAdminEnrollment } from "@/lib/enrollmentTransition";
-import { fetchAdminCanonicalProgress } from "@/lib/adminCanonicalProgress";
+import {
+  canonicalModuleUnits,
+  fetchAdminCanonicalProgress,
+  formatModuleUnits,
+  type CanonicalModuleUnits,
+} from "@/lib/adminCanonicalProgress";
 import { canonicalCompletionPct } from "@/lib/programmeProfile";
 
 import { format } from "date-fns";
@@ -41,10 +45,6 @@ const STATUS_TONE: Record<Status, "muted"|"success"|"warning"|"destructive"> = {
   reach_limit: "warning",
 };
 
-function fmtLimit(n: number | null): string {
-  return n === null ? "∞" : String(n);
-}
-
 interface CoachRow {
   id: string;
   full_name: string;
@@ -52,22 +52,21 @@ interface CoachRow {
   status: Status;
   created_at: string;
   approval_status: string;
-  rating_avg: number;
-  // Coach as receiver — sourced from the active programme module config.
-  coach_session_limit: number | null;
-  coach_used: number;
-  peer_session_limit: number | null;
-  peer_used: number;
-  peer_given_limit: number | null;
+  /** null until the Coach has a rating -- never shown as 0. */
+  rating_avg: number | null;
+  // Coach as learner -- the canonical module rows of their own enrollment
+  // (admin_canonical_enrollment_progress). Null when not enrolled.
+  coaching_units: CanonicalModuleUnits | null;
+  peer_units: CanonicalModuleUnits | null;
+  // Coach as Peer provider: completed sessions given. Activity, not a requirement.
   peer_given_used: number;
   coach_programme_name: string | null;
-  assigned_coaches: { id: string; name: string }[];
   // Coach as deliverer
   coachees_count: number;
   booked_sessions: number;
   completed_sessions: number;
   // Cohort/programme (coachee-side programme this coach is enrolled in for their own
-  // coaching journey — unrelated to their coach-programme session limits above)
+  // coaching journey)
   cohort_id: string | null;
   cohort_name: string | null;
   programme_id: string | null;
@@ -82,9 +81,8 @@ export default function AdminCoaches() {
   const { t } = useTranslation("admin");
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState<CoachRow[]>([]);
-  const [coachOpts, setCoachOpts] = useState<{ id: string; name: string }[]>([]);
   const [cohorts, setCohorts] = useState<{ id: string; name: string; organization_id?: string | null; programme_id?: string | null }[]>([]);
-  const [programmes, setProgrammes] = useState<{ id: string; name: string; coachee_session_limit: number; duration_months: number }[]>([]);
+  const [programmes, setProgrammes] = useState<{ id: string; name: string; duration_months: number }[]>([]);
   const [q, setQ] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | Status>("all");
   const [editing, setEditing] = useState<CoachRow | null>(null);
@@ -101,52 +99,31 @@ export default function AdminCoaches() {
       { data: cps },
       { data: sess },
       { data: peerSess },
-      { data: assigned },
       { data: cohortsData },
       { data: progsData },
       { data: enrolls },
-      { data: moduleData },
     ] = await Promise.all([
       supabase.from("user_roles").select("user_id, role"),
       supabase.from("profiles").select("id, full_name, email, status, created_at"),
       supabase.from("coach_profiles").select("id, approval_status, rating_avg"),
       supabase.from("sessions").select("coach_id, coachee_id, enrollment_id, status"),
       supabase.from("peer_sessions").select("peer_coach_id, peer_coachee_id, enrollment_id, status"),
-      supabase.from("coach_as_coachee_allowlist").select("coach_user_id, selectable_coach_id"),
       supabase.from("cohorts").select("id, name, organization_id, programme_id"),
-      supabase.from("programmes").select("id, name, coachee_session_limit, duration_months"),
+      supabase.from("programmes").select("id, name, duration_months"),
       supabase.from("programme_enrollments").select("id, user_id, programme_id, cohort_id, start_date, status, programmes(name)").in("status", ["active", "at_risk", "paused"]),
-      supabase.from("programme_modules").select("programme_id, module, enabled, config"),
     ]);
 
     const coachIds = (roles || []).filter(r => r.role === "coach").map(r => r.user_id);
     const profileById = new Map((profiles || []).map((p) => [p.id, p]));
     const cpById = new Map((cps || []).map((c) => [c.id, c]));
-    const coachNameById = new Map<string, string>();
-    coachIds.forEach(id => {
-      const p = profileById.get(id);
-      if (p) coachNameById.set(id, p.full_name);
-    });
-
-    const modulesByProgramme = new Map<string, { module: string; enabled: boolean; config: Record<string, unknown> }[]>();
-    (moduleData || []).forEach((m) => {
-      const list = modulesByProgramme.get(m.programme_id) || [];
-      list.push({ module: m.module, enabled: m.enabled, config: (m.config || {}) as Record<string, unknown> });
-      modulesByProgramme.set(m.programme_id, list);
-    });
 
     // sessions delivered
     const completedDelivered = new Map<string, number>();
     const bookedDelivered = new Map<string, number>();
     const uniqueCoachees = new Map<string, Set<string>>();
-    // sessions received as coachee
-    const receivedDone = new Map<string, number>();
     (sess || []).forEach((s) => {
       if (s.enrollment_id && s.status === "completed") {
         completedDelivered.set(s.coach_id, (completedDelivered.get(s.coach_id) || 0) + 1);
-        if (coachIds.includes(s.coachee_id)) {
-          receivedDone.set(s.coachee_id, (receivedDone.get(s.coachee_id) || 0) + 1);
-        }
       }
       if (s.enrollment_id && ["pending_coach_approval", "confirmed"].includes(s.status)) {
         bookedDelivered.set(s.coach_id, (bookedDelivered.get(s.coach_id) || 0) + 1);
@@ -157,21 +134,13 @@ export default function AdminCoaches() {
         uniqueCoachees.set(s.coach_id, set);
       }
     });
-    const peerReceived = new Map<string, number>();
     const peerGiven = new Map<string, number>();
     (peerSess || []).forEach((s) => {
       if (s.enrollment_id && s.status === "completed") {
-        peerReceived.set(s.peer_coachee_id, (peerReceived.get(s.peer_coachee_id) || 0) + 1);
         peerGiven.set(s.peer_coach_id, (peerGiven.get(s.peer_coach_id) || 0) + 1);
       }
     });
 
-    const assignedByCoach = new Map<string, { id: string; name: string }[]>();
-    (assigned || []).forEach((a) => {
-      const arr = assignedByCoach.get(a.coach_user_id) || [];
-      arr.push({ id: a.selectable_coach_id, name: coachNameById.get(a.selectable_coach_id) || "—" });
-      assignedByCoach.set(a.coach_user_id, arr);
-    });
 
     const enrollByUser = new Map<string, NonNullable<typeof enrolls>[number]>();
     for (const userId of coachIds) {
@@ -187,9 +156,11 @@ export default function AdminCoaches() {
     }
     const cohortById = new Map((cohortsData || []).map((c) => [c.id, c.name]));
     const progById = new Map((progsData || []).map((p) => [p.id, p]));
-    // Coach-as-learner "% complete" is the canonical engine's number for the
-    // enrollment, identical to what that coach sees as a learner.
+    // Coach-as-learner "% complete" and module units are the canonical
+    // engine's numbers for the enrollment, identical to what that coach sees
+    // as a learner. No module config or session count is read here.
     const canonical = await fetchAdminCanonicalProgress([...enrollByUser.values()].map((e) => e.id)).catch(() => []);
+    const canonicalByEnrollment = new Map(canonical.map((c) => [c.enrollment_id, c]));
     const progressByEnrollment = new Map(
       canonical.map((c) => [c.enrollment_id, c.progress_available ? canonicalCompletionPct(c.full_completion_pct) : null]),
     );
@@ -200,11 +171,7 @@ export default function AdminCoaches() {
       if (!p) return null;
       const enr = enrollByUser.get(id);
       const prog = enr?.programme_id ? progById.get(enr.programme_id) : null;
-       const moduleRows = enr ? modulesByProgramme.get(enr.programme_id) || [] : [];
-       const coaching = moduleRows.find((m) => m.module === "coaching" && m.enabled);
-       const peer = moduleRows.find((m) => m.module === "peer_coaching" && m.enabled);
-       const coachingConfig = coaching?.config as { receive_limit?: number | null } | undefined;
-       const peerConfig = peer?.config as { monthly_limit?: number | null } | undefined;
+      const canonicalRow = enr ? canonicalByEnrollment.get(enr.id) : undefined;
       return {
         id,
         full_name: p.full_name,
@@ -212,15 +179,11 @@ export default function AdminCoaches() {
         status: p.status as Status,
         created_at: p.created_at,
         approval_status: cp?.approval_status || "pending_approval",
-        rating_avg: Number(cp?.rating_avg || 0),
-         coach_session_limit: enr ? coachingConfig?.receive_limit ?? null : 4,
-        coach_used: receivedDone.get(id) || 0,
-         peer_session_limit: enr ? peerConfig?.monthly_limit ?? null : 4,
-        peer_used: peerReceived.get(id) || 0,
-         peer_given_limit: enr ? (peer?.config as { give_limit?: number | null } | undefined)?.give_limit ?? null : 4,
+        rating_avg: cp?.rating_avg == null ? null : Number(cp.rating_avg),
+        coaching_units: canonicalModuleUnits(canonicalRow, "coaching"),
+        peer_units: canonicalModuleUnits(canonicalRow, "peer"),
         peer_given_used: peerGiven.get(id) || 0,
          coach_programme_name: (enr as { programmes?: { name?: string } | null } | undefined)?.programmes?.name ?? null,
-        assigned_coaches: assignedByCoach.get(id) || [],
         coachees_count: (uniqueCoachees.get(id) || new Set()).size,
         booked_sessions: bookedDelivered.get(id) || 0,
         completed_sessions: completedDelivered.get(id) || 0,
@@ -236,7 +199,6 @@ export default function AdminCoaches() {
     }).filter(Boolean) as CoachRow[];
 
     setRows(out.sort((a, b) => +new Date(b.created_at) - +new Date(a.created_at)));
-    setCoachOpts(coachIds.map(id => ({ id, name: coachNameById.get(id) || "—" })).filter(c => c.name !== "—").sort((a, b) => a.name.localeCompare(b.name)));
     setCohorts(cohortsData || []);
     setProgrammes(progsData || []);
     setLoading(false);
@@ -264,15 +226,11 @@ export default function AdminCoaches() {
       [t("coaches.export.registered")]: format(new Date(c.created_at), "yyyy-MM-dd"),
       [t("coaches.export.status")]: t(`coaches.statusLabels.${c.status}`),
       [t("coaches.export.coachProgramme")]: c.coach_programme_name || "",
-      [t("coaches.export.coachSessionLimit")]: fmtLimit(c.coach_session_limit),
-      [t("coaches.export.coachSessionsUsed")]: c.coach_used,
-      [t("coaches.export.assignedCoaches")]: c.assigned_coaches.map(x => x.name).join("; "),
-      [t("coaches.export.peerReceivedLimit")]: fmtLimit(c.peer_session_limit),
-      [t("coaches.export.peerReceivedUsed")]: c.peer_used,
-      [t("coaches.export.peerGivenLimit")]: fmtLimit(c.peer_given_limit),
+      [t("coaches.export.coachingUnits")]: formatModuleUnits(c.coaching_units),
+      [t("coaches.export.peerUnits")]: formatModuleUnits(c.peer_units),
       [t("coaches.export.peerGivenUsed")]: c.peer_given_used,
       [t("coaches.export.coacheesCount")]: c.coachees_count,
-      [t("coaches.export.avgRating")]: c.rating_avg.toFixed(2),
+      [t("coaches.export.avgRating")]: c.rating_avg == null ? "" : c.rating_avg.toFixed(2),
       [t("coaches.export.bookedSessions")]: c.booked_sessions,
       [t("coaches.export.completedSessions")]: c.completed_sessions,
       [t("coaches.export.cohort")]: c.cohort_name || "",
@@ -304,7 +262,6 @@ export default function AdminCoaches() {
         p_coach_id: editing.id,
         p_full_name: editing.full_name,
         p_profile_status: editing.status,
-        p_selectable_coach_ids: editing.assigned_coaches.map((coach) => coach.id),
         p_enrollment_id: editing.enrollment_id ?? undefined,
       });
       if (updateError) throw updateError;
@@ -391,7 +348,6 @@ export default function AdminCoaches() {
                 <th className="px-3 py-2.5 text-left font-semibold">{t("coaches.tableHeaders.peerGiven")}</th>
                 <th className="px-3 py-2.5 text-left font-semibold">{t("coaches.tableHeaders.programme")}</th>
                 <th className="px-3 py-2.5 text-left font-semibold">{t("coaches.tableHeaders.percentComplete")}</th>
-                <th className="px-3 py-2.5 text-left font-semibold">{t("coaches.tableHeaders.assigned")}</th>
                 <th className="px-3 py-2.5 text-left font-semibold">{t("coaches.tableHeaders.coacheesCount")}</th>
                 <th className="px-3 py-2.5 text-left font-semibold">{t("coaches.tableHeaders.rating")}</th>
                 <th className="px-3 py-2.5 text-left font-semibold">{t("coaches.tableHeaders.booked")}</th>
@@ -413,9 +369,9 @@ export default function AdminCoaches() {
                   </td>
                   <td className="px-3 py-2.5"><Pill tone={STATUS_TONE[r.status]}>{t(`coaches.statusLabels.${r.status}`)}</Pill></td>
                   <td className="px-3 py-2.5 text-[11px] text-muted-foreground">{format(new Date(r.created_at), "MMM d, yyyy")}</td>
-                  <td className="px-3 py-2.5"><span className="font-mono text-[11px]">{r.coach_used}/{fmtLimit(r.coach_session_limit)}</span></td>
-                  <td className="px-3 py-2.5"><span className="font-mono text-[11px]">{r.peer_used}/{fmtLimit(r.peer_session_limit)}</span></td>
-                  <td className="px-3 py-2.5"><span className="font-mono text-[11px]">{r.peer_given_used}/{fmtLimit(r.peer_given_limit)}</span></td>
+                  <td className="px-3 py-2.5"><span className="font-mono text-[11px]">{formatModuleUnits(r.coaching_units)}</span></td>
+                  <td className="px-3 py-2.5"><span className="font-mono text-[11px]">{formatModuleUnits(r.peer_units)}</span></td>
+                  <td className="px-3 py-2.5"><span className="font-mono text-[11px]">{r.peer_given_used}</span></td>
                   <td className="px-3 py-2.5 text-[11px]">
                     {r.programme_name ? (
                       <Link to="/admin/programmes" className="text-primary hover:underline">{r.programme_name}</Link>
@@ -442,17 +398,16 @@ export default function AdminCoaches() {
                       );
                     })()}
                   </td>
-                  <td className="px-3 py-2.5 text-[11px]">{r.assigned_coaches.length === 0 ? <span className="italic text-muted-foreground">—</span> : t("coaches.assignedCoachesCount", { count: r.assigned_coaches.length })}</td>
                   <td className="px-3 py-2.5 text-[11px]">{r.coachees_count}</td>
                   <td className="px-3 py-2.5 text-[11px]">
-                    <span className="inline-flex items-center gap-1"><Star className="h-3 w-3 fill-warning text-warning" /> {r.rating_avg.toFixed(1)}</span>
+                    <span className="inline-flex items-center gap-1"><Star className="h-3 w-3 fill-warning text-warning" /> {r.rating_avg == null ? "—" : r.rating_avg.toFixed(1)}</span>
                   </td>
                   <td className="px-3 py-2.5 text-[11px]">{r.booked_sessions}</td>
                   <td className="px-3 py-2.5 text-[11px]">{r.completed_sessions}</td>
                   <td className="px-3 py-2.5 text-right">
                     <div className="inline-flex gap-1">
                       <Button asChild variant="ghost" size="icon" title={t("coaches.viewProfile")}><Link to={`/coaches/${r.id}`}><Eye className="h-3.5 w-3.5" /></Link></Button>
-                      <Button variant="ghost" size="icon" title={t("coaches.edit")} aria-label={t("coaches.edit")} onClick={() => setEditing({ ...r, assigned_coaches: [...r.assigned_coaches] })}><Pencil className="h-3.5 w-3.5" /></Button>
+                      <Button variant="ghost" size="icon" title={t("coaches.edit")} aria-label={t("coaches.edit")} onClick={() => setEditing({ ...r })}><Pencil className="h-3.5 w-3.5" /></Button>
                     </div>
                   </td>
                 </tr>
@@ -538,7 +493,7 @@ export default function AdminCoaches() {
 
               <div className="rounded-lg border p-3">
                 <div className="mb-2 flex items-center justify-between">
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{t("coaches.sessionLimits")}</p>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{t("coaches.ownProgramme")}</p>
                   <Button asChild variant="link" size="sm" className="h-auto p-0 text-[11px]">
                     <Link to="/admin/coach-programmes">{t("coaches.changeCoachProgramme")} →</Link>
                   </Button>
@@ -547,15 +502,15 @@ export default function AdminCoaches() {
                 <div className="grid grid-cols-1 gap-3 text-[11px] sm:grid-cols-3">
                   <div>
                     <p className="text-muted-foreground">{t("coaches.coachingReceived")}</p>
-                    <p className="font-mono">{editing.coach_used}/{fmtLimit(editing.coach_session_limit)}</p>
+                    <p className="font-mono">{formatModuleUnits(editing.coaching_units)}</p>
                   </div>
                   <div>
                     <p className="text-muted-foreground">{t("coaches.peerReceived")}</p>
-                    <p className="font-mono">{editing.peer_used}/{fmtLimit(editing.peer_session_limit)}</p>
+                    <p className="font-mono">{formatModuleUnits(editing.peer_units)}</p>
                   </div>
                   <div>
                     <p className="text-muted-foreground">{t("coaches.peerGiven")}</p>
-                    <p className="font-mono">{editing.peer_given_used}/{fmtLimit(editing.peer_given_limit)}</p>
+                    <p className="font-mono">{editing.peer_given_used}</p>
                   </div>
                 </div>
               </div>
@@ -576,30 +531,10 @@ export default function AdminCoaches() {
                 );
               })()}
 
-              <div className="rounded-lg border p-3">
-                <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{t("coaches.assignedCoachesLabel")}</p>
-                <div className="max-h-48 space-y-1 overflow-y-auto">
-                  {coachOpts.filter(c => c.id !== editing.id).map(c => {
-                    const checked = editing.assigned_coaches.some(a => a.id === c.id);
-                    return (
-                      <label key={c.id} className="flex items-center gap-2 rounded px-1 py-1 hover:bg-muted/50 cursor-pointer">
-                        <Checkbox checked={checked} onCheckedChange={(v) => {
-                          const next = v
-                            ? [...editing.assigned_coaches, { id: c.id, name: c.name }]
-                            : editing.assigned_coaches.filter(a => a.id !== c.id);
-                          setEditing({ ...editing, assigned_coaches: next });
-                        }} />
-                        <span className="text-[12px]">{c.name}</span>
-                      </label>
-                    );
-                  })}
-                </div>
-              </div>
-
               <div className="rounded-lg bg-muted/40 p-3 text-[11px] text-muted-foreground">
                 <p>{t("coaches.sessionsDeliveredPrefix")} <strong>{editing.completed_sessions}</strong> {t("coaches.completedLabel")} · <strong>{editing.booked_sessions}</strong> {t("coaches.bookedLabel")}</p>
                 <p>{t("coaches.coacheesServedPrefix")} <strong>{editing.coachees_count}</strong></p>
-                <p>{t("coaches.avgRatingPrefix")} <strong>{editing.rating_avg.toFixed(2)}</strong></p>
+                <p>{t("coaches.avgRatingPrefix")} <strong>{editing.rating_avg == null ? "—" : editing.rating_avg.toFixed(2)}</strong></p>
               </div>
             </div>
           )}

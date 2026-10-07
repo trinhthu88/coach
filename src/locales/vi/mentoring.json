@@ -16,8 +16,7 @@
     "retry": "Thử lại",
     "empty": "Cohort của bạn chưa có Coach nào được phân công làm Mentor. Hãy liên hệ admin để phân công.",
     "mentorLabel": "Mentor",
-    "book": "Đặt lịch",
-    "mentorFull": "Hiện không nhận thêm buổi mới"
+    "book": "Đặt lịch"
   },
   "bookSession": {
     "backToMentors": "Về danh sách mentor",
@@ -36,13 +35,9 @@
     "subtitle": "Chọn thời lượng và thời gian ưa thích của bạn để bắt đầu.",
     "ineligible": "Bạn hiện không đủ điều kiện để đặt lịch với mentor này. Quyền truy cập của bạn có thể đã thay đổi — vui lòng liên hệ quản trị viên nếu điều này có vẻ không đúng.",
     "ineligibleReasons": {
-      "received_limit_reached": "Bạn đã đạt giới hạn số buổi Mentoring theo chương trình của mình.",
-      "given_limit_reached": "Mentor này hiện không nhận thêm buổi mới."
+      "received_limit_reached": "Tất cả các buổi Mentoring bắt buộc trong chương trình của bạn đều đã được đặt lịch hoặc hoàn thành."
     },
-    "usage": {
-      "used": "Đã dùng {{used}}/{{limit}} buổi Mentoring",
-      "usedUnlimited": "Đã dùng {{used}} buổi Mentoring"
-    },
+    "progress": "Đã đặt lịch hoặc hoàn thành {{done}}/{{required}} buổi Mentoring bắt buộc",
     "steps": {
       "duration": "Chọn thời lượng",
       "durationOption": "{{n}} phút",
@@ -121,6 +116,17 @@
       "listens_actively": "Lắng nghe chủ động",
       "evokes_awareness": "Khơi gợi nhận thức",
       "facilitates_growth": "Thúc đẩy sự phát triển của khách hàng"
+    },
+    "cancel": {
+      "button": "Hủy buổi",
+      "title": "Hủy buổi Mentoring này?",
+      "description": "Buổi sẽ bị hủy và bạn có thể đặt lại đơn vị Mentoring này.",
+      "lateDescription": "Buổi bắt đầu trong vòng 24 giờ, vui lòng cho biết lý do. Buổi sẽ bị hủy và bạn có thể đặt lại đơn vị Mentoring này.",
+      "reasonRequired": "Lý do (bắt buộc trong vòng 24 giờ)",
+      "reasonOptional": "Lý do (không bắt buộc)",
+      "keep": "Giữ buổi",
+      "confirm": "Hủy buổi",
+      "done": "Đã hủy buổi"
     }
   }
 }

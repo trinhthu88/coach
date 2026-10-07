@@ -12,7 +12,8 @@ never a second answer to a business question.
 
 | Business fact | Authoritative source | Read through (all roles) | Notes |
 |---|---|---|---|
-| **Programme required units** (what is required) | `programme_modules.config` (`required`, `required_units`) | `canonical_module_progress` → `canonical_enrollment_progress` | Admin edits the programme template. |
+| **Programme required units** (what is required) | `programme_modules.config` (`required`, `required_units`) | `canonical_module_progress` → `canonical_enrollment_progress`; `programme_required_units`, `enrollment_module_config`, `get_enrollment_programme_modules` | Admin edits the programme template. Every reader takes the template as it is NOW: the enrollment-time `enrollment_module_snapshots.config` is historical and its capture trigger is dropped (`20261005130000`), so raising Coaching from 2 to 3 units changes progress, the calendar and booking eligibility together. |
+| **Booking eligibility** (Coaching, Mentoring, Peer dyad) | a free requirement (`next_coaching_requirement` / `next_mentoring_requirement` / `next_peer_requirement`) + the cohort pool + the goal gate (`enrollment_goal_gate_blocked`) | `can_book_session` → `check_can_book_session`; `can_book_mentoring_session_reason` → `check_can_book_mentoring_session_reason_for_enrollment`; `can_book_coachee_peer_session` (the Admin-assigned partner instead of a pool, `20261006120000`) | `20261005130000`. No session allowance enters it: `receive_limit`, `monthly_limit`, `give_limit` and `programmes.coachee_session_limit` are not programme quantities, and the coach-as-coachee allowlist path is retired. No screen shows an allowance; booking pages, the Admin Coach lists and the Coach's own learner journey show the canonical module row (completed / required). Nothing enforces one either (`20261006110000`): the completion-count trigger `enforce_coach_as_coachee_limit`, the allowance readers (`get_coachee_session_usage_for_enrollment`, `check_mentoring_given_usage` and the functions behind it) and the Coaching / Mentoring limit checks in `validate_programme_module_config` are gone, and the Admin programme editors neither show nor save `give_limit` / `receive_limit` for Coaching or Mentoring. `programmes.coachee_session_limit` / `mentoring_received_limit` are historical columns. The Peer practice limit (`monthly_limit`) is separate: it caps practice from the Coach opt-in pool, which earns no requirement, per calendar month in `programme_time_zone()` (Asia/Ho_Chi_Minh). `peer_practice_month_count_internal` is its one count: the booking check (`assert_peer_session_bookable_internal`) and the usage a page shows (`get_peer_session_usage`) both read it (`20261006120000`). Nothing reads `receive_limit`, `give_limit`, `programmes.coachee_session_limit` or `mentoring_received_limit`; the values stay until production is verified, then a cleanup migration drops them. A Coaching reschedule is decided by `reschedule_coaching_session`, not by this check. |
 | **Requirement due date** (every module, Training included) | `cohort_requirement_dates.due_on` — one date per requirement instance | `canonical_enrollment_requirement_calendar` | The cohort answers BY WHEN, per unit. A row an Admin dated (`is_overridden`) keeps its date; every other row follows its default. Written by `admin_set_cohort_requirement_dates` (`20260928100000`). `distribution_mode` stays retired: no policy spreads dates. |
 | **Default module deadline** (session modules) | `cohort_module_deadlines.completion_deadline` (one per cohort × module) | `sync_cohort_requirement_dates` | The date new rows start at and non-overridden rows follow; "apply to all" resets rows to it. It never replaces the per-requirement dates. |
 | **Cohort requirement identity** (Coaching / Peer / Mentoring / Triads / Training) | `cohort_requirement_dates` — exactly `required_units` rows per session module (`units = 1`, ordinals 1..N) and exactly one row per selected Training week (`training_week_id`, ordinal = week position) | `canonical_enrollment_requirement_calendar`, `sponsor_canonical_module_schedule` | Materialised in full on cohort creation and reconciled by `sync_cohort_requirement_dates` whenever the programme, the cohort, a training week, a cohort week override or the default deadline changes. **A mismatch is an integrity violation, not an operational state** — see below. |
@@ -20,18 +21,27 @@ never a second answer to a business question.
 | **Training child learning types** | `programme_modules(training).config.learning_components` ⊆ {`skill_cards`, `quizzes`, `reflections`, `daily_prompts`} | `canonical_learning_breakdown` | Evidence inside each week, never extra units: Training = completed weeks / selected weeks. Only selected, visible weeks and visible items count; each child is dated from its week's requirement date. Counts only. |
 | **Required vs scheduled (mismatch)** | derived from the two rows above | `cohort_module_schedule_violation`, `cohort_schedule_violations`, `cohort_requirement_schedule_issues` | **Diagnostic only.** "Coaching 5 required / 4 scheduled" is a migration or corruption state that the deferred guards refuse to commit and the booking RPCs refuse to operate against. Nothing is invented, and no projection compensates. |
 | **Enrollment applicability** | `programme_enrollments` (programme, cohort, status) | canonical progress / journey wrappers | *Effective* status (after the programme end date) is computed once in `canonical_enrollment_progress`. |
-| **Activity completion** | the session lifecycle, per requirement (Coaching / Mentoring / Triads); `peer_session_participants` for Peer (`20260921210000`); `session_activity_attributions` for quiz, daily prompt and Training | `sponsor_canonical_activity`, `canonical_training_learning_items` | Session booking dates never become requirement due dates. See the operational-vs-evidence rule below. |
-| **Coaching provider** | `cohort_coach_assignments` | `cohort_coaching_coach_pool` → `enrollment_coaching_coach_pool` | The learner-level allowlists are not programme Coaching authority. |
-| **Coaching requirement link** | `sessions.cohort_requirement_id` (server-assigned) | `canonical_coaching_requirement_fulfilment` | One live session per LEARNER per requirement. |
-| **Coaching completion** | a COMPLETED session attributed to a requirement | `canonical_coaching_requirement_fulfilment` → `sponsor_canonical_activity` | Evidence never gates it (`20260921130000`). |
+| **Activity completion** | the session lifecycle, per requirement (Coaching / Mentoring / Triads); `peer_session_participants` for Peer (`20260921210000`; dyad sessions only since `20261005140000`); `session_activity_attributions` for quiz, daily prompt and Training | `sponsor_canonical_activity`, `canonical_training_learning_items` | Session booking dates never become requirement due dates. See the operational-vs-evidence rule below. |
+| **Coach approval, invite limit, rating, sessions completed, featured** | `coach_profiles.approval_status` / `max_coachee_invites` / `rating_avg` / `sessions_completed` / `is_featured` / `last_approved_at` | `coach_profiles` | Written only by an Admin or trusted SQL (`admin_update_coach`, `recompute_coach_rating`, the service role). `guard_coach_profile_protected_fields` refuses any other write of these six columns (`20261005120000`; `20261007000700` added the last two and runs it BEFORE INSERT OR UPDATE, so a Coach's own new profile starts from the defaults); a Coach still edits the rest of their own profile. |
+| **Coaching provider** | `cohort_coach_assignments` | `cohort_coaching_coach_pool` → `enrollment_coaching_coach_pool` (`useCohortCoachPool`, also a Coach's own "Find a Coach", `CoachFindCoach`) | The learner-level allowlists are not programme Coaching authority. Admin neither reads nor writes `coachee_coach_allowlist` or `coach_as_coachee_allowlist` (`admin_update_coach_configuration` takes no allowlist since `20261007000900`). |
+| **Coaching requirement link** | `sessions.cohort_requirement_id` (server-assigned) | `canonical_coaching_requirement_fulfilment` → `learner_coaching_requirement_fulfilment`, `coach_coaching_requirement_fulfilment` | One live session per LEARNER per requirement. Set at booking and moved only by `reschedule_coaching_session`; `guard_session_protected_fields` refuses it (and `cohort_id`) in any app UPDATE (`20261005100000`). |
+| **Coaching completion** | a COMPLETED session attributed to a requirement | `canonical_coaching_requirement_fulfilment` → `sponsor_canonical_activity` | Evidence never gates it (`20260921130000`). Only the session's Coach or an Admin marks it held, through `complete_coaching_session`; `transition_session_status` only confirms Coaching (`20261005100000`). |
 | **Mentoring provider** | `cohort_mentors` | `cohort_mentoring_mentor_pool` → `get_mentors_for_enrollment` | The user-global `mentoring_allowlist` is not programme Mentoring authority. |
 | **Mentoring requirement link** | `mentoring_sessions.cohort_requirement_id` (server-assigned) | `canonical_mentoring_requirement_fulfilment` | One live session per LEARNER per requirement. |
 | **Mentoring completion** | a COMPLETED session attributed to a requirement | `canonical_mentoring_requirement_fulfilment` → `sponsor_canonical_activity` | The preparation document is optional and gates nothing. |
 | **After-session evidence** | the evidence records themselves | `coaching_session_evidence`, `mentoring_session_evidence` | REPORTING ONLY. Neither returns a unit or progress field. |
+| **Today and dates** (decision 2) | `programme_time_zone()` = Asia/Ho_Chi_Minh; `programme_today()` | every canonical function: "as of" defaults to `programme_today()`, and a date taken from a timestamp is `(ts AT TIME ZONE programme_time_zone())::date` (`20261006150000`, which also re-dated `session_activity_attributions.occurred_on`) | A session at 06:30 Vietnam time on 15 Oct is dated 15 Oct, not 14 Oct (UTC). No client sends its own as-of; booking pages read slot times with `slotInstant` / `slotTodayKey` (`src/lib/slotTime.ts`) and Edge Functions with `_shared/programmeTime.ts`. No public function reads `CURRENT_DATE` or takes a date in UTC (guarded by the migration and `one_today_test.sql`). |
+| **Enrollment is ongoing** | stored `status` (`active`) + the enrollment's dates (else its cohort's) | `enrollment_is_ongoing(enrollment)` (`20261006160000`); `enrollment_is_ongoing(enrollment, as_of)` for functions that answer as of a day (`20261007000900`) | THE predicate for content access and evidence writes, and since `20261007000900` for booking (`can_book_session`, `can_book_mentoring_session_reason`, `can_book_peer_session`, `coachee_peer_booking_allowed_internal`, `assert_peer_session_bookable_internal`), the reminder targets (Training overdue, daily prompts, Triads) and `admin_alerts_current` (activity and progress alerts; "Programme at risk" still covers an enrollment that ended incomplete): a paused or ended enrollment does not book, is not reminded and raises no activity alert. `at_risk` is an effective status only (`canonical_enrollment_progress`): a CHECK refuses storing it. A cohort end-date change carries to enrollments still ending on the old date; an enrollment with its own end date keeps it (`cohorts_sync_enrollment_end`). |
+| **Training week open** | cohort override → cohort week pacing → week date → due date, never after the cohort end | `canonical_training_week_available_on(enrollment, week)` → `canonical_training_week_fulfilment.available_on`, `get_enrollment_training_weeks.locked`; `training_week_open_for_enrollment_internal` / `learner_training_week_open` / `learner_training_evidence_allowed` (`20261006160000`) | Content RLS (`training_weeks`, `assignments`, `daily_prompts`, `programme_reflections`, and the `training-pdfs` bucket through `learner_training_week_open`, `20261007000900`), `get_quiz_questions` and evidence writes (`training_progress`, `assignment_submissions`, `daily_prompt_responses`) all use it; no policy reads `unlock_date` or `CURRENT_DATE`. The Development Journey dates a completed week by canonical week completion (`get_enrollment_training_weeks.completed_at`); `canonical_training_learning_items` dates it in programme time (`AT TIME ZONE programme_time_zone()`). |
+| **1:1 coaching engagement** (decision 4) | a cohort of `kind = 'engagement'` with one `cohort_coach_assignments` row | `admin_create_coaching_engagement` (Admin → Cohorts → New coaching engagement; Coaching-only programme, dates spread evenly through `admin_set_cohort_requirement_dates`, enrollment through `admin_create_programme_enrollment`); `coach_engagement_enrollments` (the Coach's client list) | Run by the same canonical engine as a group cohort, so learner, Coach and Admin read the same progress. A Coach refers a client with `coach_refer_client` (a pending `access_requests` row with `referred_by_coach_id`, `suggested_programme_id`); it grants nothing. Admin → Registrations lists referrals with the referring Coach and suggested programme (`CoachReferrals`); "New coaching engagement" starts from one, approving it first if pending (`approve-access-request`). `coachee_coach_allowlist` is historical: no app role writes it, and the coach invite function and invite slots are gone (`20261006170000`). |
+| **Sessions hub requirement and next session** | `canonical_session_history` (`requirement_unit_number`, `requirement_due_on`) | `learner_session_history` (the viewer's own enrollments, every module), `learner_next_session_by_module` (next live session per module; Peer practice excluded) (`20261006180000`); Coaching the viewer gives: `coach_coaching_requirement_fulfilment` | The hub labels "Coaching 2" / "Peer 1" / "Mentoring 1" and a pending request's due date from these rows, and shows the next session per module; it picks neither from its own rows. A Coach who is also a learner sees the Coaching they receive (hub and Messages), each row marked with the viewer's side (`viewer_is_coach`). |
+| **Sponsor needs attention and health** (decision 8) | `sponsor_needs_attention(pace_status, overdue_units)` = behind pace OR ≥ 1 overdue unit; `sponsor_health_signal(needing, leaders)` = green at 0%, amber ≤ 15%, red > 15% | `sponsor_canonical_enrollment_metadata.needs_attention`; `sponsor_canonical_cohort_progress` / `sponsor_canonical_organisation_progress` `.needs_attention_count`, `.health_signal` (`20261006190000`) | The Sponsor pages render these; the browser computes no ratio or threshold. Completed programme units carry one label everywhere ("Programme units completed"), never "units used". |
+| **Admin completion rate; Mentor identity** | `canonical_enrollment_progress` units; `cohort_mentors` | `admin_canonical_completion_rate` (completed over required units across enrollments -- the Sponsor formula, never a mean of percentages); `is_active_cohort_mentor` (opens the mentoring routes to a Coach in a cohort Mentor pool) (`20261006200000`) | Admin → Mentoring lists each learner's Mentors as their cohort's pool, not `mentoring_allowlist`. Admin shows no invented values: a missing goal rating or Coach rating is "—", never 30 / 80 / 0. |
 | **Requirement calendar** (due / completed / overdue per requirement) | computed once | `canonical_enrollment_requirement_calendar(enrollment, as_of)` → `admin_enrollment_requirement_calendar`, `learner_requirement_calendar`, `sponsor_leader_requirement_calendar` | `is_due_as_of = due_on ≤ as_of`; `is_completed` = fulfilled on/before as_of; `is_overdue = due_on < as_of AND NOT completed` (the due date has PASSED; due today is not yet overdue — `20260930100000`). Carries no narrative, so every role gets the same rows. |
-| **Module completion, overall completion %, due-to-date adherence %, overdue units, pace** | counts over the calendar | `canonical_enrollment_progress` (per module: `canonical_module_progress`, which aggregates the calendar) → `learner_canonical_progress`, `sponsor_canonical_enrollment_progress` / `_leader_progress` / `_enrollment_metadata`, `admin_canonical_enrollment_progress` | Cohort and organisation rollups aggregate these per-enrollment rows. |
+| **Module completion, overall completion %, due-to-date adherence %, overdue units, pace** | counts over the calendar | `canonical_enrollment_progress` (per module: `canonical_module_progress`, which aggregates the calendar) → `learner_canonical_progress`, `sponsor_canonical_enrollment_progress` / `_leader_progress` / `_enrollment_metadata`, `admin_canonical_enrollment_progress` | Cohort and organisation rollups aggregate these per-enrollment rows (`20261006130000`): cohort `overdue_units` = Σ leader `overdue_units`; due adherence = Σ leader `least(completed, due)` / Σ due; schedule coverage = Σ leader `least(completed + booked, due)` / Σ due. The cohort row carries both credited sums (`adherence_credited_units`, `coverage_credited_units`) and the organisation row adds up cohort rows. A leader who is ahead never offsets another leader's overdue unit. |
 | **Programme Journey checkpoints** | cumulative calendar counts | `canonical_enrollment_journey` → `learner_canonical_journey`, `sponsor_canonical_leader_journey`, `admin_canonical_enrollment_journey`; cohort view `get_sponsor_programme_journey` (same calendar, cohort aggregate) | One checkpoint per distinct requirement date D: required = requirements due ≤ D, completed = those that count for the programme as of the effective as-of (current fulfilment inside each requirement's availability window, late work included — `20260930100000`), so the final checkpoint always equals the canonical programme totals for the same population and as_of. State: see *Requirement availability, states and the programme-end freeze* below. Modules only in `module_scope`, never as a title. The UI never regroups checkpoints. The learner's "position" is a CALENDAR position (`journeyFocusIndex`: the checkpoint due today, else the next one by date, even if its requirements were completed early), never a completion position and never read from a state — several checkpoints can be `current` at once. |
 | **Learner's current enrollment** (which enrollment every learner screen shows) | the learner's ONE ongoing `programme_enrollments` row (historical rows never chosen implicitly; two ongoing rows are an error) | `useActiveEnrollment()` (client resolver, built on `useEnrollmentContext`) → `learner_enrollment_context` (programme, cohort, organisation, effective dates) | Dashboard, My Journey, every module page, the Sessions hub and the sidebar read this one id. A failed or ambiguous resolution is shown as an error, never as an empty page. |
+| **Peer requirement credit** | a session in the Admin-assigned dyad (`coachee_peer_sessions`; `validate_coachee_peer_session_partner` checks the active dyad) | `peer_attribute_participant_internal` (called by `sync_peer_session_participants`) → `peer_session_participants.cohort_requirement_id` → `canonical_peer_requirement_fulfilment` | `20261005140000`. A dyad session credits BOTH partners, each against their own cohort. A session booked from the Coach opt-in pool (`peer_sessions`) is **practice**: it keeps its participants (so the Sessions hub files it per viewer) but never holds a requirement — the `peer_practice_holds_no_requirement` CHECK enforces it — and it is labelled practice in CoachPeerCoaching and the Sessions hub. A Coach enrolled as a learner earns nothing for practice they give. `peer_participants_without_requirement` reports practice as its own reason. |
 | **Whose enrollment a session belongs to (per viewer)** | the viewer's OWN participation: the session's enrollment for their own Coaching / Mentoring (as mentee) / Triad membership; their own `peer_session_participants` row for Peer | `viewerEnrollmentFor` → `viewer_enrollment_id` on every Sessions-hub row | One physical peer session can belong to different enrollments for its two participants. The learner hub's current view is `viewer_enrollment_id = active enrollment`; never the session row's or a partner's enrollment. |
 | **Enrollment date range** | the enrollment's own dates, else its cohort's | `canonical_enrollment_progress.enrollment_start_date / enrollment_end_date` (effective, `20260928130000`) | One range on the learner header, the journey card, Sponsor and Admin. |
 | **Learner Training weeks** | the programme's selected weeks (`training_week_ids`) and each week's Training requirement | `get_enrollment_training_weeks` (+ `requirement_due_on`, `requirement_state` from the calendar), `learner_training_week_items` (child evidence per week, from `canonical_learning_items`) | Never gated on `enrollment_module_snapshots` (historical); content unlocking is a separate availability rule. |
@@ -112,7 +122,7 @@ A learner therefore has different group memberships for Triad 1, Triad 2, Triad 
 | Completion evidence | session × historical membership → `session_activity_attributions` (one writer: `triad_sync_session_attributions`) | `canonical_triad_requirement_fulfilment` | Session evidence only: `milestone_id` is always NULL for Triads. Dated on the session's scheduled start. A cancelled session is no evidence. |
 | **Fulfilment** | evidence of the enrollment on a completed session of a group linked to requirement N | `canonical_triad_requirement_fulfilment` (one row per requirement: `fulfilled_on`, `booked_on`, `proposed_on`) → `sponsor_canonical_activity` (one Triad row per requirement, with `requirement_due_on`) | THE rule. Each requirement contributes at most one unit; a second session in the same group is raw activity only. |
 | **Completion** | fulfilled requirements, capped at the programme's required units | `canonical_module_progress` → `canonical_triad_completion` (`completed_units`, `raw_completed_sessions` = activity only, `schedule` per requirement with its group) | |
-| **Due / overdue** | each requirement against its own `due_on` (the shared module deadline, see Deadline model) | `canonical_module_progress` → `canonical_triad_completion` (`due_units`, `overdue_units`, `next_due_on`), journeys | `due_units` = requirements with deadline ≤ as-of. `overdue_units` = due requirements − fulfilled due requirements (an early Triad 2 never hides an overdue Triad 1). Journey checkpoints count a requirement only at checkpoints on or after its own deadline. `next_due_on` = earliest unfulfilled requirement. |
+| **Due / overdue** | each requirement against its own `due_on` (the shared module deadline, see Deadline model) | `canonical_module_progress` → `canonical_triad_completion` (`due_units`, `overdue_units`, `next_due_on`), journeys | `due_units` = requirements with deadline ≤ as-of. `overdue_units` = due requirements − fulfilled due requirements (an early Triad 2 never hides an overdue Triad 1). Journey checkpoints count a requirement only at checkpoints on or after its own deadline. `next_due_on` = earliest unfulfilled requirement. Per-requirement state (`canonical_triad_completion.schedule`, `triad_requirement_learners_internal` behind the Admin Triad view and Triad reminders) is the requirement calendar's (`20261006130000`): a Triad due today is due, not overdue. |
 | Triad reflection rate | `triad_reflection_rate_internal` | `admin_programme_triad_reflection_rate`, `send-weekly-admin-summary` | An engagement signal, labelled "Triad reflection". It is never Triad completion. Weeks come from the canonical training schedule (`canonical_training_learning_items`); nothing rebuilds cohort weeks. |
 | My Journey / Your Sessions / Dashboard | projections only | `learner_reflection_feed`, `learner_session_history`, `canonical_enrollment_journey` | No Triad data is copied into another table. No round or week label. |
 
@@ -229,6 +239,72 @@ anywhere in the product — made Coaching completion unreachable for every
 learner. `20260921130000` reverses it and renames `unit_complete` to
 `evidence_complete`, so the two facts cannot be confused again by name.
 
+### Who writes a session
+
+Added by `20261005100000_session_write_lockdown`. A session row and its status
+are written only by SECURITY DEFINER lifecycle functions; no client role holds
+INSERT or DELETE on `sessions`, `mentoring_sessions`, `peer_sessions` or
+`coachee_peer_sessions`, nor INSERT, UPDATE or DELETE on `triad_sessions`, nor
+TRUNCATE on any of the five; their "admin manage" policies read only
+(`20261007000700`).
+
+```
+Book        book_coaching_session, book_mentoring_session, book_peer_session,
+            book_coachee_peer_session, learner_triad_schedule_session
+            -> always pending_coach_approval / proposed
+Confirm     Coaching: confirm_coaching_session / transition_session_status('confirm')
+                      -- Coach or Admin
+            Peer: confirm_peer_session / transition_peer_session_status
+                      -- the provider or an Admin
+Complete    Coaching: complete_coaching_session          -- Coach or Admin
+            Mentoring: transition_mentoring_session_status
+            Peer: transition_peer_session_status
+            Triads: learner_triad_complete_session
+Cancel      Coaching: cancel_coaching_session; Peer: transition_peer_session_status
+            Mentoring: transition_mentoring_session_status -- decision 7, the
+                      Coaching rules: the mentee cancels freely until 24 h
+                      before, with a reason inside 24 h, never once it has
+                      started (a no-show is the Mentor's to mark held);
+                      Mentor and Admin are never blocked (20261007000800).
+                      A late cancel frees the unit, for Coaching and
+                      Mentoring alike; the mentee cancels from the session
+                      page (MentoringCancelButton)
+Admin       admin_reschedule_session (time, duration, topic, link)
+            admin_reopen_session (cancelled -> pending_coach_approval,
+                                  completed -> confirmed: the unit stops counting)
+            -> Admin only, a reason, the booking rules re-run, one row in
+               session_admin_audit (20261005110000)
+```
+
+A Peer or Triad time is never in the past: booking, scheduling, proposing an
+alternative and accepting one all refuse a start before `now()`. The remaining
+client UPDATE grant covers author-owned fields only (notes, meeting link);
+`guard_session_protected_fields` refuses everything else, `slot_id` included,
+unless the lifecycle service set `app.session_transition`. The Mentoring
+preparation document is recorded by `learner_submit_mentoring_prep_file` (the
+mentee's own upload under `{session_id}/`, stamped with `now()`;
+`20261007000700`). A session holds only a slot of its own Coach or Mentor
+(`sync_coaching_slot_reservation`, `sync_mentoring_slot_reservation`), and
+`book_peer_session` takes only the peer Coach's free Peer slot, with the booked
+time inside it -- the Coaching and Mentoring slot rule -- and since
+`20261007001000` requires one. No public table grants TRUNCATE to `anon` or
+`authenticated`, nor will a table a migration creates later
+(`supabase/tests/followups_test.sql` checks the catalog).
+Admins have no bypass (`20261005110000`): an Admin edit is one of the calls
+above, never a row write, and an Admin does not edit a participant's notes.
+The `confirm-session` and `cancel-session` edge functions call
+`confirm_coaching_session` / `confirm_peer_session` / `cancel_coaching_session`
+/ `transition_peer_session_status` with the caller's JWT; the service role only
+reads and sends email.
+
+The Peer booking rules for `peer_sessions` (receiver enrollment ongoing, peer
+coach opted in, Peer coaching enabled, entitlement not exhausted) have one
+owner, `assert_peer_session_bookable_internal` (`20261006100000`). The
+booking trigger `validate_peer_session_enrollment` and the Admin path
+(`assert_admin_session_bookable_internal`, which adds the peer coach's
+eligibility) both call it, so an Admin reschedule or reopen of a Peer session
+re-runs the same rules as a booking.
+
 ## Canonical chains
 
 ```
@@ -248,6 +324,14 @@ Schedule state: cohort_programme_schedule_state → canonical_enrollment_schedul
 
 Rollups only aggregate canonical rows (sums, counts of effective status and pace). They never recompute module progress, goal progress, overdue, adherence or status.
 
+### Alerts, reminders and prompts (`20261006130000`, `20261006140000`)
+
+| Surface | Reads |
+|---|---|
+| Admin → Alerts | `admin_alerts_current()`: alerts computed on read from canonical rows (effective status, `canonical_enrollment_progress` overdue / pace — decision 8, open actions past due, `canonical_session_deliverable_state`, `canonical_enrollment_inactivity_internal`, goal gate, coach flags), plus unresolved stored `admin_alerts` of other types. Nothing is scanned in the browser or stored as a snapshot: `send-programme-reminders` no longer inserts `stale_programme_participant` (`20261007000900`). Missing reflections, Mentor feedback and preparation files are reminders: nothing gates completion on evidence. |
+| `send-programme-reminders` (overdue quiz / reflection) | `training_overdue_assignment_targets_internal()`: the enrollment's calendar marks the Training week overdue, `canonical_training_week_fulfilment` says which part is missing. |
+| `send-daily-prompt`, `get_todays_prompt` | `daily_prompt_targets_internal()` / `daily_prompt_for_enrollment_internal()`: the enrollment's current Training week from its own calendar (cohort overrides included), "today" in `programme_time_zone()`. |
+
 ## Table / function classification
 
 | Object | Class | Canonical replacement / note |
@@ -259,9 +343,11 @@ Rollups only aggregate canonical rows (sums, counts of effective status and pace
 | `session_activity_attributions` | CANONICAL | Completion evidence |
 | `canonical_module_progress`, `canonical_enrollment_progress`, `canonical_enrollment_journey`, `canonical_enrollment_experience(_base)`, `canonical_enrollment_engagement`, `canonical_goal_progress`, `canonical_training_learning_items`, `canonical_learning_breakdown`, `sponsor_canonical_module_schedule`, `sponsor_canonical_activity`, `cohort_programme_schedule_state`, `canonical_enrollment_schedule_state`, `sync_cohort_requirement_dates`, `cohort_module_schedule_violation` | CANONICAL (INTERNAL) | Shared constructions. Not client-callable. |
 | `learner_canonical_*`, `sponsor_canonical_*`, `admin_canonical_*` | CANONICAL wrappers | Role eligibility only |
+| `learner_next_coaching_requirement`, `learner_coaching_requirement_fulfilment`, `coach_coaching_requirement_fulfilment` | CANONICAL wrappers | Owner checks over `next_coaching_requirement` / `canonical_coaching_requirement_fulfilment` (`20261005120000`). A learner reads their own enrollment; a Coach reads only the units their own sessions fulfil. |
+| every `canonical_*`, `*_internal` and `next_*_requirement` function, `programme_required_units`, `assert_enrollment_scope`, `resolve_current_enrollment` | INTERNAL (no client EXECUTE) | Revoked from PUBLIC, anon and authenticated (`20261005120000`); `service_role` keeps EXECUTE for edge functions. `supabase/tests/grants_and_profile_guard_test.sql` fails if any of them becomes client-executable again, and `src/test/clientRpcGrants.test.ts` fails if app code calls one. |
 | `get_sponsor_programme_progress`, `get_sponsor_programme_journey`, `sponsor_canonical_cohort_progress_one` | INTERNAL | Projections used inside canonical functions; not client-callable |
 | `attribute_activity_to_cadence_milestone`, `generate_enrollment_schedule`, `backfill_enrollment_schedule_snapshots` | INTERNAL / HISTORICAL | Maintain the snapshot history only |
-| `enrollment_module_snapshots`, `enrollment_module_milestones` | HISTORICAL / DERIVED | Enrollment-time record for activity-to-milestone attribution. Never current requirements, dates or completion. |
+| `enrollment_module_snapshots`, `enrollment_module_milestones` | HISTORICAL / DERIVED | Enrollment-time record for activity-to-milestone attribution. Never current requirements, dates or completion. `enrollment_module_snapshots.config` is no longer captured or read (`20261005130000`). |
 | `get_enrollment_progress` | HISTORICAL | Snapshot progress engine; not client-callable |
 | `programme_enrollments.progress_pct` | DEPRECATED | Not maintained (maintenance functions dropped), always NULL. Use `canonical_enrollment_progress.full_completion_pct`. |
 | `sponsor_min_leaders_for_distribution()` | CANONICAL | Single zero-argument signature |
@@ -282,6 +368,7 @@ Rollups only aggregate canonical rows (sums, counts of effective status and pace
 | `sponsor_leader_programme_history`* | `sponsor_canonical_leader_progress` |
 | `sponsor_canonical_leader_experience_base`, `sponsor_canonical_leader_experience_legacy`, `learner_canonical_experience_legacy` | `canonical_enrollment_experience` |
 | `get_admin_enrollment_progress` | `admin_canonical_enrollment_progress` |
+| `dashboard_summary` (dropped in `20261005120000`; no caller, anon could execute it) | the role wrappers above |
 | `compute_leader_progress`, `refresh_all_progress_pct`, `trg_update_progress_from_session`, `trg_update_progress_from_training` | none (`progress_pct` is deprecated) |
 
 \* existed only on hosted production (not created by any repository migration).
@@ -289,6 +376,62 @@ Rollups only aggregate canonical rows (sums, counts of effective status and pace
 ### Known production-only exception
 
 The demo-organisation reset tooling (30 `demo_*` / `get_demo_organization_status` functions and 5 `demo_*` tables) exists only on hosted production. It answers no programme business fact. Only `get_demo_organization_status` is client-callable, and it is Admin/service-role gated. Pending a decision: bring it under migration control, or remove it.
+
+### Assessment review (`20261006210000`)
+
+One pipeline for Triad submissions and the Final Assessment: learner submits → Admin assigns an assessor from the cohort pool → the assessor reviews → Admin approves (releases and notifies) or returns with a reason → only approved, released feedback reaches the learner. A Triad review is evidence: no Triad completion function reads these tables.
+
+| Fact | Single owner | Read through |
+|---|---|---|
+| Who may assess in a cohort | `cohort_assessors` (written by `admin_set_cohort_assessor`) | `admin_cohort_assessors`, `admin_assign_assessor` |
+| What was submitted, and its status | `assessment_submissions` (written by `learner_submit_assessment` for the Final Assessment only, by `learner_triad_submit_reflection` for a Triad, then only by the step functions) | `learner_assessment_status`, `admin_assessment_queue`, `coach_assessment_inbox` |
+| Uploaded media, transcripts, feedback PDFs | `assessment_files` + bucket `assessment-files` (private; MP3 / PDF / txt / docx, 50 MB; feedback PDFs 10 MB, refused before upload and at registration; paths `{enrollment}/{submission}/…`; a recording's `duration_seconds`, measured by the learner's browser, `20261007001200`) | storage policies via `assessment_object_readable` / `_writable` / `_registered`; an object not yet registered in `assessment_files` is readable only by its uploader (`storage.objects.owner_id`), never by the learner whose path it is (`20261007000600`) |
+| Who is assessing now | the one open `assessment_assignments` row (due 7 days after assignment); never the learner, nor their own coach (`assessment_is_learners_coach_internal`: the learner themself, a Coaching session in the enrollment, any `cohort_coach_assignments` coach of the cohort); attempt 2 after Resubmit goes automatically to attempt 1's assessor while still in the pool, else waits for Admin (`20261007000600`); `assignment_source` says which (`admin` with `assigned_by`, or `auto_resubmit` with `assigned_by` NULL, `20261007001000`) | `coach_assessment_inbox`, `admin_assessment_queue` |
+| Each version of the feedback | `assessment_reviews` (`coach_submit_review`; a Final Assessment review needs a result, Pass / Not pass / Resubmit, never NULL) | Admin queue; the learner only via release |
+| Admin's decision | `assessment_validations` (`admin_validate_review`; return needs a reason; approve releases + notifies in one transaction) | Admin queue; the returned assessor sees the reason |
+| Feedback the learner sees | the latest approved review of a released submission, with the quiz score and, for a Final Assessment with a quiz, `pass_mark_pct` and `quiz_passed` (above / below the pass mark, decided in SQL; `20261007001200`) | `learner_assessment_feedback` (`canonical_assessment_feedback_internal`); `learner_mark_feedback_viewed` |
+| Sponsor view | status and Pass / Not pass only | `sponsor_final_assessment_status` |
+| Which Triads are assessed | `programme_modules.config.assessed_units` for `triads` (Programme Builder checkboxes; live, decision 1) | `triad_requirement_is_assessed`, `learner_triad_session_assessed` (the reflection form's notice) |
+| A Triad submission | created by `learner_triad_submit_reflection` through `assessment_create_triad_submission_internal` (one per enrollment and session; evidence only, never read by `canonical_triad_completion`) | the assessment functions above |
+
+The app holds no privilege on the six tables (rules 1, 4, 7); every timestamp is the server's (rule 8); the quiz score is `assignment_submissions.score_pct` (rule 9); type and size are refused by the bucket and again by the step functions (rule 10); foreign keys restrict deletes (rule 12). `supabase/tests/assessment_pipeline_test.sql` has one section per rule.
+
+Admin surfaces: Cohort → Assessor pool (`CohortAssessorPanel`, on `admin_cohort_assessors` / `admin_set_cohort_assessor`); Admin → Assessments and Admin → Triads → Submissions (one `AssessmentQueue`, kind locked to Triad on the Triads tab) on `admin_assessment_queue`, assigning through `admin_assign_assessor` and deciding through `admin_validate_review`. `src/test/clientRpcGrants.test.ts` fails if app code names one of the six tables in `.from()`.
+
+Coach and learner surfaces (`20261006230000`): Coach → Submissions (`/coach/submissions`, tabs To assess · Returned to me · Awaiting validation · Released) and the dashboard card read only `coach_assessment_inbox`, which also returns the submission's `enrollment_id` (the feedback PDF path) and, while the assignment is active, the Triad reflection answers (`triad_reflection_answers`; never the satisfaction rating). The assessor uploads the PDF (≤ 10 MB) to `{enrollment}/{submission}/` and `coach_submit_review` registers it. The learner's Triad page and My Journey → Feedback & results (`#feedback-results`; `/coach/my-journey` for a Coach-learner, `assessment_feedback_link_internal`) read only `learner_assessment_feedback`. A feedback card shows only its heading until the learner opens it; opening it (not rendering it) calls `learner_mark_feedback_viewed`. Until then the learner dashboard's Needs attention lists it as "New feedback" (`viewed_at IS NULL`), linking to `#feedback-results`. The release email is the server's (`20261007001200`): the cron-run edge function `send-assessment-feedback-email` (`x-cron-secret`, no JWT; Resend, EN or VI by `profiles.preferred_language`) takes up to 50 released, un-emailed submissions from `assessment_release_emails_due_internal` (a 15-minute lease, `release_email_attempted_at`, so two runs never send the same email) and stamps `release_emailed_at` through `assessment_mark_release_emailed_internal` only after Resend accepts it; a failed send is retried on a later run. The browser sends nothing. The Admin queue shows "Email not sent" on a released row until `release_emailed_at` is set. Its schedule (every few minutes) is configured outside the repository, like the other cron functions. The assessor's player signs a recording's URL for its length plus 30 minutes (`recordingUrlSeconds`; 2 hours plus 30 minutes when the length is unknown); other files for 5 minutes. `supabase/tests/assessment_inbox_feedback_test.sql`, `assessment_final_test.sql`.
+
+### Final Assessment (`20261007000000`, `20261007000100`)
+
+| Fact | Owner (written by) | Read through |
+|---|---|---|
+| A programme has a Final Assessment, and how | `programme_modules` (`module = 'final_assessment'`, its own enum value, not `assessment`); `config`: `required`, `required_units` (forced to 1 / 0), `quiz_enabled`, `pass_mark_pct`, `accepted_mime` (fixed `['audio/mpeg']`), `max_file_mb` (fixed 50), `transcript` (`none` / `optional` / `required`), `instructions(_vi)`; normalised by `normalise_final_assessment_config` | Programme Builder (`FinalAssessmentSettings`) |
+| The requirement | one `cohort_requirement_dates` row per cohort ("Final assessment"), created by `sync_cohort_requirement_dates` on the session-module path; due by default at the module deadline (the cohort end) | the requirement calendar |
+| Its quiz | `assignments.final_assessment_programme_id` (instead of `training_week_id`; exactly one owner; one per programme); answers in `assignment_submissions` with `attempt_no` (1 or 2; scored by `trg_score_quiz_submission`; no cadence attribution); "Submissions: user read own" leaves these rows out, so the score is never read from the table (decision 10, `20261007000600`) | `learner_final_assessment_quiz` (never the answer key), `learner_submit_final_assessment_quiz`, `learner_final_assessment` (quiz taken, its id; the score only after release) |
+| Fulfilment | the submission, whatever the review state (decision 4, `20261007000600`): fulfilled on the Vietnam date of the latest attempt's `submitted_at`, so a Final Assessment submitted by its due date is completed on time however late the result is released; the result itself stays in `canonical_final_assessment_result`. `canonical_final_assessment_fulfilment` → `canonical_enrollment_requirement_calendar` → `canonical_module_progress` | the module progress wrappers (learner, Admin, Sponsor) |
+| State and result | `canonical_final_assessment_result`: state (not submitted · submitted · under review · resubmission requested · completed), quiz score (`score_pct`), above / below the pass mark (SQL), final result = the approved review's outcome; Resubmit opens attempt 2 (max 2); Not pass is final | `learner_final_assessment` (quiz score and result only after release), `admin_final_assessment_result`, `sponsor_final_assessment_status` (status + Pass / Not pass; Resubmit = Under review) |
+
+Submitting (`learner_submit_assessment`, `final_assessment`) needs this attempt's quiz when the programme has one, exactly one MP3 recording, and a transcript when required (none allowed when `none`). The learner page is `/final-assessment` (quiz → MP3 upload with progress → transcript → review & submit). `supabase/tests/assessment_final_test.sql` checks that Learner, Admin and Sponsor show the same state at each step.
+
+Results everywhere (`20261007000200`): `FinalAssessmentResults` shows the Final Assessment on Learner My Journey (`LearnerFinalAssessmentSection`, `learner_final_assessment`: state and result, the quiz score only once released), Admin enrollment detail (`AdminFinalAssessmentDetail`, `admin_final_assessment_result`: attempt, quiz vs pass mark, the assessor's outcome) and Sponsor leader detail (`SponsorFinalAssessmentSection`, `sponsor_final_assessment_status`: Not submitted / Under review / Completed + Pass / Not pass; Resubmit = Under review). A programme without a Final Assessment returns no row and shows no card. `supabase/tests/assessment_results_test.sql`.
+
+Automatic transcription (optional, A7; `20261007000400`): edge function `transcribe-assessment-recording` sends the learner's uploaded, not yet submitted MP3 to OpenAI Whisper (`whisper-1`, language auto-detected, so Vietnamese and English) and returns a draft. Every call goes through the database: `learner_claim_final_assessment_transcription` (as the learner) requires an open attempt (`not_submitted` / `resubmit_requested`) whose transcript mode is not `none`, the learner's consent to the external service, a recording under `{enrollment}/{submission}/`, and fewer than 3 uses on this attempt (a failed call gives its use back; a running one holds it for 15 minutes). Each call is a row in `final_assessment_transcriptions` (attempt, learner, status, audio seconds from Whisper, time; read only through functions). `final_assessment_transcription_finish_internal` (service role) records the outcome and saves the draft on that row; `learner_final_assessment_transcription` gives the page the drafts left and the latest draft of the open attempt, so a reload keeps it. On submit the draft is stored in `transcript_text` with `transcript_source = 'auto'` (`pasted` if the learner cleared it and wrote their own). The page shows a one-line EN/VI notice that the recording goes to OpenAI and is not used for training; the button appears only after the learner ticks it. Admin → Assessments shows the call log and cost (`admin_final_assessment_transcriptions`, estimated at $0.006 per audio minute). Files over Whisper's 25 MB limit are split at MP3 frame headers (`_shared/mp3Chunks.ts`, `_shared/whisperTranscribe.ts`) and transcribed in parallel. The key is the `OPENAI_API_KEY` Supabase secret; without it the function answers `not_configured`. `supabase/tests/assessment_transcription_test.sql`.
+
+Assessor history after release (`20261007000300`): releasing a submission does not end its assignment, so "active assessor" now also requires the submission not to be released; after release the assessor's inbox and storage access are history and their own review files only.
+
+### Retirement backlog
+
+Kept for now as HISTORICAL; no current-state surface may read them. Retire in a
+cleanup migration once production is verified:
+
+- `get_enrollment_progress`, `enrollment_module_snapshots`, `enrollment_module_milestones`,
+  `session_activity_attributions` and the functions that maintain them
+  (`attribute_activity_to_cadence_milestone`, `generate_enrollment_schedule`,
+  `backfill_enrollment_schedule_snapshots`).
+- The production-only demo-organisation reset tooling above (decision: demo data
+  is kept, but flagged and excluded from every Admin and Sponsor metric).
+- The retired limit storage: `programmes.coachee_session_limit`,
+  `programmes.mentoring_received_limit` and the `give_limit` / `receive_limit`
+  keys in `programme_modules.config` (`20261006110000`, `20261006120000`).
 
 ## Rules for new code
 
@@ -299,19 +442,31 @@ The demo-organisation reset tooling (30 `demo_*` / `get_demo_organization_status
    the shared construction (`canonical_enrollment_progress`,
    `canonical_enrollment_journey`, `canonical_enrollment_schedule_state`).
    Never write a new aggregation.
-3. **Changing when a requirement is due** goes through the cohort: the
+3. **Granting a new function**: Supabase's default privileges grant EXECUTE
+   on every new public function to anon and authenticated. A new or re-created
+   `canonical_*`, `*_internal` or `next_*_requirement` function must be
+   revoked from `PUBLIC, anon, authenticated` in the same migration;
+   `grants_and_profile_guard_test.sql` fails otherwise. The app calls only a
+   role wrapper with an owner check.
+4. **Changing when a requirement is due** goes through the cohort: the
    module default (`admin_set_cohort_module_deadlines`) or one requirement's
    own date (`admin_set_cohort_requirement_dates`). An Admin-dated requirement
    is never rewritten implicitly.
-4. **Snapshots and caches** must not be read by user-facing current-state
+5. **Snapshots and caches** must not be read by user-facing current-state
    surfaces.
-5. **Guards enforce this contract** and must stay green:
+6. **Guards enforce this contract** and must stay green:
    - `src/test/programmeProfileArchitecture.test.ts` and
      `src/test/migrationChain.test.ts` (frontend and migration chain);
    - `supabase/tests/cohort_requirement_schedule_test.sql`,
      `supabase/tests/requirement_calendar_contract_test.sql` (N units = N dated
      requirements, Admin = Learner = Sponsor numbers, organisation isolation),
-     `supabase/tests/source_of_truth_contract_test.sql` and
+     `supabase/tests/source_of_truth_contract_test.sql`,
+     `supabase/tests/grants_and_profile_guard_test.sql` (no client-executable
+     shared construction), `supabase/tests/one_quantity_authority_test.sql`
+     (a raised `required_units` reaches eligibility and progress alike),
+     `supabase/tests/canonical_progress_reconciliation_test.sql` (Admin =
+     Learner = Sponsor = spine, Peer and a Coach enrolled as a learner
+     included) and
      `supabase/tests/triad_canonical_contract_test.sql` (database);
    - the "Triad source of truth" block in `src/test/programmeProfileArchitecture.test.ts`,
      which also scans `supabase/functions` (no retired Triad field, no Triad round, no
@@ -342,6 +497,41 @@ superseding the one-deadline-per-module lock of `20260926400000`).
 - Integrity: `cohort_module_schedule_violation` (Training included), `requirement_integrity_issues()` / `admin_requirement_integrity_issues()` (count mismatch, missing/duplicate ordinal, unmapped or unselected week, Training `required_units` ≠ selected weeks, requirement outside the cohort's programmes, ongoing enrollment without an organisation).
 - Pinned by `supabase/tests/deadline_contract_test.sql` and `supabase/tests/requirement_calendar_contract_test.sql`.
 - Verify any environment read-only with `scripts/requirement-calendar-verification.sql`.
+
+## Reporting population (`20261007000800`, decision 9e)
+
+`organizations.is_demo` (Admin-written; the demo seeds' organisations are
+marked) takes a demonstration organisation out of reporting.
+`reporting_enrollments()` is the one predicate: every enrollment except a demo
+organisation's, which only that organisation's own Sponsor still sees (the
+live demo's Demo Sponsor). It is read by `sponsor_visible_enrollments` (and so
+every `sponsor_*` function), `admin_alerts_current`, `admin_goal_setup_overdue`,
+`admin_enrollment_inactivity`, `admin_enrollment_satisfaction`,
+`triad_reflection_rate_internal` (Admin Analytics) and the weekly admin email
+(`send-weekly-admin-summary`). `admin_canonical_completion_rate(p_as_of,
+p_programme_id)` chooses its population on the server; the browser sends no
+enrollment ids. Admin Analytics' other platform counts (sessions, hours) and the
+Admin dashboard's head counts are still computed in the browser from table
+reads and include demo rows.
+
+Every progress rollup (`canonical_enrollment_progress` and its learner, Admin
+and Sponsor wrappers, the Sponsor cohort and organisation rollups) carries
+`final_assessment_required_units / completed / due / booked` (cohorts also
+`final_assessment_completed_leaders`), so the module columns add up to
+`required_units` / `completed_units` and the Sponsor module cards to the total
+(decision 9). The Sponsor PDF reports "Programme units completed X / Y".
+
+## Numbers computed in SQL, rendered by the app (`20261007001100`, Prompt 15)
+
+| Number | One construction | Rendered by |
+|---|---|---|
+| Held sessions and hours (Admin) | `reported_held_sessions_internal` over `reporting_enrollments()`: Coaching and Mentoring held, Peer in canonical units (`canonical_peer_requirement_fulfilment`), coach-pool practice apart | `admin_dashboard_summary` (this month, 8 months, upcoming sessions without a link), `admin_analytics_summary` (totals, minutes, at risk = `sponsor_needs_attention`, satisfaction, Coaches, practice and competency feedback), `admin_coach_delivery_summary` (Registrations) |
+| Training engagement per week | `canonical_training_week_fulfilment` of the programme's ongoing reported enrollments | `admin_programme_training_engagement` (Admin Analytics; its total row in the weekly admin email) |
+| A Coach's clients | `coach_client_summary`: current enrollment chosen on the server, canonical progress, sessions with this Coach, the next one, actions overdue as of `programme_today()` | `useCoachClients`, `useClientDetail`, `ClientDetailDialog` |
+| The next session | `canonical_next_session_by_module(enrollment)` over `canonical_session_history` (live, still ahead; practice apart) | `learner_next_session_by_module` (Coaching, Mentoring, Peer, Triads cards, Sessions hub), `coach_next_session_by_module` (the Coach's Give cards) |
+| Goal progress; quiz average and prompt streak | `learner_canonical_goal_progress`; `learner_training_summary` (programme time) | MyGoalCard, GoalAccordion; `useProgrammeProgress`, `ProgrammeTimeline` (with `learner_training_week_items`) |
+
+The Sessions hub lists a viewer's own sessions as their enrollments' `learner_session_history` holds them. Admin Dashboard's attention panel reads `admin_alerts_current()`. `src/test/browserFactReads.test.ts` fails on a raw read of `sessions`, `peer_sessions`, `mentoring_sessions`, `assignment_submissions` or `training_progress` in Admin, Coach, dashboard or Sponsor code unless allow-listed with a reason (rows shown or acted on, never counted).
 
 ## Demo data
 As of 2026-09-23 there is no demo dataset. `supabase/seed-demo.sql` only ensures the Admin (`trang.tt@erickson.vn`) exists; an existing account is left untouched. The previous dataset (Organisations A/B, sponsors, coaches, the Cohort A–D learners such as Linh Nguyen and Ana Silva, and the Training content in `scripts/seed-training-content.sql`) was removed: it dated everything relative to the day it ran, so databases seeded on different days disagreed, and several learners contradicted the fulfilment rules of `20260930100000`. It remains in git history (up to commit `4ae79b0`).

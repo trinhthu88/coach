@@ -18,6 +18,8 @@ import { EMPTY_ENGAGEMENT, formatPercent, formatProfileDate } from "@/lib/progra
 import { sessionDetailPathFor } from "@/lib/sessionPaths";
 import { Pill } from "../_shared";
 import { ENROLLMENT_STATUS_TONE, MODULE_ORDER } from "./display";
+import { AdminFinalAssessmentDetail } from "@/components/assessments/FinalAssessmentResults";
+import { useAdminFinalAssessment } from "@/hooks/assessments/useFinalAssessmentResult";
 
 function Section({ title, count, children, testId }: { title: string; count?: number; children: ReactNode; testId: string }) {
   return (
@@ -47,6 +49,7 @@ export function EnrollmentDetailPanel({ userId, enrollment }: { userId: string; 
   const moduleLabel = useModuleScopeLabel();
   const { data, isLoading, error } = useAdminEnrollmentDetail(enrollment.enrollment_id);
   const feedback = useLearnerFeedback(userId, enrollment.enrollment_id);
+  const finalAssessment = useAdminFinalAssessment(enrollment.enrollment_id);
 
   if (isLoading) {
     return (
@@ -122,6 +125,13 @@ export function EnrollmentDetailPanel({ userId, enrollment }: { userId: string; 
           </div>
         )}
       </Section>
+
+      {/* Only for a programme with a Final Assessment (admin_final_assessment_result). */}
+      {finalAssessment.data && (
+        <Section title={t("userDetail.sections.finalAssessment")} testId="section-final-assessment">
+          <AdminFinalAssessmentDetail fa={finalAssessment.data} />
+        </Section>
+      )}
 
       {/* The requirement calendar the module counts above are computed from:
           each required unit with its own cohort date. */}

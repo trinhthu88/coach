@@ -2,12 +2,14 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import * as React from "npm:react@18.3.1";
 import { renderAsync } from "npm:@react-email/components@0.0.22";
 import { buildCorsHeaders } from "../_shared/cors.ts";
+import { programmeDayStart, programmeToday } from "../_shared/programmeTime.ts";
 import { sendEmail } from "../_shared/send-email.ts";
 import { ProgrammeReminderEmail } from "../_shared/email-templates/programme-reminder.tsx";
 
 // Phase 3 (programme management completion): the daily 09:00 sweep that
-// covers the reminder/alert kinds the task calls for — overdue assignments,
-// missed/upcoming/unscheduled triad sessions, and stale participants.
+// covers the reminder kinds the task calls for — overdue assignments and
+// missed/upcoming/unscheduled triad sessions. (Stale participants are an Admin
+// alert computed on read by admin_alerts_current, never stored from here.)
 // Triggered the same way send-daily-prompt is — an external cron (or
 // pg_cron -> pg_net) POST with the CRON_SECRET shared secret, hence
 // verify_jwt = false.
@@ -21,11 +23,6 @@ import { ProgrammeReminderEmail } from "../_shared/email-templates/programme-rem
 const SITE_URL = "https://clariva.club";
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-function todayISO(offsetDays = 0): string {
-  const d = new Date();
-  d.setUTCDate(d.getUTCDate() + offsetDays);
-  return d.toISOString().slice(0, 10);
-}
 
 interface ProfileRow {
   id: string;
@@ -86,7 +83,6 @@ Deno.serve(async (req) => {
     let overdueSent = 0;
     let triadReflectionSent = 0;
     let triadUpcomingSent = 0;
-    let staleAlerts = 0;
 
     async function notifyOnce(opts: {
       userId: string;
@@ -147,74 +143,35 @@ Deno.serve(async (req) => {
     }
 
     // ------------------------------------------------------------------
-    // 1. Overdue assignments
+    // 1. Overdue assignments: the quiz / reflection still missing from a
+    //    Training week the enrollment's own requirement calendar calls
+    //    overdue (training_overdue_assignment_targets_internal; "today" in
+    //    the programme time zone).
     // ------------------------------------------------------------------
-    const { data: quizModules } = await admin
-      .from("programme_modules")
-      .select("programme_id")
-      .eq("module", "quiz")
-      .eq("enabled", true);
-    const quizProgrammeIds = new Set((quizModules || []).map((m) => m.programme_id as string));
-
-    if (quizProgrammeIds.size > 0) {
-      const { data: weeks } = await admin
-        .from("training_weeks")
-        .select("id, programme_id, unlock_date")
-        .in("programme_id", [...quizProgrammeIds])
-        .not("unlock_date", "is", null);
-      const weekById = new Map((weeks || []).map((w) => [w.id as string, w]));
-
-      const { data: assignments } = await admin
-        .from("assignments")
-        .select("id, training_week_id, assignment_type, due_offset_days, is_visible")
-        .eq("is_visible", true)
-        .not("due_offset_days", "is", null)
-        .in("training_week_id", [...weekById.keys()]);
-
-      const today = todayISO();
-      for (const a of assignments || []) {
-        const week = weekById.get(a.training_week_id as string);
-        if (!week) continue;
-        const dueDate = new Date(`${week.unlock_date}T00:00:00Z`);
-        dueDate.setUTCDate(dueDate.getUTCDate() + (a.due_offset_days as number));
-        if (dueDate.toISOString().slice(0, 10) >= today) continue; // not yet overdue
-
-        const { data: enrollments } = await admin
-          .from("programme_enrollments")
-          .select("user_id")
-          .eq("programme_id", week.programme_id)
-          .eq("status", "active");
-        const enrolledIds = [...new Set((enrollments || []).map((e) => e.user_id as string))];
-        if (enrolledIds.length === 0) continue;
-
-        const { data: submissions } = await admin
-          .from("assignment_submissions")
-          .select("user_id")
-          .eq("assignment_id", a.id)
-          .in("user_id", enrolledIds);
-        const submittedIds = new Set((submissions || []).map((s) => s.user_id as string));
-        const pendingIds = enrolledIds.filter((id) => !submittedIds.has(id));
-
-        const link =
-          a.assignment_type === "quiz"
-            ? `/training/${a.training_week_id}/quiz/${a.id}`
-            : `/training/${a.training_week_id}/reflect/${a.id}`;
-
-        for (const userId of pendingIds) {
-          const sent = await notifyOnce({
-            userId,
-            link,
-            type: "assignment_overdue",
-            title: "An assignment is overdue",
-            titleVi: "Một bài tập đã quá hạn",
-            body: "You have a training assignment that's now overdue. Take a few minutes to complete it.",
-            bodyVi: "Bạn có một bài tập đào tạo đã quá hạn. Hãy dành vài phút để hoàn thành.",
-            ctaLabel: "Complete assignment",
-            ctaLabelVi: "Hoàn thành bài tập",
-          });
-          if (sent) overdueSent++;
-        }
-      }
+    const { data: overdueTargets, error: overdueErr } = await admin.rpc("training_overdue_assignment_targets_internal");
+    if (overdueErr) throw overdueErr;
+    for (const target of (overdueTargets ?? []) as {
+      user_id: string;
+      assignment_id: string;
+      training_week_id: string;
+      assignment_type: string;
+    }[]) {
+      const link =
+        target.assignment_type === "quiz"
+          ? `/training/${target.training_week_id}/quiz/${target.assignment_id}`
+          : `/training/${target.training_week_id}/reflect/${target.assignment_id}`;
+      const sent = await notifyOnce({
+        userId: target.user_id,
+        link,
+        type: "assignment_overdue",
+        title: "An assignment is overdue",
+        titleVi: "Một bài tập đã quá hạn",
+        body: "You have a training assignment that's now overdue. Take a few minutes to complete it.",
+        bodyVi: "Bạn có một bài tập đào tạo đã quá hạn. Hãy dành vài phút để hoàn thành.",
+        ctaLabel: "Complete assignment",
+        ctaLabelVi: "Hoàn thành bài tập",
+      });
+      if (sent) overdueSent++;
     }
 
     // Triad participants are the group's member enrollments (canonical
@@ -240,14 +197,14 @@ Deno.serve(async (req) => {
     // 2. Missed triad reflections (sessions completed in the past 7 days;
     //    a reflection follows completion)
     // ------------------------------------------------------------------
-    const weekAgo = todayISO(-7);
-    const today = todayISO();
+    const weekAgo = programmeToday(-7);
+    const today = programmeToday();
     const { data: pastSessions } = await admin
       .from("triad_sessions")
       .select("id, triad_group_id, scheduled_start_time")
       .eq("status", "completed")
-      .gte("scheduled_start_time", `${weekAgo}T00:00:00Z`)
-      .lt("scheduled_start_time", `${today}T00:00:00Z`);
+      .gte("scheduled_start_time", programmeDayStart(weekAgo))
+      .lt("scheduled_start_time", programmeDayStart(today));
 
     if (pastSessions && pastSessions.length > 0) {
       const membersByGroup = await triadMembersByGroup([...new Set(pastSessions.map((s) => s.triad_group_id as string))]);
@@ -287,13 +244,13 @@ Deno.serve(async (req) => {
     // ------------------------------------------------------------------
     // 3. Upcoming triad sessions (tomorrow)
     // ------------------------------------------------------------------
-    const tomorrow = todayISO(1);
-    const dayAfterTomorrow = todayISO(2);
+    const tomorrow = programmeToday(1);
+    const dayAfterTomorrow = programmeToday(2);
     const { data: upcomingSessions } = await admin
       .from("triad_sessions")
       .select("id, triad_group_id")
-      .gte("scheduled_start_time", `${tomorrow}T00:00:00Z`)
-      .lt("scheduled_start_time", `${dayAfterTomorrow}T00:00:00Z`)
+      .gte("scheduled_start_time", programmeDayStart(tomorrow))
+      .lt("scheduled_start_time", programmeDayStart(dayAfterTomorrow))
       .in("status", ["proposed", "confirmed"]);
 
     if (upcomingSessions && upcomingSessions.length > 0) {
@@ -320,47 +277,11 @@ Deno.serve(async (req) => {
     }
 
     // ------------------------------------------------------------------
-    // 4. Stale participants — THE canonical "inactive 7+ days" rule
-    //    (canonical_enrollment_inactivity_internal: population, signals and
-    //    window live there; Admin Alerts / Analytics read the same rule).
-    //    One alert per enrollment, never re-raised while one is unresolved.
+    // 4. Stale participants are not stored: admin_alerts_current() computes
+    //    "inactive 7+ days" on read from canonical_enrollment_inactivity_internal
+    //    (20261006140000), and treats stored stale_programme_participant rows
+    //    as superseded. Nothing is inserted here (Prompt 14).
     // ------------------------------------------------------------------
-    const { data: inactivity, error: inactivityErr } = await admin.rpc("canonical_enrollment_inactivity_internal", {});
-    if (inactivityErr) console.error("Inactivity rule failed", inactivityErr);
-    const inactive = ((inactivity || []) as { enrollment_id: string; user_id: string; is_inactive: boolean }[]).filter((r) => r.is_inactive);
-    if (inactive.length > 0) {
-      const { data: openAlerts } = await admin
-        .from("admin_alerts")
-        .select("related_enrollment_id")
-        .eq("alert_type", "stale_programme_participant")
-        .eq("resolved", false)
-        .in("related_enrollment_id", inactive.map((r) => r.enrollment_id));
-      const alreadyAlerted = new Set((openAlerts || []).map((r) => r.related_enrollment_id as string));
-      const toAlert = inactive.filter((r) => !alreadyAlerted.has(r.enrollment_id));
-      if (toAlert.length > 0) {
-        const profiles = await getProfiles([...new Set(toAlert.map((r) => r.user_id))]);
-        const rows = toAlert.map((r) => {
-          const p = profiles.get(r.user_id);
-          const name = p?.full_name || "A participant";
-          const email = p?.email ? ` (${p.email})` : "";
-          return {
-            severity: "warning" as const,
-            alert_type: "stale_programme_participant",
-            title: `${name} — no programme activity in 7+ days`,
-            message: `${name}${email} hasn't completed a training week, quiz, reflection, triad reflection, or daily prompt in over a week.`,
-            related_coachee_id: r.user_id,
-            related_enrollment_id: r.enrollment_id,
-            resolved: false,
-          };
-        });
-        const { error: alertErr } = await admin.from("admin_alerts").insert(rows);
-        if (alertErr) {
-          console.error("Failed to insert stale-participant alerts", alertErr);
-        } else {
-          staleAlerts = rows.length;
-        }
-      }
-    }
 
     // ------------------------------------------------------------------
     // 5. Active triad groups with neither an open nor a completed session.
@@ -405,7 +326,7 @@ Deno.serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ ok: true, overdueSent, triadReflectionSent, triadUpcomingSent, triadUnscheduledSent, staleAlerts }),
+      JSON.stringify({ ok: true, overdueSent, triadReflectionSent, triadUpcomingSent, triadUnscheduledSent }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err) {

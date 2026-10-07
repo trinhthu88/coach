@@ -279,6 +279,10 @@ insert into public.cohort_mentors (cohort_id, mentor_user_id)
 insert into public.programme_enrollments (id, programme_id, user_id, cohort_id, status) values
   ('a2000000-0000-0000-0000-00000000e0f0'::uuid, 'a2000000-0000-0000-0000-00000000a0a0'::uuid,
    'a2000000-0000-0000-0000-000000000008'::uuid, 'a2000000-0000-0000-0000-00000000b1b1'::uuid, 'active');
+-- Booking requires an active goal (the goal gate is part of eligibility,
+-- 20261005130000); this suite is about the schedule, not the gate.
+insert into public.coachee_goals (coachee_id, enrollment_id, title) values
+  ('a2000000-0000-0000-0000-000000000008'::uuid, 'a2000000-0000-0000-0000-00000000e0f0'::uuid, 'Fixture goal');
 
 select is(
   (select count(*)::int from public.cohort_requirement_dates

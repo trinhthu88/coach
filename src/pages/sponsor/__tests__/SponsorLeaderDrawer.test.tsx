@@ -6,6 +6,12 @@ import { SponsorLeaderDrawer, SponsorLeaderProfile } from "../SponsorLeaderDrawe
 import type { SponsorRosterRow } from "@/hooks/sponsor/useSponsorDashboardData";
 
 // Schedule-mismatch state (cohort_programme_schedule_state) — aligned here.
+// The Final Assessment card has its own tests (FinalAssessmentResults.test.tsx).
+vi.mock("@/components/assessments/FinalAssessmentResults", () => ({
+  LearnerFinalAssessmentSection: () => null,
+  SponsorFinalAssessmentSection: () => null,
+  AdminFinalAssessmentDetail: () => null,
+}));
 vi.mock("@/hooks/useCanonicalScheduleState", () => ({
   useCanonicalScheduleState: () => ({ rows: [], mismatches: [], loading: false, error: null }),
 }));
@@ -174,7 +180,7 @@ describe("SponsorLeaderDrawer", () => {
     expect(screen.getByText("Required activities")).toBeInTheDocument();
     expect(screen.getByText("Overdue required")).toBeInTheDocument();
     expect(screen.getByText("Coaching utilisation")).toBeInTheDocument();
-    expect(screen.getByText("Completed required activities")).toBeInTheDocument();
+    expect(screen.getByText("Programme units completed")).toBeInTheDocument();
     expect(screen.getAllByText("9 / 16").length).toBeGreaterThan(0);
     expect(screen.getByText("You are here")).toBeInTheDocument();
     expect(screen.getByText("Training & learning")).toBeInTheDocument();

@@ -8,7 +8,6 @@ import { canonicalCompletionPct } from "@/lib/programmeProfile";
 export interface ProgrammeOpt {
   id: string;
   name: string;
-  coachee_session_limit: number;
   duration_months: number;
 }
 
@@ -25,8 +24,8 @@ export interface CohortOpt extends NamedOpt {
 
 /**
  * Loads the full admin coachees list — profile, session counts, programme/
- * cohort/organization enrollment, coach allowlist and session-limit override
- * for every coachee — plus the option lists (coaches/programmes/cohorts/
+ * cohort/organization enrollment for every coachee (a learner's Coach is their
+ * cohort's Coach pool; the retired coachee_coach_allowlist is not read) — plus the option lists (coaches/programmes/cohorts/
  * organizations) used to edit a row.
  */
 export function useAdminCoacheesData() {
@@ -46,16 +45,14 @@ export function useAdminCoacheesData() {
       { data: progs },
       { data: cohortsData },
       { data: orgsData },
-      { data: allow },
       { data: requests },
     ] = await Promise.all([
       supabase.from("user_roles").select("user_id, role"),
       supabase.from("profiles").select("id, full_name, email, status, created_at, spoken_languages"),
       supabase.from("programme_enrollments").select("id, user_id, programme_id, cohort_id, organization_id, start_date, status"),
-      supabase.from("programmes").select("id, name, coachee_session_limit, duration_months").eq("is_active", true),
+      supabase.from("programmes").select("id, name, duration_months").eq("is_active", true),
       supabase.from("cohorts").select("id, name, programme_id, organization_id"),
       supabase.from("organizations").select("id, name").order("name"),
-      supabase.from("coachee_coach_allowlist").select("coachee_id, coach_id"),
       supabase.from("access_requests").select("id, email, status").eq("status", "approved"),
     ]);
 
@@ -96,12 +93,6 @@ export function useAdminCoacheesData() {
     const progById = new Map((progs || []).map((p) => [p.id, p]));
     const cohortById = new Map((cohortsData || []).map((c) => [c.id, c.name]));
     const orgById = new Map((orgsData || []).map((o) => [o.id, o.name]));
-    const allowByCoachee = new Map<string, { id: string; name: string }[]>();
-    (allow || []).forEach((a) => {
-      const arr = allowByCoachee.get(a.coachee_id) || [];
-      arr.push({ id: a.coach_id, name: coachNameById.get(a.coach_id) || "—" });
-      allowByCoachee.set(a.coachee_id, arr);
-    });
     const requestIdByEmail = new Map<string, string>();
     (requests || []).forEach((r) => {
       if (!requestIdByEmail.has(String(r.email).toLowerCase())) {
@@ -143,7 +134,6 @@ export function useAdminCoacheesData() {
           // the canonical engine, e.g. at_risk after the programme ends).
           enrollment_status: progress?.effective_enrollment_status ?? enr?.status ?? null,
           completion_pct: available ? canonicalCompletionPct(progress!.full_completion_pct) : null,
-          selected_coaches: allowByCoachee.get(id) || [],
           access_request_id: requestIdByEmail.get(String(p.email).toLowerCase()) ?? null,
           spoken_languages: p.spoken_languages?.length ? p.spoken_languages : ["vi"],
         } as Row;

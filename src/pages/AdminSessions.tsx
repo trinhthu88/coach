@@ -36,6 +36,13 @@ import type { Tables } from "@/integrations/supabase/types";
 import { PageHeader } from "@/components/ui/page-header";
 import { TablePager } from "./admin/_shared";
 import { getFriendlyErrorMessage } from "@/lib/errors";
+import {
+  adminDetailsEditable,
+  adminSessionNeedsReason,
+  adminStatusOptions,
+  isReopen,
+  planAdminSessionSave,
+} from "@/lib/adminSessionEdit";
 
 const PAGE_SIZE = 25;
 
@@ -81,6 +88,7 @@ export default function AdminSessions() {
   const [editing, setEditing] = useState<SessionRow | null>(null);
   const [saving, setSaving] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
+  const [changeReason, setChangeReason] = useState("");
   const [page, setPage] = useState(1);
   const [coachRoleIds, setCoachRoleIds] = useState<Set<string>>(new Set());
 
@@ -177,75 +185,39 @@ export default function AdminSessions() {
   const editingOriginal = editing ? rows.find((r) => r.id === editing.id) : undefined;
   const isCancelling = !!editing && editing.status === "cancelled" && editingOriginal?.status !== "cancelled";
 
+  const detailsEditable = !!editing && !!editingOriginal
+    && adminDetailsEditable(editingOriginal.status, editing.status);
+  const needsReason = !!editing && !!editingOriginal
+    && adminSessionNeedsReason(editingOriginal, editing);
+
+  // Every change is a lifecycle call (planAdminSessionSave): reschedule and
+  // reopen are audited Admin RPCs that need a reason and re-run the booking
+  // rules; confirm, complete and cancel are the canonical transitions. The
+  // dialog never writes a session row.
   const handleSave = async () => {
-    if (!editing) return;
+    if (!editing || !editingOriginal) return;
+    const plan = planAdminSessionSave(editingOriginal, editing, { reason: changeReason, cancelReason });
+    if (!plan.ok) {
+      toast({
+        title: t("sessions.saveFailed"),
+        description: t(`sessions.errors.${plan.error}`),
+        variant: "destructive",
+      });
+      return;
+    }
     setSaving(true);
     try {
-      if (isCancelling) {
-        // Routes through cancel-session so the coach's availability slot is
-        // freed and both parties get a cancellation email — a plain status
-        // update here would silently skip both, same bug the dashboard
-        // "Decline" button had.
-        const { error: cancelError } = await supabase.functions.invoke("cancel-session", {
-          body: { session_id: editing.id, is_peer: editing.kind === "peer", reason: cancelReason || undefined },
-        });
-        if (cancelError) throw cancelError;
+      for (const step of plan.steps) {
+        const { error } = step.type === "cancel"
+          ? await supabase.functions.invoke("cancel-session", { body: step.body })
+          // The planner only names lifecycle RPCs from the generated types.
+          : await supabase.rpc(step.fn as "admin_reschedule_session", step.args as never);
+        if (error) throw error;
       }
-
-      // Coaching status transitions go through the canonical lifecycle rather
-      // than a plain column write. Writing sessions.status directly skips the
-      // slot reservation/release, the requirement reservation and the actor
-      // and timestamp the RPCs record -- an Admin edit would silently leave
-      // those disagreeing with the session.
-      //
-      // Only "completed" is transitioned here; confirm still belongs to the
-      // Coach, and cancellation is handled above.
-      if (!isCancelling && editing.kind !== "peer" && editing.status === "completed" && editingOriginal?.status !== "completed") {
-        const { error: completeError } = await supabase.rpc("complete_coaching_session", {
-          p_session_id: editing.id,
-        });
-        if (completeError) throw completeError;
-      }
-
-      const commonUpdate = {
-        topic: editing.topic,
-        start_time: editing.start_time,
-        duration_minutes: editing.duration_minutes,
-        meeting_url: editing.meeting_url,
-      };
-      // Whatever the canonical calls above already applied must not be
-      // overwritten by the plain update below.
-      const statusHandledCanonically =
-        isCancelling ||
-        (editing.kind !== "peer" && editing.status === "completed" && editingOriginal?.status !== "completed");
-      // Peer sessions use provider/receiver_notes, while coaching sessions
-      // use coach/coachee_notes. Keep the edit model shared without sending a
-      // coaching-only column to the peer table.
-      const { error } = editing.kind === "peer"
-        ? await supabase
-            .from("peer_sessions")
-            .update({
-              ...commonUpdate,
-              ...(isCancelling ? {} : { status: editing.status as Tables<"peer_sessions">["status"] }),
-              coach_notes: editing.coach_notes,
-              coachee_notes: editing.coachee_notes,
-            })
-            .eq("id", editing.id)
-        : await supabase
-            .from("sessions")
-            .update({
-              ...commonUpdate,
-              // Already set by cancel-session above when isCancelling; for
-              // every other transition a plain status write is fine.
-              ...(statusHandledCanonically ? {} : { status: editing.status as Tables<"sessions">["status"] }),
-              coach_notes: editing.coach_notes,
-              coachee_notes: editing.coachee_notes,
-            })
-            .eq("id", editing.id);
-      if (error) throw error;
       toast({ title: t("sessions.sessionUpdated") });
       setEditing(null);
       setCancelReason("");
+      setChangeReason("");
       await load();
     } catch (err) {
       toast({
@@ -418,7 +390,7 @@ export default function AdminSessions() {
                       )}
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button variant="outline" size="sm" onClick={() => { setEditing(s); setCancelReason(""); }}>
+                      <Button variant="outline" size="sm" onClick={() => { setEditing(s); setCancelReason(""); setChangeReason(""); }}>
                         <Pencil className="h-4 w-4" /> {t("sessions.edit")}
                       </Button>
                     </TableCell>
@@ -442,6 +414,7 @@ export default function AdminSessions() {
                 <Label>{t("sessions.topicLabel")}</Label>
                 <Input
                   value={editing.topic}
+                  disabled={!detailsEditable}
                   onChange={(e) => setEditing({ ...editing, topic: e.target.value })}
                 />
               </div>
@@ -450,6 +423,7 @@ export default function AdminSessions() {
                   <Label>{t("sessions.startTimeLabel")}</Label>
                   <Input
                     type="datetime-local"
+                    disabled={!detailsEditable}
                     value={format(new Date(editing.start_time), "yyyy-MM-dd'T'HH:mm")}
                     onChange={(e) =>
                       setEditing({
@@ -464,6 +438,7 @@ export default function AdminSessions() {
                   <Input
                     type="number"
                     min={15}
+                    disabled={!detailsEditable}
                     value={editing.duration_minutes}
                     onChange={(e) =>
                       setEditing({
@@ -484,9 +459,11 @@ export default function AdminSessions() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {STATUSES.map((s) => (
+                    {adminStatusOptions(editingOriginal?.status ?? editing.status).map((s) => (
                       <SelectItem key={s} value={s}>
-                        {t(`sessions.statusLabels.${s}`)}
+                        {editingOriginal && isReopen(editingOriginal.status, s)
+                          ? t("sessions.reopenAs", { status: t(`sessions.statusLabels.${s}`) })
+                          : t(`sessions.statusLabels.${s}`)}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -503,10 +480,22 @@ export default function AdminSessions() {
                   />
                 </div>
               )}
+              {needsReason || changeReason ? (
+                <div className="space-y-2">
+                  <Label>{t("sessions.changeReasonLabel")}</Label>
+                  <Textarea
+                    rows={2}
+                    value={changeReason}
+                    onChange={(e) => setChangeReason(e.target.value)}
+                    placeholder={t("sessions.changeReasonPlaceholder")}
+                  />
+                </div>
+              ) : null}
               <div className="space-y-2">
                 <Label>{t("sessions.meetingUrlLabel")}</Label>
                 <Input
                   value={editing.meeting_url ?? ""}
+                  disabled={!detailsEditable}
                   onChange={(e) =>
                     setEditing({ ...editing, meeting_url: e.target.value })
                   }
@@ -518,9 +507,8 @@ export default function AdminSessions() {
                 <Textarea
                   rows={3}
                   value={editing.coach_notes ?? ""}
-                  onChange={(e) =>
-                    setEditing({ ...editing, coach_notes: e.target.value })
-                  }
+                  readOnly
+                  disabled
                 />
               </div>
               <div className="space-y-2">
@@ -528,11 +516,11 @@ export default function AdminSessions() {
                 <Textarea
                   rows={3}
                   value={editing.coachee_notes ?? ""}
-                  onChange={(e) =>
-                    setEditing({ ...editing, coachee_notes: e.target.value })
-                  }
+                  readOnly
+                  disabled
                 />
               </div>
+              <p className="text-xs text-muted-foreground">{t("sessions.notesReadOnly")}</p>
             </div>
           )}
           <DialogFooter>

@@ -33,6 +33,22 @@ export function normalizeModuleScheduleConfig(config: Record<string, unknown>): 
   };
 }
 
+// No module has a give / receive session limit: required_units is the whole
+// answer (20261005130000, 20261006110000, 20261006120000). A stored
+// give_limit / receive_limit is dropped on the next save. Peer's monthly_limit
+// (practice per calendar month) stays.
+const RETIRED_LIMIT_KEYS = ["give_limit", "receive_limit"] as const;
+
+export function stripRetiredSessionLimits(
+  module: string,
+  config: Record<string, unknown>,
+): Record<string, unknown> {
+  if (module !== "coaching" && module !== "mentoring" && module !== "peer_coaching") return config;
+  const rest = { ...config };
+  for (const key of RETIRED_LIMIT_KEYS) delete rest[key];
+  return rest;
+}
+
 export function validateModuleScheduleConfig(
   config: Record<string, unknown>,
   availableTrainingWeekIds?: readonly string[],

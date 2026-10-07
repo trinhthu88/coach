@@ -88,10 +88,8 @@ export interface CanonicalCoachingProgress {
  * role uses it -- Coachee, Coach, Sponsor, Admin and Journey -- so a number
  * shown on one screen cannot disagree with the same number on another.
  *
- * It is not interchangeable with operational usage readers such as
- * get_coachee_session_usage_for_enrollment: those count raw session rows
- * (any enrollment requirement, uncapped). A completed session = a fulfilled
- * requirement unit (canonical rule), counted by the canonical engine only.
+ * A completed session = a fulfilled requirement unit (canonical rule),
+ * counted by the canonical engine only, never by counting session rows.
  */
 export function useCanonicalCoachingProgress(enrollmentId: string | null | undefined) {
   return useQuery({
@@ -101,7 +99,6 @@ export function useCanonicalCoachingProgress(enrollmentId: string | null | undef
       const [{ data, error }, { data: checklist }] = await Promise.all([
         supabase.rpc("learner_module_progress", {
           p_enrollment_id: enrollmentId!,
-          p_as_of: new Date().toISOString().slice(0, 10),
         }),
         supabase.rpc("coaching_post_session_checklist", { p_enrollment_id: enrollmentId! }),
       ]);
@@ -134,7 +131,7 @@ export function useNextCoachingRequirement(enrollmentId: string | null | undefin
     queryKey: [COACHING_KEYS.nextRequirement, enrollmentId],
     enabled: !!enrollmentId,
     queryFn: async (): Promise<CoachingRequirement | null> => {
-      const { data, error } = await supabase.rpc("next_coaching_requirement", {
+      const { data, error } = await supabase.rpc("learner_next_coaching_requirement", {
         p_enrollment_id: enrollmentId!,
       });
       if (error) throw error;
@@ -221,7 +218,7 @@ export function useRescheduleCoachingSession() {
       const { data, error } = await supabase.rpc("reschedule_coaching_session", {
         p_session_id: sessionId,
         p_new_slot_id: newSlotId,
-        p_reason: reason ?? null,
+        p_reason: reason ?? undefined,
       });
       if (error) throw error;
       return data as string;

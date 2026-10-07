@@ -47,7 +47,6 @@
       "label": "Email notifications",
       "weeklyDigest": "Weekly digest",
       "atRiskAlerts": "At-risk leader alerts",
-      "sessionMilestones": "Session milestone alerts (50% / 90% usage)",
       "monthlyAutoReport": "Monthly auto-report email",
       "save": "Save preferences",
       "saved": "Preferences saved"
@@ -89,7 +88,6 @@
       "leadersEnrolled": "Leaders enrolled",
       "onTrack": "On track",
       "atRisk": "At risk",
-      "sessionsUsed": "Units used",
       "avgSatisfaction": "Avg satisfaction",
       "atRiskInline_other": "{{count}} leaders at risk and may need attention",
       "atRiskInline_one": "{{count}} leader at risk and may need attention",
@@ -105,7 +103,6 @@
         "leaders": "Leaders",
         "onTrack": "On track %",
         "sessionsPace": "Sessions pace",
-        "unitsUsed": "Units used",
         "avgGoalGrowth": "Avg goal growth",
         "satisfaction": "Satisfaction",
         "signal": "Signal"
@@ -131,8 +128,6 @@
       "label": "Smart alerts",
       "empty": "No alerts right now — everything looks on track.",
       "view": "View",
-      "atRiskInactive": "{{name}} has not logged in for {{count}} days",
-      "sessionThreshold": "Cohort {{name}} has used 90% of sessions — consider renewal",
       "contractExpiry": "Contract ends in {{count}} days — renewal conversation recommended"
     },
     "coachUtilisation": {
@@ -225,7 +220,6 @@
       "leadersEnrolled": "Leaders enrolled",
       "onTrack": "On track",
       "atRisk": "At risk",
-      "sessionsUsed": "Units used",
       "avgGoalGrowth": "Avg goal growth",
       "onTrackSub": "of {{total}} leaders",
       "atRiskSub": "enrollment status",
@@ -269,7 +263,8 @@
       "healthy": "Healthy",
       "watch": "Watch",
       "attention": "Needs attention"
-    }
+    },
+    "unitsCompleted": "Programme units completed"
   },
   "cohortDetail": {
     "header": {
@@ -285,7 +280,13 @@
         "active": "Active",
         "complete": "Complete"
       },
-      "dayOf": "Day {{elapsed}} of {{total}}"
+      "dayOf": "Day {{elapsed}} of {{total}}",
+      "enrollmentStatus": {
+        "active": "Active",
+        "paused": "Paused",
+        "completed": "Completed",
+        "at_risk": "At risk"
+      }
     },
     "programmeEngagement": {
       "lowCompletion": "Week {{week}} completion is under 40% across modules — worth a check-in.",
@@ -371,7 +372,8 @@
       "percent": "{{value}}% of configured module units completed",
       "notAvailable": "Not included in sponsor-safe summary",
       "aggregateOnly": "Module-level detail is not included in the sponsor-safe summary.",
-      "notApplicable": "Not part of this programme's configuration"
+      "notApplicable": "Not part of this programme's configuration",
+      "final_assessment": "Final Assessment"
     },
     "attention": {
       "label": "Needs attention",
@@ -398,13 +400,12 @@
       "completed": "Completed",
       "startEnd": "Start — end",
       "currentWeek": "Current week",
-      "requiredUnits": "Units entitled",
-      "completedUnits": "Units completed",
       "dueUnits": "Units due so far",
       "overdueUnits": "Units overdue",
       "completion": "Programme completion",
       "satisfaction": "Average satisfaction",
-      "withheld": "Weekly engagement trend, private notes, reflections and coaching content remain withheld. The figures above are derived from sponsor-safe module snapshots and visible aggregate activity."
+      "withheld": "Weekly engagement trend, private notes, reflections and coaching content remain withheld. The figures above are derived from sponsor-safe module snapshots and visible aggregate activity.",
+      "requiredUnitsCount": "Programme units required"
     },
     "filters": {
       "all": "All leaders {{count}}",
@@ -448,7 +449,6 @@
     },
     "progress": {
       "completion": "Programme completion",
-      "completedRequired": "Completed required activities",
       "adherence": "Due-to-date adherence",
       "coverage": "Schedule coverage",
       "goal": "Goal progress"

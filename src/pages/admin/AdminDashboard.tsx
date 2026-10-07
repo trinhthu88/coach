@@ -3,14 +3,14 @@ import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { averageCanonicalCompletion, fetchAdminCanonicalProgress } from "@/lib/adminCanonicalProgress";
-import { format, startOfMonth, subMonths } from "date-fns";
+import { fetchAdminCompletionRate } from "@/lib/adminCanonicalProgress";
+import { alertText, type CurrentAlert } from "./alertText";
+import { format, parseISO, startOfMonth } from "date-fns";
 import { AdminPageHeader } from "./_shared";
 import { PageSkeleton } from "@/components/PageSkeleton";
 import { StatCard } from "@/components/ui/page-header";
 import { MiniBarChart, AttentionPanel } from "@/components/ui/proto";
 import { Users, UserCheck, Calendar, CheckCircle2 } from "lucide-react";
-import type { Tables } from "@/integrations/supabase/types";
 
 interface Bucket { label: string; value: number; }
 
@@ -21,21 +21,9 @@ interface DashboardProfileRow {
   created_at: string;
 }
 
-interface DashboardSessionRow {
-  id: string;
-  start_time: string;
-  status?: string;
-  meeting_url?: string | null;
-}
-
 interface DashboardCoachProfileRow {
   id: string;
   approval_status: string;
-}
-
-interface DashboardEnrollmentRow {
-  id: string;
-  status: string;
 }
 
 interface DashboardStats {
@@ -47,7 +35,8 @@ interface DashboardStats {
   newCoachApplications: number;
   newCoacheeApplications: number;
   sessionsThisMonth: number;
-  completionRate: number;
+  /** Programme units completed over required (admin_canonical_completion_rate); null = none required. */
+  completionRate: number | null;
 }
 
 interface AlertItem {
@@ -61,8 +50,19 @@ interface DashboardQueryData {
   stats: DashboardStats;
   monthly: Bucket[];
   pendingLinkSessions: number;
-  alertItems: AlertItem[];
+  /** The most severe current alerts (admin_alerts_current), worded at render time. */
+  alerts: CurrentAlert[];
 }
+
+/** admin_dashboard_summary(): held sessions over the reporting population (20261007001100). */
+interface DashboardSummary {
+  sessions_this_month: number;
+  practice_this_month: number;
+  pending_link_sessions: number;
+  monthly: { month: string; sessions: number; practice: number }[];
+}
+
+const SEVERITY_RANK: Record<string, number> = { critical: 0, warning: 1, info: 2 };
 
 const EMPTY_STATS: DashboardStats = {
   coachees: 0,
@@ -72,7 +72,7 @@ const EMPTY_STATS: DashboardStats = {
   newCoachApplications: 0,
   newCoacheeApplications: 0,
   sessionsThisMonth: 0,
-  completionRate: 0,
+  completionRate: null,
 };
 
 // Translated strings (sessions-needing-link / new-application banners) are
@@ -87,20 +87,19 @@ async function fetchAdminDashboardData(): Promise<DashboardQueryData> {
     { data: roles },
     { data: profiles },
     { data: cps },
-    { data: sessions },
-    { data: peerSessions },
-    { data: enrollments },
-    { data: alertRows },
+    summaryRes,
+    alertsRes,
     { count: newCoachApplications },
     { count: newCoacheeApplications },
   ] = await Promise.all([
     supabase.from("user_roles").select("user_id, role"),
     supabase.from("profiles").select("id, full_name, status, created_at"),
     supabase.from("coach_profiles").select("id, approval_status"),
-    supabase.from("sessions").select("id, coach_id, start_time, status, meeting_url"),
-    supabase.from("peer_sessions").select("id, start_time, status"),
-    supabase.from("programme_enrollments").select("id, status"),
-    supabase.from("admin_alerts").select("*").eq("resolved", false).order("created_at", { ascending: false }).limit(6),
+    // Session counts are the server's: held sessions over the reporting
+    // population, Peer in canonical units, practice apart (20261007001100).
+    supabase.rpc("admin_dashboard_summary"),
+    // What needs attention is what admin_alerts_current() says is true now.
+    supabase.rpc("admin_alerts_current"),
     supabase.from("access_requests").select("id", { count: "exact", head: true }).eq("status", "pending").eq("role", "coach"),
     supabase.from("access_requests").select("id", { count: "exact", head: true }).eq("status", "pending").eq("role", "executive"),
   ]);
@@ -109,19 +108,16 @@ async function fetchAdminDashboardData(): Promise<DashboardQueryData> {
   const coachIds = new Set((roles || []).filter((r) => r.role === "coach").map((r) => r.user_id));
   const profById = new Map((profiles || []).map((p: DashboardProfileRow) => [p.id, p]));
 
-  const sessionsThisMonth = (sessions || []).filter((s: DashboardSessionRow) => new Date(s.start_time) >= new Date(monthStart)).length
-    + (peerSessions || []).filter((s: DashboardSessionRow) => new Date(s.start_time) >= new Date(monthStart)).length;
+  if (summaryRes.error) throw summaryRes.error;
+  if (alertsRes.error) throw alertsRes.error;
+  const summary = summaryRes.data as unknown as DashboardSummary;
 
   const pending = Array.from(coachIds).filter((id) => (cps || []).find((c: DashboardCoachProfileRow) => c.id === id)?.approval_status === "pending_approval").length;
 
-  const pendingLinkSessions = (sessions || []).filter(
-    (s: DashboardSessionRow) =>
-      ["confirmed", "pending_coach_approval"].includes(s.status ?? "") && !s.meeting_url
-  ).length;
+  const pendingLinkSessions = summary.pending_link_sessions;
 
   // Completion comes from the canonical engine Learner and Sponsor use.
-  const progressRows = await fetchAdminCanonicalProgress((enrollments || []).map((e: DashboardEnrollmentRow) => e.id));
-  const avgProgress = averageCanonicalCompletion(progressRows);
+  const avgProgress = await fetchAdminCompletionRate();
 
   const stats: DashboardStats = {
     coachees: Array.from(coacheeIds).filter((id) => profById.get(id)?.status === "active").length,
@@ -133,35 +129,22 @@ async function fetchAdminDashboardData(): Promise<DashboardQueryData> {
     pendingApproval: pending,
     newCoachApplications: newCoachApplications || 0,
     newCoacheeApplications: newCoacheeApplications || 0,
-    sessionsThisMonth,
+    sessionsThisMonth: summary.sessions_this_month,
     completionRate: avgProgress,
   };
 
-  // Monthly bars — last 8 months
-  const monthly: Bucket[] = [];
-  for (let i = 7; i >= 0; i--) {
-    const from = startOfMonth(subMonths(new Date(), i));
-    const to = startOfMonth(subMonths(new Date(), i - 1));
-    const cnt =
-      (sessions || []).filter((s: DashboardSessionRow) => {
-        const d = new Date(s.start_time);
-        return d >= from && d < to;
-      }).length +
-      (peerSessions || []).filter((s: DashboardSessionRow) => {
-        const d = new Date(s.start_time);
-        return d >= from && d < to;
-      }).length;
-    monthly.push({ label: format(from, "MMM").toUpperCase(), value: cnt });
-  }
-
-  const alertItems: AlertItem[] = (alertRows || []).map((a: Tables<"admin_alerts">) => ({
-    id: a.id,
-    title: a.title,
-    note: a.message ?? undefined,
-    severity: (a.severity === "critical" ? "critical" : a.severity === "warning" ? "warning" : "info") as "critical" | "warning" | "info",
+  // Monthly bars — the last 8 months of held programme sessions.
+  const monthly: Bucket[] = summary.monthly.map((m) => ({
+    label: format(parseISO(m.month), "MMM").toUpperCase(),
+    value: m.sessions,
   }));
 
-  return { stats, monthly, pendingLinkSessions, alertItems };
+  const alerts = ((alertsRes.data ?? []) as CurrentAlert[])
+    .slice()
+    .sort((x, y) => (SEVERITY_RANK[x.severity] ?? 3) - (SEVERITY_RANK[y.severity] ?? 3))
+    .slice(0, 6);
+
+  return { stats, monthly, pendingLinkSessions, alerts };
 }
 
 export default function AdminDashboard() {
@@ -205,7 +188,11 @@ export default function AdminDashboard() {
         severity: "info",
       });
     }
-    return [...applicationItems, ...data.alertItems];
+    const alertItems: AlertItem[] = data.alerts.map((a) => {
+      const { title, message } = alertText(a, t);
+      return { id: a.alert_key, title, note: message || undefined, severity: a.severity };
+    });
+    return [...applicationItems, ...alertItems];
   }, [data, t]);
 
   if (isLoading) {
@@ -252,10 +239,10 @@ export default function AdminDashboard() {
         />
         <StatCard
           label={t("dashboard.statCompletionRate")}
-          value={`${Math.round(stats.completionRate)}%`}
+          value={stats.completionRate == null ? "—" : `${stats.completionRate}%`}
           icon={CheckCircle2}
-          tone={stats.completionRate >= 75 ? "success" : "warning"}
-          hint={<span className={stats.completionRate >= 75 ? "text-success" : "text-warning"}>{t("dashboard.targetSuffix")}</span>}
+          tone={(stats.completionRate ?? 0) >= 75 ? "success" : "warning"}
+          hint={<span className={(stats.completionRate ?? 0) >= 75 ? "text-success" : "text-warning"}>{t("dashboard.targetSuffix")}</span>}
         />
       </div>
 

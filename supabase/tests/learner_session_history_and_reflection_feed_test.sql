@@ -109,6 +109,10 @@ join public.programme_enrollments e on e.user_id = a.coachee_id
 where e.cohort_id is not null
 on conflict (cohort_id, coach_id) do nothing;
 
+-- Trusted historical fixture rows (the cohort has since ended, so the booking
+-- checks, which now ask enrollment_is_ongoing(), would refuse them): written
+-- as the lifecycle service.
+select set_config('app.session_transition', 'on', true);
 insert into public.sessions (id, coach_id, coachee_id, topic, start_time, duration_minutes, status, enrollment_id, coachee_notes, coach_notes, coachee_rating, coachee_rating_comment)
 values
   ('f7000000-0000-0000-0000-000000000001', 'a7000000-0000-0000-0000-000000000009', 'a7000000-0000-0000-0000-000000000001',
@@ -116,6 +120,7 @@ values
    'Coaching reflection: I interrupt when anxious.', 'COACH SHARED NOTE', 5, 'Rating comment: very useful.'),
   ('f7000000-0000-0000-0000-000000000002', 'a7000000-0000-0000-0000-000000000009', 'a7000000-0000-0000-0000-000000000001',
    'Coaching two', '2026-01-26T10:00:00Z', 60, 'completed', 'e7000000-0000-0000-0000-000000000001', null, null, 4, null);
+select set_config('app.session_transition', 'off', true);
 
 -- The learner's Coaching reflection is a session_learning_reflections row
 -- (20260921190000). sessions.coachee_notes is historical for Coaching: the
@@ -140,9 +145,12 @@ insert into public.peer_dyads (id, cohort_id, programme_id, created_by) values
 insert into public.peer_dyad_members (dyad_id, enrollment_id) values
   ('a8700000-0000-0000-0000-000000000013', 'e7000000-0000-0000-0000-000000000001'),
   ('a8700000-0000-0000-0000-000000000013', 'e7000000-0000-0000-0000-000000000003');
+-- Trusted historical fixture row (its enrollment is no longer ongoing).
+select set_config('app.session_transition', 'on', true);
 insert into public.coachee_peer_sessions (id, peer_provider_id, peer_receiver_id, topic, start_time, duration_minutes, status, enrollment_id, receiver_notes, provider_notes, provider_private_notes)
 values
   ('f7000000-0000-0000-0000-000000000013', 'a7000000-0000-0000-0000-000000000003', 'a7000000-0000-0000-0000-000000000001', 'Peer received 3', '2026-03-16T10:00:00Z', 60, 'completed', 'e7000000-0000-0000-0000-000000000001', null, null, null);
+select set_config('app.session_transition', 'off', true);
 update public.peer_dyads set status = 'closed' where id = 'a8700000-0000-0000-0000-000000000013';
 
 insert into public.peer_dyads (id, cohort_id, programme_id, created_by) values
@@ -150,23 +158,38 @@ insert into public.peer_dyads (id, cohort_id, programme_id, created_by) values
 insert into public.peer_dyad_members (dyad_id, enrollment_id) values
   ('a8700000-0000-0000-0000-000000000012', 'e7000000-0000-0000-0000-000000000001'),
   ('a8700000-0000-0000-0000-000000000012', 'e7000000-0000-0000-0000-000000000002');
+-- Trusted historical fixture row (its enrollment is no longer ongoing).
+select set_config('app.session_transition', 'on', true);
 insert into public.coachee_peer_sessions (id, peer_provider_id, peer_receiver_id, topic, start_time, duration_minutes, status, enrollment_id, receiver_notes, provider_notes, provider_private_notes)
 values
   ('f7000000-0000-0000-0000-000000000011', 'a7000000-0000-0000-0000-000000000002', 'a7000000-0000-0000-0000-000000000001', 'Peer received 1', '2026-02-02T10:00:00Z', 60, 'completed', 'e7000000-0000-0000-0000-000000000001', 'Peer reflection: open questions helped.', 'PROVIDER SHARED NOTE', 'PROVIDER PRIVATE NOTE'),
   ('f7000000-0000-0000-0000-000000000012', 'a7000000-0000-0000-0000-000000000002', 'a7000000-0000-0000-0000-000000000001', 'Peer received 2', '2026-03-02T10:00:00Z', 60, 'completed', 'e7000000-0000-0000-0000-000000000001', null, null, null);
+select set_config('app.session_transition', 'off', true);
 select set_config('request.jwt.claim.sub', 'a7000000-0000-0000-0000-000000000002', true);
+-- History, written as it stood: A2's two Peer requirements are already held by
+-- the sessions A2 gave above, so the booking rule (a free requirement,
+-- 20261006120000) would refuse these today. This suite is about the history
+-- feed, not booking, so the booking check is paused for these two rows.
+alter table public.coachee_peer_sessions disable trigger coachee_peer_sessions_validate_cap;
+-- Trusted historical fixture row (its enrollment is no longer ongoing).
+select set_config('app.session_transition', 'on', true);
 insert into public.coachee_peer_sessions (id, peer_provider_id, peer_receiver_id, topic, start_time, duration_minutes, status, enrollment_id, receiver_notes, provider_notes, provider_private_notes)
 values
   ('f7000000-0000-0000-0000-000000000014', 'a7000000-0000-0000-0000-000000000001', 'a7000000-0000-0000-0000-000000000002', 'Peer given 1', '2026-02-09T10:00:00Z', 60, 'completed', 'e7000000-0000-0000-0000-000000000002', null, null, null),
   ('f7000000-0000-0000-0000-000000000015', 'a7000000-0000-0000-0000-000000000001', 'a7000000-0000-0000-0000-000000000002', 'Peer given 2', '2099-04-05T10:00:00Z', 60, 'confirmed', 'e7000000-0000-0000-0000-000000000002', null, null, null);
+select set_config('app.session_transition', 'off', true);
+alter table public.coachee_peer_sessions enable trigger coachee_peer_sessions_validate_cap;
 
 select set_config('request.jwt.claim.sub', 'a7000000-0000-0000-0000-000000000001', true);
 
 -- Mentoring: 1 completed.
+-- Trusted historical fixture row (its enrollment is no longer ongoing).
+select set_config('app.session_transition', 'on', true);
 insert into public.mentoring_sessions (id, enrollment_id, mentor_id, mentee_id, topic, start_time, duration_minutes, status, prep_file_path, mentee_notes, mentor_notes)
 values ('f7000000-0000-0000-0000-000000000021', 'e7000000-0000-0000-0000-000000000001', 'a7000000-0000-0000-0000-000000000008',
   'a7000000-0000-0000-0000-000000000001', 'Mentoring one', '2026-01-19T10:00:00Z', 60, 'completed', 'prep/file.pdf',
   'Mentoring reflection: map stakeholders earlier.', 'MENTOR NOTE');
+select set_config('app.session_transition', 'off', true);
 
 -- Peer progress is requirement-attributed (20260921210000), so the cohort must
 -- schedule as many Peer requirements as the programme requires. Both rows are
@@ -189,15 +212,15 @@ insert into public.cohort_requirement_dates
   ('d7000000-0000-0000-0000-000000000001', 'c7000000-0000-0000-0000-000000000001',
    'peer_coaching', 2, date '2026-02-20', true, 'manual', 'admin_save');
 
--- Re-attribute the Peer participations now that both requirements exist.
+-- Re-attribute this fixture's Peer participations now that both requirements
+-- exist. Only dyad sessions hold a requirement (20261005140000).
 with ordered as (
   select p.id, p.enrollment_id,
     row_number() over (partition by p.enrollment_id
-      order by coalesce(ps.start_time, cps.start_time), p.peer_session_id) as rn
+      order by cps.start_time, p.peer_session_id) as rn
   from public.peer_session_participants p
-  left join public.peer_sessions ps on p.session_kind = 'peer' and ps.id = p.peer_session_id
-  left join public.coachee_peer_sessions cps on p.session_kind = 'coachee_peer' and cps.id = p.peer_session_id
-  where p.enrollment_id is not null and p.cohort_requirement_id is null
+  join public.coachee_peer_sessions cps on p.session_kind = 'coachee_peer' and cps.id = p.peer_session_id
+  where p.enrollment_id::text like 'e7000000-%' and p.cohort_requirement_id is null
 ), reqs as (
   select e.id as enrollment_id, d.id as requirement_id,
     row_number() over (partition by e.id order by d.ordinal) as rn

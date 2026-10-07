@@ -44,44 +44,44 @@ insert into public.programmes (id, name) values
 insert into public.cohorts (id, name, programme_id) values
   ('b9a10000-0000-0000-0000-00000000b0b0'::uuid, 'GC', 'b9a10000-0000-0000-0000-00000000a0a0'::uuid);
 insert into public.cohorts (id, name, programme_id, start_date) values
-  ('b9a10000-0000-0000-0000-00000000b0b1'::uuid, 'GD', 'b9a10000-0000-0000-0000-00000000a0a1'::uuid, current_date - 30);
+  ('b9a10000-0000-0000-0000-00000000b0b1'::uuid, 'GD', 'b9a10000-0000-0000-0000-00000000a0a1'::uuid, public.programme_today() - 30);
 insert into public.programme_modules (programme_id, module, enabled, config) values
   ('b9a10000-0000-0000-0000-00000000a0a0'::uuid, 'coaching', true, '{"required": true, "required_units": 2}'::jsonb),
   ('b9a10000-0000-0000-0000-00000000a0a0'::uuid, 'triads', true, '{"required": true, "required_units": 1}'::jsonb);
 
 insert into public.programme_enrollments (id, programme_id, user_id, cohort_id, status, start_date) values
   ('b9a10000-0000-0000-0000-0000000000e1'::uuid, 'b9a10000-0000-0000-0000-00000000a0a0'::uuid,
-   'b9a10000-0000-0000-0000-000000000003'::uuid, 'b9a10000-0000-0000-0000-00000000b0b0'::uuid, 'active', current_date - 6),
+   'b9a10000-0000-0000-0000-000000000003'::uuid, 'b9a10000-0000-0000-0000-00000000b0b0'::uuid, 'active', public.programme_today() - 6),
   ('b9a10000-0000-0000-0000-0000000000e2'::uuid, 'b9a10000-0000-0000-0000-00000000a0a0'::uuid,
-   'b9a10000-0000-0000-0000-000000000004'::uuid, 'b9a10000-0000-0000-0000-00000000b0b0'::uuid, 'active', current_date - 7),
+   'b9a10000-0000-0000-0000-000000000004'::uuid, 'b9a10000-0000-0000-0000-00000000b0b0'::uuid, 'active', public.programme_today() - 7),
   ('b9a10000-0000-0000-0000-0000000000e3'::uuid, 'b9a10000-0000-0000-0000-00000000a0a0'::uuid,
-   'b9a10000-0000-0000-0000-000000000005'::uuid, 'b9a10000-0000-0000-0000-00000000b0b0'::uuid, 'active', current_date - 7),
+   'b9a10000-0000-0000-0000-000000000005'::uuid, 'b9a10000-0000-0000-0000-00000000b0b0'::uuid, 'active', public.programme_today() - 7),
   ('b9a10000-0000-0000-0000-0000000000e4'::uuid, 'b9a10000-0000-0000-0000-00000000a0a0'::uuid,
-   'b9a10000-0000-0000-0000-000000000006'::uuid, 'b9a10000-0000-0000-0000-00000000b0b0'::uuid, 'active', current_date - 30),
+   'b9a10000-0000-0000-0000-000000000006'::uuid, 'b9a10000-0000-0000-0000-00000000b0b0'::uuid, 'active', public.programme_today() - 30),
   ('b9a10000-0000-0000-0000-0000000000e5'::uuid, 'b9a10000-0000-0000-0000-00000000a0a1'::uuid,
-   'b9a10000-0000-0000-0000-000000000007'::uuid, 'b9a10000-0000-0000-0000-00000000b0b1'::uuid, 'active', current_date);
+   'b9a10000-0000-0000-0000-000000000007'::uuid, 'b9a10000-0000-0000-0000-00000000b0b1'::uuid, 'active', public.programme_today());
 
 insert into public.cohort_requirement_dates
   (id, cohort_id, programme_id, module, ordinal, due_on, generation_method, materialized_via) values
   ('b9a10000-0000-0000-0000-00000000d1d1'::uuid, 'b9a10000-0000-0000-0000-00000000b0b0'::uuid,
-   'b9a10000-0000-0000-0000-00000000a0a0'::uuid, 'coaching', 1, current_date + 30, 'manual', 'admin_save'),
+   'b9a10000-0000-0000-0000-00000000a0a0'::uuid, 'coaching', 1, public.programme_today() + 30, 'manual', 'admin_save'),
   ('b9a10000-0000-0000-0000-00000000d2d2'::uuid, 'b9a10000-0000-0000-0000-00000000b0b0'::uuid,
-   'b9a10000-0000-0000-0000-00000000a0a0'::uuid, 'coaching', 2, current_date + 60, 'manual', 'admin_save'),
+   'b9a10000-0000-0000-0000-00000000a0a0'::uuid, 'coaching', 2, public.programme_today() + 60, 'manual', 'admin_save'),
   ('b9a10000-0000-0000-0000-00000000d3d3'::uuid, 'b9a10000-0000-0000-0000-00000000b0b0'::uuid,
-   'b9a10000-0000-0000-0000-00000000a0a0'::uuid, 'triads', 1, current_date + 60, 'manual', 'admin_save');
+   'b9a10000-0000-0000-0000-00000000a0a0'::uuid, 'triads', 1, public.programme_today() + 60, 'manual', 'admin_save');
 
 insert into public.cohort_coach_assignments (cohort_id, coach_id)
   values ('b9a10000-0000-0000-0000-00000000b0b0'::uuid, 'b9a10000-0000-0000-0000-000000000001'::uuid);
 
 insert into public.coach_availability (id, coach_id, slot_date, start_time, end_time, slot_type) values
   ('b9a10000-0000-0000-0000-00000000f1f1'::uuid, 'b9a10000-0000-0000-0000-000000000001'::uuid,
-   current_date + 7, '09:00', '10:00', 'coaching'),
+   public.programme_today() + 7, '09:00', '10:00', 'coaching'),
   ('b9a10000-0000-0000-0000-00000000f2f2'::uuid, 'b9a10000-0000-0000-0000-000000000001'::uuid,
-   current_date + 8, '09:00', '10:00', 'coaching'),
+   public.programme_today() + 8, '09:00', '10:00', 'coaching'),
   ('b9a10000-0000-0000-0000-00000000f3f3'::uuid, 'b9a10000-0000-0000-0000-000000000001'::uuid,
-   current_date + 9, '09:00', '10:00', 'coaching'),
+   public.programme_today() + 9, '09:00', '10:00', 'coaching'),
   ('b9a10000-0000-0000-0000-00000000f4f4'::uuid, 'b9a10000-0000-0000-0000-000000000001'::uuid,
-   current_date + 10, '09:00', '10:00', 'coaching');
+   public.programme_today() + 10, '09:00', '10:00', 'coaching');
 
 -- A Triad group of L3 and L1 (both without a goal, so both blocked), with an open session.
 insert into public.triad_groups (id, cohort_requirement_date_id)
@@ -104,7 +104,7 @@ select is((public.enrollment_goal_gate('b9a10000-0000-0000-0000-0000000000e1'::u
 select ok(public.enrollment_goal_gate('b9a10000-0000-0000-0000-0000000000e1'::uuid) ?| array['in_grace_period', 'grace_ends_on', 'blocked_from'] = false,
   'the gate no longer carries grace-period fields');
 select is((public.enrollment_goal_gate('b9a10000-0000-0000-0000-0000000000e1'::uuid)->>'goal_setup_deadline')::date,
-  current_date + 1, 'goal_setup_deadline is cohort start + 7 days');
+  public.programme_today() + 1, 'goal_setup_deadline is cohort start + 7 days');
 select is((public.enrollment_goal_gate('b9a10000-0000-0000-0000-0000000000e1'::uuid)->>'goal_setup_overdue')::boolean,
   false, 'before the goal setup deadline the setup is not overdue (alert only)');
 
@@ -123,7 +123,7 @@ select is((public.enrollment_goal_gate('b9a10000-0000-0000-0000-0000000000e2'::u
 select set_config('request.jwt.claims',
   json_build_object('sub', 'b9a10000-0000-0000-0000-000000000007')::text, true);
 select is((public.enrollment_goal_gate('b9a10000-0000-0000-0000-0000000000e5'::uuid)->>'gate_starts_on')::date,
-  current_date - 30, 'day 1 is the cohort start_date when the cohort has one');
+  public.programme_today() - 30, 'day 1 is the cohort start_date when the cohort has one');
 select is((public.enrollment_goal_gate('b9a10000-0000-0000-0000-0000000000e5'::uuid)->>'blocked')::boolean,
   true, 'a learner enrolled today into an old cohort with no goal is blocked');
 select is((public.enrollment_goal_gate('b9a10000-0000-0000-0000-0000000000e5'::uuid)->>'goal_setup_overdue')::boolean,
@@ -165,7 +165,7 @@ select throws_ok($$
   values ('b9a10000-0000-0000-0000-0000000000e3'::uuid, 'b9a10000-0000-0000-0000-00000000d1d1'::uuid,
           'b9a10000-0000-0000-0000-000000000001'::uuid, 'b9a10000-0000-0000-0000-000000000005'::uuid,
           'b9a10000-0000-0000-0000-00000000f4f4'::uuid, 'Direct',
-          (current_date + 10 + time '09:00') at time zone 'UTC', 60, 'pending_coach_approval')
+          (public.programme_today() + 10 + time '09:00') at time zone 'UTC', 60, 'pending_coach_approval')
 $$, 'P0001', 'Create at least one goal first', 'Coaching: a learner''s direct INSERT hits the same gate');
 
 select throws_ok($$

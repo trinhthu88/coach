@@ -34,8 +34,11 @@ export function LearnerProgrammeJourney({
     <ProgrammeJourney
       id={id}
       journey={journey}
-      start={progress?.programme_start_date ?? null}
-      end={progress?.programme_end_date ?? null}
+      // The learner's OWN enrollment dates and effective status
+      // (learner_canonical_progress), not the cohort's programme dates.
+      start={progress?.enrollment_start_date ?? progress?.programme_start_date ?? null}
+      end={progress?.enrollment_end_date ?? progress?.programme_end_date ?? null}
+      effectiveStatus={progress?.effective_enrollment_status ?? null}
       viewer="learner"
       variant={variant}
       loading={loading}

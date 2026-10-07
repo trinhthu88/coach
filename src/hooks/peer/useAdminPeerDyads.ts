@@ -54,7 +54,7 @@ export function useAdminPeerDyads(cohortId: string | undefined) {
         ? await client.from("profiles").select("id, full_name").in("id", userIds)
         : { data: [], error: null };
       if (profileError) throw profileError;
-      const names = new Map((profiles ?? []).map((profile: { id: string; full_name: string | null }) => [profile.id, profile.full_name ?? "Unnamed learner"]));
+      const names = new Map<string, string>((profiles ?? []).map((profile: { id: string; full_name: string | null }) => [profile.id, profile.full_name ?? "Unnamed learner"]));
       const enrollments = rows.map((row) => ({
         id: row.id,
         userId: row.user_id,

@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { TriadGroupEntry, TriadSessionView, TriadStatusView } from "@/hooks/triads/useMyTriads";
@@ -6,10 +6,17 @@ import type { TriadGroupEntry, TriadSessionView, TriadStatusView } from "@/hooks
 const myTriads = vi.fn();
 const myTriadStatus = vi.fn();
 const enrollmentSessions = vi.fn();
+const assessmentFeedback = vi.fn();
+const markViewed = vi.fn();
 
 vi.mock("@/context/AuthContext", () => ({ useAuth: () => ({ user: { id: "learner-1" } }) }));
 vi.mock("@/hooks/useEnrollmentContext", () => ({
   useEnrollmentContext: () => ({ selectedEnrollment: { id: "enrollment-1" }, loading: false }),
+}));
+vi.mock("@/hooks/assessments/useLearnerAssessmentFeedback", () => ({
+  // Released assessor feedback (learner_assessment_feedback only).
+  useLearnerAssessmentFeedback: (enrollmentId: string | null) => assessmentFeedback(enrollmentId),
+  useMarkFeedbackViewed: () => ({ mutate: markViewed, isIdle: true }),
 }));
 vi.mock("@/hooks/triads/useMyTriads", () => ({
   // The one learner Triad read model (learner_triad_overview + canonical members)
@@ -156,6 +163,8 @@ beforeEach(() => {
   myTriads.mockReturnValue({ groups: [TRIAD_1_GROUP, TRIAD_2_GROUP], loading: false, error: false, refetch: vi.fn() });
   myTriadStatus.mockReturnValue({ status: status(), loading: false, error: false });
   enrollmentSessions.mockReturnValue({ sessions: HISTORY, loading: false, error: null });
+  assessmentFeedback.mockReturnValue({ feedback: [], loading: false, error: false });
+  markViewed.mockReset();
 });
 
 describe("TriadsPage", () => {
@@ -298,5 +307,36 @@ describe("TriadsPage", () => {
     const history = screen.getByTestId("triad-history");
     expect(history).toHaveTextContent("Your triad sessions could not be loaded.");
     expect(history).not.toHaveTextContent("No triad sessions yet.");
+  });
+
+  it("shows released assessor feedback in its own Triad's section, without changing that Triad's state", () => {
+    assessmentFeedback.mockReturnValue({
+      feedback: [
+        {
+          submissionId: "sub-2", kind: "triad", requirementId: "req-2", requirementOrdinal: 2, attemptNo: 1,
+          submittedAt: "2026-04-21T09:00:00Z", releasedAt: "2026-04-28T09:00:00Z", viewedAt: null,
+          assessorName: "Coach Anh", feedbackText: "A clear contracting question.", outcome: null, files: [],
+          quizCorrect: null, quizTotal: null, quizScorePct: null,
+        },
+      ],
+      loading: false,
+      error: false,
+    });
+    renderPage();
+    expect(assessmentFeedback).toHaveBeenCalledWith("enrollment-1");
+    expect(within(section(1)).queryByTestId("assessment-feedback-card")).toBeNull();
+    const card = within(section(2)).getByTestId("assessment-feedback-card");
+    expect(card).toHaveTextContent("Feedback on Triad 2");
+    expect(card).toHaveTextContent("Coach Anh");
+    // Rendering is not viewing: nothing is recorded until the learner opens it.
+    expect(card).not.toHaveTextContent("A clear contracting question.");
+    expect(markViewed).not.toHaveBeenCalled();
+    fireEvent.click(within(card).getByRole("button", { name: "Open feedback" }));
+    expect(card).toHaveTextContent("A clear contracting question.");
+    // Evidence only: Triad 2 is still the assigned, not completed, requirement.
+    expect(section(2)).toHaveAttribute("data-state", "assigned");
+    expect(screen.getByTestId("triad-progress-pill")).toHaveTextContent("1/2 completed");
+    // Opening it records the first view.
+    expect(markViewed).toHaveBeenCalledWith("sub-2");
   });
 });

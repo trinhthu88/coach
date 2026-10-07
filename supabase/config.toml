@@ -15,8 +15,6 @@ project_id = "ygufjhhpguauwwmfvczy"
     verify_jwt = true
   [functions.auth-email-hook]
     verify_jwt = false
-  [functions.coach-invite-coachee]
-    verify_jwt = true
   [functions.admin-provision-user]
     verify_jwt = true
   [functions.send-daily-prompt]
@@ -31,3 +29,7 @@ project_id = "ygufjhhpguauwwmfvczy"
     verify_jwt = true
   [functions.triad-reminders]
     verify_jwt = false
+  [functions.send-assessment-feedback-email]
+    verify_jwt = false
+  [functions.transcribe-assessment-recording]
+    verify_jwt = true

@@ -39,7 +39,6 @@ export interface Row {
   enrollment_status?: string | null;
   /** canonicalCompletionPct of the selected enrollment; null when canonical progress is unavailable. */
   completion_pct: number | null;
-  selected_coaches: { id: string; name: string }[];
   access_request_id: string | null;
   spoken_languages: string[];
 }
@@ -56,7 +55,6 @@ export async function exportCoacheesXlsx(rows: Row[], t: TFunction<"admin">): Pr
     [t("coachees.export.programme")]: c.programme_name || "",
     [t("coachees.export.cohort")]: c.cohort_name || "",
     [t("coachees.export.organisation")]: c.organization_name || "",
-    [t("coachees.export.selectedCoaches")]: c.selected_coaches.map((s) => s.name).join("; "),
   }));
   const ws = XLSX.utils.json_to_sheet(data);
   const wb = XLSX.utils.book_new();

@@ -26,10 +26,7 @@
       "sessionsLabel": "Session",
       "basedIn": "{{nationality}} (Sống tại {{country}})",
       "verifiedExpert": "Chuyên gia đã xác minh",
-      "usagePrefix": "Bạn đã sử dụng",
-      "usageOfYour": "trong tổng số",
-      "usageSuffix": "session của bạn trong tháng này.",
-      "unlimited": "không giới hạn"
+      "requirementProgress": "Đã đặt lịch hoặc hoàn thành {{done}}/{{required}} session coaching bắt buộc của bạn."
     },
     "modeWord": {
       "peer": "peer coaching",
@@ -40,15 +37,10 @@
       "coaching": "Đặt session của bạn"
     },
     "subtitle": {
-      "peer": "Bạn đang đặt một session đồng cấp — để được coaching bởi một coach khác.",
+      "peer": "Bạn đang đặt lịch thực hành peer coaching với một coach khác. Buổi thực hành không được tính vào yêu cầu peer coaching của chương trình.",
       "coaching": "Chọn thời lượng và thời gian ưa thích của bạn để bắt đầu."
     },
     "peerBadge": "Đồng cấp",
-    "freePlanNotice": {
-      "prefix": "Bạn đã sử dụng hết {{limit}} session {{modeWord}} miễn phí của mình. Các gói trả phí với nhiều session hơn sắp ra mắt — liên hệ",
-      "suffix": "nếu bạn muốn thảo luận về các lựa chọn."
-    },
-    "limitReached": "Đã đạt giới hạn session ({{used}}/{{limit}} đã hoàn thành). Bạn không thể đặt thêm session.",
     "ineligible": "Bạn hiện không đủ điều kiện để đặt lịch với coach này. Quyền truy cập của bạn có thể đã thay đổi — vui lòng liên hệ quản trị viên nếu điều này có vẻ không đúng.",
     "steps": {
       "duration": "Chọn thời lượng",
@@ -151,11 +143,21 @@
     },
     "triadSession": "Triad {{n}}",
     "coachingRequirement": "Coaching {{n}}",
+    "peerPracticeNoCredit": "Thực hành · không tính vào yêu cầu peer coaching",
     "requirementDue": "Hạn {{date}}",
     "pastProgrammes": {
       "show_one": "Hiện {{count}} buổi từ chương trình trước",
       "show_other": "Hiện {{count}} buổi từ chương trình trước",
       "hide": "Chỉ chương trình hiện tại"
+    },
+    "peerRequirement": "Peer {{n}}",
+    "mentoringRequirement": "Mentoring {{n}}",
+    "nextSessions": "Tiếp theo:",
+    "moduleNames": {
+      "coaching": "Coaching",
+      "mentoring": "Mentoring",
+      "peer_coaching": "Peer",
+      "triads": "Triad"
     }
   },
   "detail": {

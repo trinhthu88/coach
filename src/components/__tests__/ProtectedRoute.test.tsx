@@ -9,6 +9,8 @@ import "@/i18n/config";
 // tests below — the shape useProgrammeModules() (and useModuleAccess, which
 // now delegates to it) expects back from that RPC.
 let mockModuleAccess: { module: string; enabled: boolean; config: Record<string, unknown> }[] = [];
+// is_active_cohort_mentor(): a Coach in an active cohort Mentor pool.
+let mockIsCohortMentor = false;
 
 // Mock the supabase client so nothing hits the network.
 vi.mock("@/integrations/supabase/client", () => ({
@@ -23,7 +25,10 @@ vi.mock("@/integrations/supabase/client", () => ({
         eq: () => ({ maybeSingle: async () => ({ data: null }) }),
       }),
     }),
-    rpc: async () => ({ data: mockModuleAccess, error: null }),
+    rpc: async (name: string) =>
+      name === "is_active_cohort_mentor"
+        ? { data: mockIsCohortMentor, error: null }
+        : { data: mockModuleAccess, error: null },
   },
 }));
 
@@ -263,6 +268,24 @@ describe("ProtectedRoute", () => {
     mockAuth.mockReturnValue({ user: { id: "u1" }, role: "coachee", profile: baseProfile, isLoading: false });
     renderAt("/private", undefined, { module: "mentoring" });
     await waitFor(() => expect(screen.getByText("protected content")).toBeInTheDocument());
+  });
+
+  // Prompt 9d: Mentoring opens to a Coach in a cohort's Mentor pool, enrolled or not.
+  it("lets a Coach who is an active cohort Mentor into mentoring without a programme module", async () => {
+    mockModuleAccess = [];
+    mockIsCohortMentor = true;
+    mockAuth.mockReturnValue({ user: { id: "u1" }, role: "coach", profile: baseProfile, isLoading: false });
+    renderAt("/private", undefined, { module: "mentoring" });
+    await waitFor(() => expect(screen.getByText("protected content")).toBeInTheDocument());
+    mockIsCohortMentor = false;
+  });
+
+  it("keeps a Coach who is not a cohort Mentor out of mentoring", async () => {
+    mockModuleAccess = [];
+    mockIsCohortMentor = false;
+    mockAuth.mockReturnValue({ user: { id: "u1" }, role: "coach", profile: baseProfile, isLoading: false });
+    renderAt("/private", undefined, { module: "mentoring" });
+    await waitFor(() => expect(screen.getByText("dashboard page")).toBeInTheDocument());
   });
 
   it("lets admins through a disabled module gate", async () => {

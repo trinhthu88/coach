@@ -17,6 +17,7 @@ import { ProgrammeExperienceRating } from "@/components/programme/ProgrammeEngag
 import { LearnerProgrammeJourney } from "@/components/programme/LearnerProgrammeJourney";
 import { LearnerGoalsActions } from "./LearnerGoalsActions";
 import { LearnerFeedbackDevelopment } from "./LearnerFeedbackDevelopment";
+import { useLearnerAssessmentFeedback } from "@/hooks/assessments/useLearnerAssessmentFeedback";
 import { LearnerAttention } from "./LearnerAttention";
 import { LearnerSessionActions } from "./LearnerSessionActions";
 
@@ -26,6 +27,7 @@ const MODULE_PATH: Record<ProgrammeModuleKey, string> = {
   peer: "/coachee/peer-practice",
   mentoring: "/mentoring",
   triads: "/triads",
+  final_assessment: "/final-assessment",
 };
 
 /**
@@ -53,6 +55,7 @@ export function CoacheeDashboard() {
   const engagement = useLearnerCanonicalEngagement(enrollmentId);
   const actions = useEnrollmentActionsSummary(enrollmentId);
   const overdueItems = useLearnerOverdueItems(enrollmentId);
+  const assessmentFeedback = useLearnerAssessmentFeedback(enrollmentId);
   const { progress, journey, experience } = canonical;
 
   const displayName = progress?.learner_display_name || profile?.full_name || "";
@@ -170,6 +173,7 @@ export function CoacheeDashboard() {
         journey={journey}
         overdueActions={actions.overdue}
         nextSessionAt={experience.coachingUtilisation?.next_session_at ?? null}
+        newFeedback={assessmentFeedback.feedback.filter((f) => !f.viewedAt)}
         loading={actions.loading || overdueItems.loading}
         error={actions.error ?? overdueItems.error}
       />

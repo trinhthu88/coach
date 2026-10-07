@@ -95,6 +95,7 @@
       "titleEmphasis": "coaching",
       "subtitle": "Các coach đã tham gia peer coaching. Đặt session để được coaching bởi một coach đồng cấp."
     },
+    "practiceNotice": "Các session đặt tại đây là buổi thực hành. Chúng không được tính vào yêu cầu peer coaching của chương trình — yêu cầu này chỉ được hoàn thành qua các session với bạn peer coaching do quản trị viên chỉ định.",
     "empty": "Hiện chưa có coach đồng cấp nào khả dụng. Vui lòng quay lại sau.",
     "defaultTitle": "Coach đồng cấp",
     "view": "Xem",

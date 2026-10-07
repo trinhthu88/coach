@@ -96,6 +96,10 @@ on conflict (cohort_id, coach_id) do nothing;
 -- lookup would silently match nothing. Coaching 1 is due on the module
 -- deadline (the cohort end, 5 Jul) and becomes available 14 days earlier
 -- (20260930100000), so the session is held inside that window.
+-- Trusted fixture rows are written as the lifecycle service: since
+-- 20261005130000 can_book_session asks for a free requirement, the cohort
+-- pool and an active goal, none of which a held historical row is about.
+select set_config('app.session_transition', 'on', true);
 insert into public.sessions (
   coach_id, coachee_id, topic, start_time, duration_minutes, status,
   enrollment_id, cohort_requirement_id)
@@ -108,6 +112,7 @@ from public.cohort_requirement_dates d
 where d.cohort_id = 'd9000000-0000-0000-0000-000000000001'::uuid
   and d.module = 'coaching'::public.programme_module_type
   and d.ordinal = 1;
+select set_config('app.session_transition', 'off', true);
 
 set local role authenticated;
 

@@ -133,7 +133,43 @@
     "goalSettingOpensLabel": "Goal setting opens",
     "goalSettingDueLabel": "Goals due by",
     "goalSettingHint": "Each learner sets 1–3 goals in this period. Empty = cohort start to start + 7 days. A reminder date only: it never counts as a programme requirement.",
-    "deleteBlockedEnrollments": "This cohort has enrolled leaders and cannot be deleted. Move or end their enrollments first."
+    "deleteBlockedEnrollments": "This cohort has enrolled leaders and cannot be deleted. Move or end their enrollments first.",
+    "kind": {
+      "all": "All",
+      "group": "Group",
+      "engagement": "1:1",
+      "engagementBadge": "1:1"
+    },
+    "engagement": {
+      "newEngagement": "New coaching engagement",
+      "title": "New coaching engagement",
+      "description": "A 1:1 engagement: its own cohort, this coach as the only Coach, Coaching sessions due evenly from start to end.",
+      "learner": "Learner",
+      "coach": "Coach",
+      "programme": "Programme (Coaching only)",
+      "noProgramme": "No active programme has Coaching as its only module.",
+      "organisation": "Organisation",
+      "noOrganisation": "No organisation",
+      "start": "Start",
+      "end": "End",
+      "datesHint": "Coaching requirement dates are spread evenly between these dates.",
+      "choose": "Choose…",
+      "create": "Create engagement",
+      "created": "Coaching engagement created"
+    },
+    "assessors": {
+      "title": "Assessor pool",
+      "intro": "Choose which Coaches may review this cohort's Triad submissions and Final Assessments. Independent of Coaching and Mentoring.",
+      "assignedCount": "{{count}} in pool",
+      "noCoaches": "No Coaches are available to add as assessors. Add a Coach in Admin → Coaches first.",
+      "loadError": "The Coach list could not be loaded.",
+      "noneAssignedWarning": "No Coach is in this cohort's assessor pool, so no submission here can be assigned.",
+      "inactiveAssignedWarning": "{{count}} Coach account(s) in the pool are inactive and cannot review.",
+      "accountInactive": "account inactive",
+      "assigned": "Coach added to the assessor pool.",
+      "unassigned": "Coach removed from the assessor pool.",
+      "toggleLabel": "Add {{name}} to this cohort's assessor pool"
+    }
   },
   "dashboard": {
     "eyebrow": "Organisation",
@@ -166,7 +202,6 @@
     "scopeCoachRoster": "Coach roster",
     "scopeCoachee": "Coachee",
     "scopeAllProgrammes": "All programmes",
-    "scanComplete": "Scan complete · {{count}} active alerts",
     "alertResolved": "Alert resolved",
     "eyebrow": "Organisation",
     "title": "Alerts",
@@ -176,18 +211,70 @@
     "filterWarning": "Warning",
     "filterInfo": "Info",
     "statOpen": "Open",
-    "statOpenHint": "of {{total}} raised",
     "statCritical": "Critical",
     "statCriticalHint": "cohort revenue at risk",
     "statWarning": "Warning",
     "statWarningHint": "service standards slipping",
-    "statResolvedToday": "Resolved today",
-    "statResolvedTodayHint": "by you",
-    "runScan": "Run scan",
-    "allClear": "All clear. Run a scan to refresh.",
     "nothingHere": "Nothing here right now.",
     "resolve": "Resolve",
-    "resolvedCount": "Resolved ({{count}})"
+    "resolvedCount": "Resolved ({{count}})",
+    "someone": "A learner",
+    "aCoach": "A coach",
+    "statOpenLiveHint": "true right now",
+    "statInfo": "Info",
+    "statInfoHint": "reminders, nothing blocked",
+    "refresh": "Refresh",
+    "allClearLive": "All clear right now.",
+    "severity": {
+      "critical": "Critical",
+      "warning": "Warning",
+      "info": "Info"
+    },
+    "types": {
+      "programme_at_risk": {
+        "title": "{{name}} — programme at risk",
+        "message": "The programme has ended incomplete ({{pct}} complete){{contact}} · review needed."
+      },
+      "needs_attention": {
+        "title": "{{name}} — needs attention",
+        "message": "{{count}} required activities are past their due date{{contact}}.",
+        "messageBehind": "Behind the programme's pace{{contact}}."
+      },
+      "overdue_actions": {
+        "title": "{{name}} — {{count}} overdue actions",
+        "message": "{{count}} action items are past their due date{{contact}}."
+      },
+      "reflection_outstanding": {
+        "title": "{{name}} — reflection not written yet",
+        "message": "{{count}} completed sessions have no reflection yet (latest {{date}}){{contact}}. The sessions already count; this is a reminder only."
+      },
+      "mentor_feedback_outstanding": {
+        "title": "{{name}} — mentor feedback not in yet",
+        "message": "The mentor hasn't added feedback for {{count}} completed mentoring sessions{{contact}}. The sessions already count; this is a reminder only."
+      },
+      "prep_file_outstanding": {
+        "title": "{{name}} — no preparation file",
+        "message": "{{count}} mentoring sessions have started without a preparation file{{contact}}. It is optional and does not affect completion."
+      },
+      "stale_programme_participant": {
+        "title": "{{name}} — no programme activity in 7+ days",
+        "message": "Last activity {{date}}{{contact}}.",
+        "messageNever": "No activity recorded since enrolling{{contact}}."
+      },
+      "low_quiz_scores": {
+        "title": "{{name}} — quiz average {{pct}}",
+        "message": "Averaging {{pct}} across {{count}} quizzes{{contact}} — below the 50% threshold."
+      },
+      "goal_setup_overdue": {
+        "title": "{{name}} — goal setup overdue",
+        "message": "No active goal since {{date}}{{contact}} · the learner can't book sessions until they set one."
+      },
+      "coach_flagged_session": {
+        "title": "{{coach}} flagged a session with {{name}}",
+        "message": "{{coach}}: {{note}}",
+        "messageNoNote": "{{coach}} flagged this session for admin attention without a note."
+      }
+    }
   },
   "coachees": {
     "exported": "Exported",
@@ -219,7 +306,6 @@
       "sessionLimit": "Session limit",
       "programme": "Programme",
       "cohort": "Cohort",
-      "selectedCoaches": "Selected coaches",
       "sheetName": "Coachees",
       "completedUnits": "Required activities completed (current enrollment)",
       "organisation": "Organisation"
@@ -233,13 +319,10 @@
       "done": "Done",
       "programme": "Programme",
       "percentComplete": "% Complete",
-      "selectedCoaches": "Selected coaches",
       "actions": "Actions",
       "requiredActivities": "Required activities",
       "organisation": "Organisation"
     },
-    "selectedCoachesCount_one": "{{count}} coach",
-    "selectedCoachesCount_other": "{{count}} coaches",
     "viewProfile": "View profile",
     "edit": "Edit",
     "noMatch": "No coachees match your filters.",
@@ -293,8 +376,6 @@
     "start": "Start",
     "current": "Current",
     "target": "Target",
-    "selectedCoaches": "Selected coaches",
-    "none": "None",
     "recentSessions": "Recent sessions",
     "noSessionsYet": "No sessions yet.",
     "close": "Close",
@@ -457,11 +538,9 @@
     "duration": "Duration",
     "monthsValue_one": "{{count}} month",
     "monthsValue_other": "{{count}} months",
-    "coachingReceivedCoachee": "Coaching received (coachee)",
     "coachingReceivedCoach": "Coaching received (coach)",
     "peerReceived": "Peer received",
     "peerGiven": "Peer given",
-    "mentoringReceived": "Mentoring received",
     "edit": "Edit",
     "delete": "Delete",
     "empty": "No programmes yet. Create one to start enrolling coachees.",
@@ -483,12 +562,10 @@
     "nameLabel": "Name",
     "descriptionLabel": "Description",
     "durationMonthsLabel": "Duration (months)",
-    "sessionLimitsHeading": "Session limits (default applied at enrollment)",
     "deadLimitsWarning": "Coach session limit, peer sessions received, and peer sessions given below are no longer enforced — those are now set per coach on the",
     "deadLimitsWarningLink": "Coaches page",
     "peerSessionsReceived": "Peer sessions — received",
     "peerSessionsGiven": "Peer sessions — given",
-    "mentoringSessionsReceived": "Mentoring sessions — received",
     "coachesOnly": "Coaches only",
     "activeLabel": "Active",
     "activeHint": "Visible for new enrollments.",
@@ -515,8 +592,7 @@
       "hint": "Which features this programme includes, and their configuration. Applies to whoever is actively enrolled — coach or coachee.",
       "give": "Give",
       "receive": "Receive",
-      "giveLimit": "Give limit",
-      "receiveLimit": "Receive limit",
+      "monthlyPracticeLimit": "Practice sessions per month",
       "monthlyLimit": "Monthly limit",
       "groupSize": "Group size",
       "maxTriads": "Max triads",
@@ -531,7 +607,8 @@
         "training": "Training",
         "quiz": "Quiz",
         "assessment": "Assessment",
-        "daily_prompt": "Daily prompt"
+        "daily_prompt": "Daily prompt",
+        "final_assessment": "Final Assessment"
       },
       "schedule": {
         "required": "Required",
@@ -561,9 +638,29 @@
         "distributionSettingsInvalid": "Schedule settings are invalid.",
         "trainingWeekIdsInvalid": "The selected training weeks are invalid.",
         "trainingWeeksInsufficient": "Select exactly as many training weeks as required units."
-      }
+      },
+      "assessedTriads": "Assessed Triads (the reflection goes to an assessor)",
+      "triadN": "Triad {{n}}"
     },
-    "outsideRequirementsHint": "Coaching a learner may book outside programme requirements (used only when the programme requires no Coaching)."
+    "finalAssessment": {
+      "media": "Accepted media",
+      "mediaValue": "MP3 audio only (audio/mpeg)",
+      "maxSize": "Maximum file size",
+      "maxSizeValue": "50 MB",
+      "transcript": "Transcript",
+      "transcriptModes": {
+        "none": "None",
+        "optional": "Optional",
+        "required": "Required"
+      },
+      "quiz": "Quiz",
+      "quizHint": "The learner answers a quiz first; the score is released with the result.",
+      "passMark": "Pass mark (%)",
+      "saveFirst": "Save the programme first, then add the quiz questions.",
+      "createQuiz": "Create the quiz",
+      "instructions": "Instructions (English)",
+      "instructionsVi": "Instructions (Vietnamese)"
+    }
   },
   "coachProgrammes": {
     "unlimited": "Unlimited",
@@ -582,7 +679,6 @@
     "menteeSessionsReceived": "Mentee sessions received",
     "peerGiven": "Peer given",
     "peerReceived": "Peer received",
-    "mentoringReceived": "Mentoring received",
     "mentoringGiven": "Mentoring given",
     "edit": "Edit",
     "delete": "Delete",
@@ -606,7 +702,6 @@
     "dialogTitleNew": "New coach programme",
     "nameLabel": "Name",
     "descriptionLabel": "Description",
-    "sessionLimitsHeading": "Session limits (blank = unlimited)",
     "clientCoachingGivenLabel": "Client coaching — given",
     "menteeSessionsReceivedLabel": "Mentee sessions — received",
     "peerSessionsGivenLabel": "Peer sessions — given",
@@ -624,7 +719,7 @@
     "titleEmphasis": "analytics",
     "subtitle": "Performance, satisfaction and competency insights.",
     "coachingSessions": "Coaching sessions",
-    "peerSessions": "Peer sessions",
+    "peerSessions": "Peer units",
     "totalHours": "Total hours",
     "avgRating": "Avg rating",
     "tabs": {
@@ -690,7 +785,8 @@
       "flaggedLabel": "Flagged",
       "flagged": "Alert created",
       "alreadyFlagged": "Already flagged and unresolved"
-    }
+    },
+    "practiceSessions": "Peer practice"
   },
   "sessions": {
     "sessionUpdated": "Session updated",
@@ -740,7 +836,15 @@
     "cancel": "Cancel",
     "save": "Save",
     "unitPostSessionPending": "Follow-up pending",
-    "evidenceComplete": "Follow-up complete"
+    "evidenceComplete": "Follow-up complete",
+    "changeReasonLabel": "Reason for this change (required)",
+    "changeReasonPlaceholder": "Recorded in the session's audit trail…",
+    "reopenAs": "reopen as {{status}}",
+    "notesReadOnly": "Notes belong to the person who wrote them and can't be edited here.",
+    "errors": {
+      "reasonRequired": "Give a reason for this change.",
+      "detailsLocked": "Time, duration, topic and link can't change together with this status, or on a completed session."
+    }
   },
   "coaches": {
     "eyebrow": "Organisation",
@@ -766,20 +870,17 @@
       "coach": "Coach",
       "status": "Status",
       "registered": "Registered",
-      "coachingReceived": "Coaching received",
-      "peerReceived": "Peer received",
+      "coachingReceived": "Coaching (done / required)",
+      "peerReceived": "Peer (done / required)",
       "peerGiven": "Peer given",
       "programme": "Programme",
       "percentComplete": "% Complete",
-      "assigned": "Assigned",
       "coacheesCount": "# Coachees",
       "rating": "Rating",
       "booked": "Booked",
       "done": "Done",
       "actions": "Actions"
     },
-    "assignedCoachesCount_one": "{{count}} coach",
-    "assignedCoachesCount_other": "{{count}} coaches",
     "viewProfile": "View profile",
     "noMatch": "No coaches match your filters.",
     "programmeRequired": "Programme is required",
@@ -790,17 +891,16 @@
     "status": "Status",
     "programme": "Programme",
     "selectProgrammePlaceholder": "Select a programme…",
-    "programmeHint": "Required. This coach's own coaching journey (progress tracking), separate from their session limits below.",
+    "programmeHint": "Required. This coach's own coaching journey (progress tracking).",
     "cohort": "Cohort",
     "noneOption": "— None —",
-    "sessionLimits": "Session limits",
+    "ownProgramme": "Own programme (as a learner)",
     "changeCoachProgramme": "Change coach programme",
     "notEnrolled": "Not enrolled",
-    "coachingReceived": "Coaching received",
-    "peerReceived": "Peer received",
+    "coachingReceived": "Coaching done / required",
+    "peerReceived": "Peer done / required",
     "peerGiven": "Peer given",
     "programmeProgress": "Programme progress",
-    "assignedCoachesLabel": "Assigned coaches (when this coach is being coached)",
     "sessionsDeliveredPrefix": "Sessions delivered:",
     "completedLabel": "completed",
     "bookedLabel": "booked",
@@ -814,13 +914,9 @@
       "registered": "Registered",
       "status": "Status",
       "coachProgramme": "Coach programme",
-      "coachSessionLimit": "Coach session limit",
-      "coachSessionsUsed": "Coach sessions used",
-      "assignedCoaches": "Assigned coaches",
-      "peerReceivedLimit": "Peer received limit",
-      "peerReceivedUsed": "Peer received used",
-      "peerGivenLimit": "Peer given limit",
-      "peerGivenUsed": "Peer given used",
+      "coachingUnits": "Coaching done / required",
+      "peerUnits": "Peer done / required",
+      "peerGivenUsed": "Peer sessions given",
       "coacheesCount": "# Coachees",
       "avgRating": "Avg rating",
       "bookedSessions": "Booked coaching sessions",
@@ -861,52 +957,40 @@
       "booked": "Booked",
       "done": "Done",
       "limit": "Limit",
-      "selectedCoaches": "Selected coaches",
       "actions": "Actions"
     },
     "noCoacheesMatch": "No coachees match your filters.",
-    "noneAssigned": "None assigned",
     "edit": "Edit",
     "regPrefix": "Reg.",
     "coachTableHeaders": {
       "name": "Name",
       "email": "Email",
       "statusGetCoached": "Status (get coached)",
-      "coachLimitTotal": "Coach limit (total)",
-      "assignedCoaches": "Assigned coaches",
-      "peerLimitTotal": "Peer limit (total)",
+      "coachingUnits": "Coaching (done / required)",
+      "peerUnits": "Peer (done / required)",
       "given": "Given (sessions / coachees / ★)",
       "actions": "Actions"
     },
     "noCoachesMatch": "No coaches match your filters.",
-    "none": "None",
     "suspend": "Suspend",
     "reactivate": "Reactivate",
     "editDialogTitle": "Edit {{name}}",
     "monthlySessionLimit": "Monthly session limit",
-    "coachesThisCoacheeCanBook_one": "Coaches this coachee can book ({{count}})",
-    "coachesThisCoacheeCanBook_other": "Coaches this coachee can book ({{count}})",
-    "searchCoachesPlaceholder": "Search coaches…",
-    "noCoaches": "No coaches.",
-    "cancel": "Cancel",
-    "save": "Save",
-    "sessionLimits": "Session limits",
+    "close": "Close",
+    "ownProgramme": "Own programme (as a learner)",
     "changeCoachProgramme": "Change coach programme",
     "notEnrolled": "Not enrolled",
-    "coachingReceived": "Coaching received",
-    "peerReceived": "Peer received",
-    "coachesAssignedForSessions_one": "Coaches assigned for this coach's coaching sessions ({{count}})",
-    "coachesAssignedForSessions_other": "Coaches assigned for this coach's coaching sessions ({{count}})",
+    "coachingReceived": "Coaching done / required",
+    "peerReceived": "Peer done / required",
     "exported": "Exported",
     "export": {
       "name": "Name",
       "email": "Email",
       "registered": "Registered",
       "status": "Status",
-      "bookedSessions": "Booked sessions",
-      "sessionsDone": "Sessions done",
+      "bookedSessions": "Coaching units booked",
+      "sessionsDone": "Coaching units completed",
       "monthlyLimit": "Monthly limit",
-      "selectedCoaches": "Selected coaches",
       "coacheesSheetName": "Coachees",
       "exportButton": "Export"
     },
@@ -971,7 +1055,25 @@
     "rejectConfirmTitle": "Reject {{name}}?",
     "rejectConfirmDescription": "They won't be able to access the platform. You can reverse this later from this table.",
     "coachAssignment": "Coach assignment",
-    "coachAssignmentMovedToCohort": "Programme Coaching is assigned per cohort. Manage the Coach pool in Admin → Cohorts → Coaching."
+    "coachAssignmentMovedToCohort": "Programme Coaching is assigned per cohort. Manage the Coach pool in Admin → Cohorts → Coaching.",
+    "referrals": {
+      "title": "Referrals from Coaches",
+      "hint": "A Coach's suggestion; nothing is created until you act.",
+      "empty": "No referrals waiting.",
+      "name": "Referred person",
+      "referredBy": "Referred by",
+      "suggestedProgramme": "Suggested programme",
+      "received": "Received",
+      "status": "Status",
+      "action": "Next step",
+      "noProgramme": "No suggestion",
+      "approveAndStart": "Approve & start engagement",
+      "approved": "{{name}} now has an account",
+      "statusLabels": {
+        "pending": "Waiting",
+        "approved": "Approved"
+      }
+    }
   },
   "pager": {
     "pageOf": "Page {{page}} of {{total}}",
@@ -1118,7 +1220,11 @@
     "assignmentPending": "Group assignment pending",
     "overdue": "Overdue",
     "priorPartners": "· previously with {{names}}",
-    "repeatedPartnersWarning": "Already grouped together in another Triad: {{pairs}}"
+    "repeatedPartnersWarning": "Already grouped together in another Triad: {{pairs}}",
+    "tabs": {
+      "cohorts": "Cohorts",
+      "submissions": "Submissions"
+    }
   },
   "userDetail": {
     "eyebrow": "Admin · User detail",
@@ -1147,7 +1253,8 @@
       "reflections": "Reflections",
       "feedback": "Feedback",
       "satisfaction": "Satisfaction",
-      "calendar": "Requirement calendar"
+      "calendar": "Requirement calendar",
+      "finalAssessment": "Final Assessment"
     },
     "fields": {
       "programme": "Programme",
@@ -1319,5 +1426,118 @@
       "failed": "Failed",
       "pending": "Pending"
     }
+  },
+  "assessments": {
+    "eyebrow": "Programmes",
+    "title": "Assessments",
+    "subtitle": "Triad submissions and Final Assessments: assign an assessor from the cohort's pool, read the review, then approve it to release it to the learner or return it with a reason.",
+    "triadN": "Triad {{n}}",
+    "finalAttempt": "Final Assessment (attempt {{n}})",
+    "kind": {
+      "triad": "Triad",
+      "final_assessment": "Final Assessment"
+    },
+    "status": {
+      "awaiting_assignment": "Awaiting assignment",
+      "with_assessor": "With assessor",
+      "awaiting_validation": "Awaiting validation",
+      "returned": "Returned to assessor",
+      "released": "Released"
+    },
+    "outcome": {
+      "pass": "Pass",
+      "not_pass": "Not pass",
+      "resubmit": "Resubmit"
+    },
+    "filters": {
+      "programme": "Programme",
+      "cohort": "Cohort",
+      "kind": "Kind",
+      "status": "Status",
+      "allProgrammes": "All programmes",
+      "allCohorts": "All cohorts",
+      "allKinds": "All kinds",
+      "allStatuses": "All statuses"
+    },
+    "columns": {
+      "learner": "Learner",
+      "cohort": "Cohort",
+      "assessment": "Assessment",
+      "submitted": "Submitted",
+      "status": "Status",
+      "assessor": "Assessor",
+      "assessorDue": "Assessor due",
+      "learnerViewed": "Learner viewed",
+      "actions": "Actions"
+    },
+    "loadError": "The assessment queue could not be loaded.",
+    "empty": "No submissions match these filters.",
+    "overdue": "Overdue",
+    "notViewed": "Not yet",
+    "selectAll": "Select all assignable submissions",
+    "selectRow": "Select {{name}}",
+    "selectedCount": "{{count}} selected",
+    "assignSelected": "Assign selected",
+    "clearSelection": "Clear",
+    "assign": "Assign",
+    "reassign": "Reassign",
+    "validate": "Validate",
+    "readReview": "Read review",
+    "assignTitleOne": "Assign an assessor: {{name}}, {{assessment}}",
+    "assignTitleMany": "Assign an assessor to {{count}} submissions",
+    "assignHint": "Only Coaches in the cohort's assessor pool are listed. The learner's own programme coach cannot assess them. The assessor has 7 days.",
+    "poolLoadError": "The assessor pool could not be loaded.",
+    "noPool": "This cohort's assessor pool is empty. Add Coaches in Admin → Cohorts → Assessor pool.",
+    "noSharedPool": "No Coach is in the assessor pool of every selected cohort. Select submissions from one cohort, or widen the pools.",
+    "assessorLabel": "Assessor",
+    "assessorPlaceholder": "Choose a Coach",
+    "currentAssessor": "Currently with {{name}}. Reassigning restarts the 7 days.",
+    "assignedToast": "Assessor assigned to {{count}} submission(s).",
+    "reviewTitle": "Review: {{name}}, {{assessment}}",
+    "reviewMeta": "By {{assessor}} · version {{version}} · {{date}}",
+    "outcomeLabel": "Result",
+    "feedbackLabel": "Feedback",
+    "noFeedbackText": "No written feedback; see the attached PDF.",
+    "fileError": "The file could not be opened.",
+    "returnedWith": "Returned with this reason:",
+    "releasedOn": "Released {{date}}.",
+    "viewedOn": "Learner viewed it {{date}}.",
+    "notViewedYet": "The learner has not opened it yet.",
+    "returnReasonLabel": "Reason for returning (the assessor sees this)",
+    "returnReasonPlaceholder": "What should the assessor change?",
+    "approve": "Approve and release",
+    "return": "Return to assessor",
+    "returnToAssessor": "Return with reason",
+    "approvedToast": "Approved. The learner has been notified.",
+    "returnedToast": "Returned to the assessor.",
+    "cancel": "Cancel",
+    "close": "Close",
+    "errors": {
+      "ownCoach": "That Coach is the learner's own programme coach and cannot assess them.",
+      "notInPool": "That Coach is not in the cohort's assessor pool.",
+      "stale": "This submission has changed since the queue loaded. The queue has been refreshed.",
+      "reasonRequired": "Write a reason before returning the review."
+    },
+    "transcription": {
+      "title": "Automatic transcription (Final Assessment)",
+      "thisMonth": "This month",
+      "allTime": "All time",
+      "totals": "{{calls}} calls · {{minutes}} audio min · ≈ ${{usd}}",
+      "estimate": "Estimated at OpenAI Whisper's ${{price}} per audio minute. Learners get at most 3 automatic drafts per attempt.",
+      "when": "When",
+      "learner": "Learner",
+      "attempt": "Attempt",
+      "minutes": "Audio min",
+      "status": "Status",
+      "statuses": {
+        "pending": "Running",
+        "succeeded": "Done",
+        "failed": "Failed"
+      },
+      "loadError": "The transcription cost could not be loaded."
+    },
+    "emailNotSent": "Email not sent",
+    "emailNotSentYet": "The release email has not been sent yet; it is retried automatically.",
+    "emailedOn": "Emailed {{date}}."
   }
 }

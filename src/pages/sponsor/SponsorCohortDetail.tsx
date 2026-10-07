@@ -17,6 +17,7 @@ const CARD = "#fffdf9";
 const LINE = "#e6e0d6";
 const GREEN = "#17663f";
 const PLUM = "#7a5aa8";
+const AMBER = "#a8541c";
 const TEAL = "#2c8fa8";
 
 type SortKey = "name" | "status" | "coaching" | "training" | "peer" | "mentoring" | "triads";
@@ -118,6 +119,10 @@ export default function SponsorCohortDetail() {
               <ModuleCard label={t("cohortDetail.modules.peer")} color={TEAL} completed={kpis?.peer_completed_units} due={kpis?.peer_due_units} required={kpis?.peer_required_units} completedLeaders={kpis?.peer_completed_leaders} leaderCount={kpis?.enrollment_count} t={t} />
               <ModuleCard label={t("cohortDetail.modules.mentoring")} color={GREEN} completed={kpis?.mentoring_completed_units} due={kpis?.mentoring_due_units} required={kpis?.mentoring_required_units} completedLeaders={kpis?.mentoring_completed_leaders} leaderCount={kpis?.enrollment_count} t={t} />
               <ModuleCard label={t("cohortDetail.modules.triads")} color={PLUM} completed={kpis?.triad_completed_units} due={kpis?.triad_due_units} required={kpis?.triad_required_units} completedLeaders={kpis?.triad_completed_leaders} leaderCount={kpis?.enrollment_count} t={t} />
+              {/* Decision 9: with the Final Assessment the cards add up to the cohort's programme units. */}
+              {(kpis?.final_assessment_required_units ?? 0) > 0 && (
+                <ModuleCard label={t("cohortDetail.modules.final_assessment")} color={AMBER} completed={kpis?.final_assessment_completed_units} due={kpis?.final_assessment_due_units} required={kpis?.final_assessment_required_units} completedLeaders={kpis?.final_assessment_completed_leaders} leaderCount={kpis?.enrollment_count} t={t} />
+              )}
             </div>
 
             <AttentionSection kpis={kpis} counts={filterCounts} filter={filter} onFilter={setFilter} t={t} />
@@ -268,7 +273,7 @@ function ModuleCard({
 
 function AttentionSection({ kpis, counts, filter, onFilter, t }: { kpis: SponsorCohortSummary | null; counts: Record<FilterKey, number>; filter: FilterKey; onFilter: (filter: FilterKey) => void; t: (key: string) => string }) {
   const cards: { key: FilterKey; count: number; label: string; sub: string; color: string; border: string }[] = [
-    { key: "attention", count: kpis?.at_risk_count ?? counts.attention, label: t("cohortDetail.attention.leaders"), sub: t("cohortDetail.attention.flagged"), color: "#a8341c", border: "#f0d5cc" },
+    { key: "attention", count: kpis?.needs_attention_count ?? counts.attention, label: t("cohortDetail.attention.leaders"), sub: t("cohortDetail.attention.flagged"), color: "#a8341c", border: "#f0d5cc" },
     { key: "pace", count: kpis?.behind_count ?? counts.pace, label: t("cohortDetail.attention.behind"), sub: t("cohortDetail.attention.pace"), color: "#a8341c", border: "#f0d5cc" },
     { key: "coaching", count: counts.coaching, label: t("cohortDetail.attention.coaching"), sub: t("cohortDetail.attention.coachingSub"), color: "#a8541c", border: "#eddcc9" },
     { key: "learning", count: counts.learning, label: t("cohortDetail.attention.learning"), sub: t("cohortDetail.attention.learningSub"), color: "#a8541c", border: "#eddcc9" },
@@ -413,10 +418,13 @@ function ProgrammeDetails({ kpis, t }: { kpis: SponsorCohortSummary | null; t: (
        [t("cohortDetail.modules.peer"), moduleDetail(kpis?.peer_completed_units, kpis?.peer_due_units, kpis?.peer_required_units)],
        [t("cohortDetail.modules.mentoring"), moduleDetail(kpis?.mentoring_completed_units, kpis?.mentoring_due_units, kpis?.mentoring_required_units)],
        [t("cohortDetail.modules.triads"), moduleDetail(kpis?.triad_completed_units, kpis?.triad_due_units, kpis?.triad_required_units)],
+       ...((kpis?.final_assessment_required_units ?? 0) > 0
+         ? [[t("cohortDetail.modules.final_assessment"), moduleDetail(kpis?.final_assessment_completed_units, kpis?.final_assessment_due_units, kpis?.final_assessment_required_units)]]
+         : []),
     ]},
     { title: t("cohortDetail.details.programme"), rows: [
-      [t("cohortDetail.details.requiredUnits"), value(kpis?.required_units)],
-      [t("cohortDetail.details.completedUnits"), value(kpis?.completed_units)],
+      [t("cohortDetail.details.requiredUnitsCount"), value(kpis?.required_units)],
+      [t("shared.unitsCompleted"), value(kpis?.completed_units)],
       [t("cohortDetail.details.dueUnits"), value(kpis?.due_units)],
       [t("cohortDetail.details.overdueUnits"), value(kpis?.overdue_units)],
       [t("cohortDetail.details.completion"), percent(kpis?.full_completion_pct)],
@@ -524,7 +532,8 @@ function moduleMetric(row: SponsorRosterRow, key: SortKey) {
 
 function matchesFilter(row: SponsorRosterRow, filter: FilterKey) {
   if (filter === "all") return true;
-  if (filter === "attention") return effectiveSponsorStatus(row) === "at_risk" || row.pace_status === "behind" || !moduleComplete(row.coaching_completed_units, row.coaching_required_units) || !moduleComplete(row.training_completed_units, row.training_required_units);
+  // decision 8: behind pace OR >= 1 overdue unit, decided by the server.
+  if (filter === "attention") return row.needs_attention === true;
   if (filter === "pace") return row.pace_status === "behind";
   if (filter === "coaching") return !moduleComplete(row.coaching_completed_units, row.coaching_required_units);
   return !moduleComplete(row.training_completed_units, row.training_required_units);

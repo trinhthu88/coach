@@ -12,7 +12,7 @@ import {
 import { MiniProgress, ProfileSection, ProfileSectionTitle, UnavailableNote } from "./primitives";
 import { PROFILE_COLORS, checkpointStateColor, useProfileText, type ProgrammeViewer } from "./profileTheme";
 
-const { NAVY, SKY, TEAL, GREEN, AMBER } = PROFILE_COLORS;
+const { NAVY, SKY, TEAL, GREEN, AMBER, PLUM } = PROFILE_COLORS;
 
 const MODULE_COLOR: Record<ProgrammeModuleKey, string> = {
   coaching: SKY,
@@ -20,11 +20,13 @@ const MODULE_COLOR: Record<ProgrammeModuleKey, string> = {
   peer: TEAL,
   mentoring: GREEN,
   triads: AMBER,
+  final_assessment: PLUM,
 };
 
 /**
  * Module progress in canonical order (Coaching, Training / Learning, Peer
- * coaching, Mentoring, Triads) with the Training & learning child breakdown.
+ * coaching, Mentoring, Triads, then the Final Assessment when the programme
+ * has one) with the Training & learning child breakdown.
  * Training / Learning's completed/required come from the child-aware
  * canonical_module_progress (selected, visible, required Skill Cards etc.),
  * so a learner and their sponsor always see the same value (e.g. 5/6).

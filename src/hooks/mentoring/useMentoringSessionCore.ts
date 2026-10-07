@@ -76,8 +76,8 @@ export function useMentoringSessionCore({ sessionId }: UseMentoringSessionCoreOp
       // guard_session_protected_fields() for anything else on this row.
       const { error } = await supabase.rpc("update_mentoring_session_notes", {
         p_session_id: session.id,
-        p_mentor_notes: opts.includeMentorNotes ? mentorNotes : null,
-        p_mentee_notes: opts.includeMenteeNotes ? menteeNotes : null,
+        p_mentor_notes: opts.includeMentorNotes ? mentorNotes : undefined,
+        p_mentee_notes: opts.includeMenteeNotes ? menteeNotes : undefined,
       });
       setSaving(false);
       if (!error) load();
@@ -114,6 +114,24 @@ export function useMentoringSessionCore({ sessionId }: UseMentoringSessionCoreOp
     return { error };
   }, [session, load]);
 
+  // The mentee cancels through the canonical lifecycle (decision 7): a reason
+  // inside 24 hours, nothing after the start. The server decides.
+  const cancelSession = useCallback(async (reason?: string) => {
+    if (!session) return { error: null };
+    setSaving(true);
+    const { error } = await supabase.rpc("transition_mentoring_session_status", {
+      p_session_id: session.id,
+      p_status: "cancelled",
+      p_reason: reason,
+    });
+    setSaving(false);
+    if (!error) {
+      toast.success(t("sessionDetail.cancel.done"));
+      load();
+    }
+    return { error };
+  }, [session, load, t]);
+
   return {
     session,
     mentor,
@@ -128,5 +146,6 @@ export function useMentoringSessionCore({ sessionId }: UseMentoringSessionCoreOp
     saveNotes,
     confirmSession,
     completeSession,
+    cancelSession,
   };
 }

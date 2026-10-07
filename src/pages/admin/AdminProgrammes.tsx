@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Loader2, Plus, Pencil, Trash2, ArrowUpRight, Users, Repeat, GraduationCap, Triangle, BookOpen, HelpCircle, ClipboardCheck, Sparkles, type LucideIcon } from "lucide-react";
+import { Loader2, Plus, Pencil, Trash2, ArrowUpRight, Users, Repeat, GraduationCap, Triangle, BookOpen, HelpCircle, ClipboardCheck, Sparkles, Mic, type LucideIcon } from "lucide-react";
 import { format } from "date-fns";
 import { AdminPageHeader, Pill } from "./_shared";
 import { toast } from "sonner";
@@ -20,7 +20,8 @@ import { cn } from "@/lib/utils";
 import type { ProgrammeModuleType } from "@/hooks/useProgrammeModules";
 import type { Json } from "@/integrations/supabase/types";
 import { ProgrammeModuleScheduleFields, type TrainingWeekOption } from "./ProgrammeModuleScheduleFields";
-import { normalizeModuleScheduleConfig, validateModuleScheduleConfig } from "@/lib/programmeModuleConfig";
+import { FinalAssessmentSettings } from "./programmes/FinalAssessmentSettings";
+import { normalizeModuleScheduleConfig, stripRetiredSessionLimits, validateModuleScheduleConfig } from "@/lib/programmeModuleConfig";
 
 const MODULE_ICONS: Record<ProgrammeModuleType, LucideIcon> = {
   coaching: Users,
@@ -31,6 +32,7 @@ const MODULE_ICONS: Record<ProgrammeModuleType, LucideIcon> = {
   quiz: HelpCircle,
   assessment: ClipboardCheck,
   daily_prompt: Sparkles,
+  final_assessment: Mic,
 };
 
 interface Programme {
@@ -40,9 +42,6 @@ interface Programme {
   duration_months: number;
   color: string;
   is_active: boolean;
-  coachee_session_limit: number;
-  // NULL means unlimited for the mentoring module.
-  mentoring_received_limit: number | null;
 }
 
 interface Cohort {
@@ -65,6 +64,7 @@ export const MODULE_TYPES: ProgrammeModuleType[] = [
   "triads",
   "training",
   "assessment",
+  "final_assessment",
 ];
 
 export interface ModuleRow {
@@ -78,9 +78,9 @@ export type ModuleRows = Record<ProgrammeModuleType, ModuleRow>;
 // JSONB shapes documented alongside the 20260903100000 migration.
 export function defaultModuleRows(): ModuleRows {
   return {
-    coaching: { enabled: false, config: { required: false, required_units: 0, distribution_settings: {}, give: false, receive: false, give_limit: null, receive_limit: null } },
-    peer_coaching: { enabled: false, config: { required: false, required_units: 0, distribution_settings: {}, give: false, receive: false, give_limit: null, receive_limit: null, monthly_limit: null } },
-    mentoring: { enabled: false, config: { required: false, required_units: 0, distribution_settings: {}, give: false, receive: false, give_limit: null, receive_limit: null } },
+    coaching: { enabled: false, config: { required: false, required_units: 0, distribution_settings: {}, give: false, receive: false } },
+    peer_coaching: { enabled: false, config: { required: false, required_units: 0, distribution_settings: {}, give: false, receive: false, monthly_limit: null } },
+    mentoring: { enabled: false, config: { required: false, required_units: 0, distribution_settings: {}, give: false, receive: false } },
     triads: { enabled: false, config: { required: false, required_units: 0, distribution_settings: {}, max_triads: null } },
     // learning_components is always explicit (programme_modules_training_learning_components):
     // a Training module without it used to lose Quizzes and Daily Prompts from the breakdown.
@@ -88,6 +88,15 @@ export function defaultModuleRows(): ModuleRows {
     quiz: { enabled: false, config: {} },
     assessment: { enabled: false, config: { include_direct_reports: false } },
     daily_prompt: { enabled: false, config: {} },
+    // One requirement per cohort when required; MP3 only, 50 MB (fixed, and
+    // normalised by the database: 20261007000100).
+    final_assessment: {
+      enabled: false,
+      config: {
+        required: false, required_units: 0, distribution_settings: {}, quiz_enabled: false, pass_mark_pct: null,
+        accepted_mime: ["audio/mpeg"], max_file_mb: 50, transcript: "optional", instructions: "", instructions_vi: "",
+      },
+    },
   };
 }
 
@@ -123,6 +132,7 @@ export function ModuleConfigRow({
   onConfigChange,
   t,
   trainingWeeks,
+  programmeId,
 }: {
   module: ProgrammeModuleType;
   row: ModuleRow;
@@ -130,6 +140,8 @@ export function ModuleConfigRow({
   onConfigChange: (patch: Record<string, unknown>) => void;
   t: (key: string, opts?: Record<string, unknown>) => string;
   trainingWeeks: TrainingWeekOption[];
+  /** The saved programme, once it exists (the Final Assessment quiz hangs off it). */
+  programmeId?: string;
 }) {
   const cfg = row.config;
   const Icon = MODULE_ICONS[module];
@@ -144,28 +156,18 @@ export function ModuleConfigRow({
       </div>
       {row.enabled && (
         <div className="mt-3.5 grid grid-cols-2 gap-2.5 border-t pt-3.5 sm:grid-cols-4">
+          {/* Coaching and Mentoring have no session limit: required_units is the
+              whole answer (20261006110000). */}
           {(module === "coaching" || module === "mentoring") && (
             <>
               <label className="flex items-center gap-1.5 text-[11px]">
                 <Checkbox checked={!!cfg.give} onCheckedChange={(v) => onConfigChange({ give: !!v })} />
                 {t("programmes.modules.give")}
               </label>
-              <LimitField
-                label={t("programmes.modules.giveLimit")}
-                value={(cfg.give_limit as number | null) ?? null}
-                onChange={(v) => onConfigChange({ give_limit: v })}
-                t={t}
-              />
               <label className="flex items-center gap-1.5 text-[11px]">
                 <Checkbox checked={!!cfg.receive} onCheckedChange={(v) => onConfigChange({ receive: !!v })} />
                 {t("programmes.modules.receive")}
               </label>
-              <LimitField
-                label={t("programmes.modules.receiveLimit")}
-                value={(cfg.receive_limit as number | null) ?? null}
-                onChange={(v) => onConfigChange({ receive_limit: v })}
-                t={t}
-              />
             </>
           )}
           {module === "peer_coaching" && (
@@ -178,16 +180,13 @@ export function ModuleConfigRow({
                 <Checkbox checked={!!cfg.receive} onCheckedChange={(v) => onConfigChange({ receive: !!v })} />
                 {t("programmes.modules.receive")}
               </label>
+              {/* Practice from the Coach opt-in pool, per calendar month
+                  (Asia/Ho_Chi_Minh). It never caps the Peer requirement,
+                  which dyad sessions earn (20261006120000). */}
               <LimitField
-                label={t("programmes.modules.giveLimit")}
-                value={(cfg.give_limit as number | null) ?? null}
-                onChange={(v) => onConfigChange({ give_limit: v })}
-                t={t}
-              />
-              <LimitField
-                label={t("programmes.modules.receiveLimit")}
-                value={(cfg.receive_limit as number | null) ?? null}
-                onChange={(v) => onConfigChange({ receive_limit: v })}
+                label={t("programmes.modules.monthlyPracticeLimit")}
+                value={(cfg.monthly_limit as number | null) ?? null}
+                onChange={(v) => onConfigChange({ monthly_limit: v })}
                 t={t}
               />
             </>
@@ -200,6 +199,31 @@ export function ModuleConfigRow({
                 onChange={(v) => onConfigChange({ max_triads: v })}
                 t={t}
               />
+              {/* Decision 2: Admin ticks which Triad numbers are assessed; the
+                  reflection of an assessed Triad goes to an assessor. */}
+              {Number(cfg.required_units ?? 0) > 0 && (
+                <div className="col-span-2 sm:col-span-4" data-testid="triad-assessed-units">
+                  <p className="text-[10.5px] text-muted-foreground">{t("programmes.modules.assessedTriads")}</p>
+                  <div className="mt-1 flex flex-wrap gap-3">
+                    {Array.from({ length: Number(cfg.required_units) }, (_, i) => i + 1).map((n) => {
+                      const assessed = Array.isArray(cfg.assessed_units) ? (cfg.assessed_units as number[]) : [];
+                      return (
+                        <label key={n} className="flex items-center gap-1.5 text-[11px]">
+                          <Checkbox
+                            checked={assessed.includes(n)}
+                            onCheckedChange={(v) =>
+                              onConfigChange({
+                                assessed_units: v ? [...assessed.filter((x) => x !== n), n].sort((a, b) => a - b) : assessed.filter((x) => x !== n),
+                              })
+                            }
+                          />
+                          {t("programmes.modules.triadN", { n })}
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </>
           )}
           {module === "assessment" && (
@@ -210,6 +234,9 @@ export function ModuleConfigRow({
               />
               {t("programmes.modules.includeDirectReports")}
             </label>
+          )}
+          {module === "final_assessment" && (
+            <FinalAssessmentSettings programmeId={programmeId} config={cfg} onConfigChange={onConfigChange} />
           )}
           <ProgrammeModuleScheduleFields
             module={module}
@@ -277,8 +304,6 @@ export default function AdminProgrammes() {
         duration_months: Number(editing.duration_months) || 3,
         color: editing.color || "cobalt",
         is_active: !!editing.is_active,
-        coachee_session_limit: Number(editing.coachee_session_limit) || 0,
-        mentoring_received_limit: editing.mentoring_received_limit ?? null,
       };
       let programmeId = editing.id;
       if (programmeId) {
@@ -294,7 +319,7 @@ export default function AdminProgrammes() {
         programme_id: programmeId,
         module,
         enabled: moduleRows[module].enabled,
-        config: normalizeModuleScheduleConfig(moduleRows[module].config) as Json,
+        config: normalizeModuleScheduleConfig(stripRetiredSessionLimits(module, moduleRows[module].config)) as Json,
       }));
       const { error: moduleError } = await supabase
         .from("programme_modules")
@@ -352,16 +377,6 @@ export default function AdminProgrammes() {
             <div className="mt-3 rounded-md bg-muted/50 px-2 py-1.5 text-[11px]">
               <p className="text-muted-foreground">{t("programmes.duration")}</p>
               <p className="text-sm font-semibold">{t("programmes.monthsValue", { count: p.duration_months })}</p>
-            </div>
-            <div className="mt-2 grid grid-cols-2 gap-2 text-[11px]">
-              <div className="rounded-md bg-primary/5 px-2 py-1.5">
-                <p className="text-[9px] uppercase tracking-wider text-muted-foreground">{t("programmes.coachingReceivedCoachee")}</p>
-                <p className="text-sm font-semibold">{p.coachee_session_limit}</p>
-              </div>
-              <div className="rounded-md bg-secondary/10 px-2 py-1.5">
-                <p className="text-[9px] uppercase tracking-wider text-muted-foreground">{t("programmes.mentoringReceived")}</p>
-                <p className="text-sm font-semibold">{p.mentoring_received_limit === null ? t("coachProgrammes.unlimited") : p.mentoring_received_limit}</p>
-              </div>
             </div>
             <div className="mt-3 flex gap-2">
               <Button asChild variant="outline" size="sm"><Link to={`/admin/programmes/${p.id}/edit`}><Pencil className="h-3.5 w-3.5" /> {t("programmes.edit")}</Link></Button>
@@ -435,23 +450,6 @@ export default function AdminProgrammes() {
                 <Input type="number" min={1} value={editing.duration_months ?? 3} onChange={(e) => setEditing({ ...editing, duration_months: Number(e.target.value) })} />
               </div>
               <div className="rounded-lg border p-3">
-                <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{t("programmes.sessionLimitsHeading")}</p>
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <div>
-                    <Label className="text-[11px]">{t("programmes.coachingReceivedCoachee")}</Label>
-                    <Input type="number" min={0} value={editing.coachee_session_limit ?? 8} onChange={(e) => setEditing({ ...editing, coachee_session_limit: Number(e.target.value) })} />
-                  </div>
-                  <div>
-                    <Label className="text-[11px]">{t("programmes.mentoringSessionsReceived")}</Label>
-                    <Input
-                      type="number" min={0} placeholder={t("coachProgrammes.unlimited")}
-                      value={editing.mentoring_received_limit ?? ""}
-                      onChange={(e) => setEditing({ ...editing, mentoring_received_limit: e.target.value === "" ? null : Number(e.target.value) })}
-                    />
-                  </div>
-                </div>
-              </div>
-              <div className="rounded-lg border p-3">
                 <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{t("programmes.modules.heading")}</p>
                 <p className="mb-2.5 mt-0.5 text-[11px] text-muted-foreground">{t("programmes.modules.hint")}</p>
                 <div className="grid gap-3 sm:grid-cols-2">
@@ -464,6 +462,7 @@ export default function AdminProgrammes() {
                       onConfigChange={(patch) => updateModuleConfig(mod, patch)}
                       t={t}
                       trainingWeeks={trainingWeeks}
+                      programmeId={editing.id}
                     />
                   ))}
                 </div>

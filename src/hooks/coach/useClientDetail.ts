@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { isAfter, isBefore, endOfWeek } from "date-fns";
+import { endOfWeek, format, parseISO } from "date-fns";
 import type { Tables } from "@/integrations/supabase/types";
 import type { RawAction } from "./types";
 import { withEnrollmentActions } from "@/lib/enrollmentActions";
-import { getEnrollmentHistory, isOngoingEnrollment } from "@/lib/enrollments";
+import { slotTodayKey } from "@/lib/slotTime";
 
 export interface FlatClientAction {
   sessionId: string;
@@ -32,11 +32,10 @@ export function useClientDetail(coacheeId: string, coachId: string, onChanged: (
   const [saving, setSaving] = useState(false);
 
   const refresh = useCallback(async () => {
-    const history = await getEnrollmentHistory(coacheeId);
-    const ongoing = history.filter((e) => isOngoingEnrollment(e.status));
-    // Do not infer ownership from session chronology when enrollment history
-    // is missing or ambiguous.
-    const enrollmentId = ongoing.length === 1 ? ongoing[0].id : null;
+    // The client's current enrollment is the server's choice
+    // (coach_client_summary, 20261007001100), the same one the client list shows.
+    const { data: summary } = await supabase.rpc("coach_client_summary");
+    const enrollmentId = (summary ?? []).find((r) => r.client_id === coacheeId)?.enrollment_id ?? null;
     const [
       { data: prof },
       { data: cprof },
@@ -125,13 +124,15 @@ export function useClientDetail(coacheeId: string, coachId: string, onChanged: (
     return out;
   }, [sessions, actionsBySession]);
 
+  // Due dates are programme days: overdue means before programme_today()
+  // (Vietnam), the rule coach_client_summary counts -- not the browser's clock.
   const now = new Date();
-  const overdue = allActions.filter((a) => !a.item.done && a.item.due_date && isBefore(new Date(a.item.due_date), now));
-  const dueWeek = allActions.filter((a) => {
-    if (a.item.done || !a.item.due_date) return false;
-    const d = new Date(a.item.due_date);
-    return !isBefore(d, now) && !isAfter(d, endOfWeek(now, { weekStartsOn: 1 }));
-  });
+  const today = slotTodayKey();
+  const weekEnd = format(endOfWeek(parseISO(today), { weekStartsOn: 1 }), "yyyy-MM-dd");
+  const overdue = allActions.filter((a) => !a.item.done && !!a.item.due_date && a.item.due_date < today);
+  const dueWeek = allActions.filter(
+    (a) => !a.item.done && !!a.item.due_date && a.item.due_date >= today && a.item.due_date <= weekEnd,
+  );
   const completedActions = allActions.filter((a) => a.item.done);
 
   const upcoming = sessions.filter((s) => new Date(s.start_time) >= now && !["cancelled", "completed"].includes(s.status));

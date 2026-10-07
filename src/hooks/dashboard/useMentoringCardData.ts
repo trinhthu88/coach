@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchCoachNextSessions, fetchLearnerNextSessions, pickModule } from "@/lib/nextSessions";
 
 interface MentoringGiveData {
   upcoming: { id: string; topic: string; start_time: string; mentee: string | null }[];
@@ -16,37 +17,18 @@ const emptyGive: MentoringGiveData = { upcoming: [], upcomingCount: 0, menteeCou
  * scoped -- it is provider analytics about the mentor, not a learner's
  * programme progress, and the two must not be conflated (section 15).
  */
-async function fetchGive(userId: string): Promise<MentoringGiveData> {
-  const { data } = await supabase
-    .from("mentoring_sessions")
-    .select("id, topic, start_time, status, mentee_id")
-    .eq("mentor_id", userId)
-    .order("start_time", { ascending: false });
-  const list = data || [];
-  const now = new Date();
-  const allUpcoming = list
-    .filter((s) => s.status === "confirmed" && new Date(s.start_time) >= now)
-    .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
-  const upcomingRows = allUpcoming.slice(0, 3);
-
-  const menteeIds = Array.from(new Set(upcomingRows.map((s) => s.mentee_id)));
-  let namesById: Record<string, string> = {};
-  if (menteeIds.length) {
-    const { data: profs } = await supabase.from("profiles").select("id, full_name").in("id", menteeIds);
-    namesById = Object.fromEntries((profs || []).map((p) => [p.id, p.full_name]));
-  }
-
+async function fetchGive(_userId: string): Promise<MentoringGiveData> {
+  // The Mentor's delivery side (coach_next_session_by_module, 20261007001100):
+  // the next session they run, and the counts, from the server.
+  const row = pickModule(await fetchCoachNextSessions(), "mentoring");
+  if (!row) return emptyGive;
   return {
-    upcoming: upcomingRows.map((s) => ({
-      id: s.id,
-      topic: s.topic,
-      start_time: s.start_time,
-      mentee: namesById[s.mentee_id] ?? null,
-    })),
-    upcomingCount: allUpcoming.length,
-    menteeCount: new Set(list.filter((s) => ["confirmed", "completed"].includes(s.status)).map((s) => s.mentee_id))
-      .size,
-    sessionsDelivered: list.filter((s) => s.status === "completed").length,
+    upcoming: row.source_id && row.start_time
+      ? [{ id: row.source_id, topic: row.title ?? "", start_time: row.start_time, mentee: row.learner_name }]
+      : [],
+    upcomingCount: row.upcoming_count,
+    menteeCount: row.learner_count,
+    sessionsDelivered: row.delivered_count,
   };
 }
 
@@ -98,50 +80,32 @@ const emptyReceive: MentoringReceiveData = {
  * cross-enrollment leakage the canonical model forbids.
  */
 async function fetchReceive(enrollmentId: string): Promise<MentoringReceiveData> {
-  const [{ data }, { data: progressRows, error: progressError }] = await Promise.all([
-    supabase
-      .from("mentoring_sessions")
-      .select("id, topic, start_time, status, mentor_id, prep_file_path")
-      .eq("enrollment_id", enrollmentId)
-      .order("start_time", { ascending: false }),
+  const [nextRows, { data: progressRows, error: progressError }] = await Promise.all([
+    fetchLearnerNextSessions(enrollmentId),
     supabase.rpc("learner_module_progress", {
       p_enrollment_id: enrollmentId,
-      p_as_of: new Date().toISOString().slice(0, 10),
     }),
   ]);
   if (progressError) throw progressError;
   const mentoring = (progressRows ?? []).find((r) => r.module === "mentoring") ?? null;
-  const list = data || [];
-  const now = new Date();
-  const upcomingRows = list
-    .filter((s) => ["confirmed", "pending_coach_approval"].includes(s.status) && new Date(s.start_time) >= now)
-    .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
-  const next = upcomingRows[0];
-
   const progress = {
     requiredUnits: mentoring ? mentoring.required_units : null,
     completedUnits: mentoring ? mentoring.completed_units : null,
     bookedUnits: mentoring ? mentoring.booked_units : null,
     overdueUnits: mentoring ? mentoring.overdue_units : null,
   };
-
-  if (!next) return { ...emptyReceive, ...progress, upcomingCount: upcomingRows.length };
-
-  const { data: mentor } = await supabase
-    .from("profiles")
-    .select("full_name, avatar_url")
-    .eq("id", next.mentor_id)
-    .maybeSingle();
-
+  // The next session is the server's (learner_next_session_by_module).
+  const next = pickModule(nextRows, "mentoring");
+  if (!next) return { ...emptyReceive, ...progress, upcomingCount: 0 };
   return {
     nextSession: {
-      id: next.id,
-      topic: next.topic,
-      start_time: next.start_time,
-      mentor: mentor ?? null,
-      prepFileUploaded: !!next.prep_file_path,
+      id: next.source_id,
+      topic: next.title ?? "",
+      start_time: next.next_session_at,
+      mentor: next.counterpart_names?.[0] ? { full_name: next.counterpart_names[0], avatar_url: null } : null,
+      prepFileUploaded: !!next.prep_file_submitted,
     },
-    upcomingCount: upcomingRows.length,
+    upcomingCount: next.upcoming_count,
     ...progress,
   };
 }

@@ -24,8 +24,14 @@ DECLARE
   i int; fixture_email text; nm text; cohort uuid; programme uuid; start_date date; end_date date;
   coaches uuid[];
 BEGIN
-  INSERT INTO public.organizations(id,name) VALUES(org,'Clariva Erickson Demo Organisation')
-    ON CONFLICT(id) DO UPDATE SET name=excluded.name;
+  -- Demo history is trusted seed data, written as the lifecycle service:
+  -- booking eligibility (a free requirement + the cohort pool + the goal gate,
+  -- 20261005130000) judges new bookings, not seeded history. Local to this
+  -- statement's transaction.
+  PERFORM set_config('app.session_transition','on',true);
+  -- A demo organisation: out of every Admin rollup (20261007000800).
+  INSERT INTO public.organizations(id,name,is_demo) VALUES(org,'Clariva Erickson Demo Organisation',true)
+    ON CONFLICT(id) DO UPDATE SET name=excluded.name, is_demo=true;
   INSERT INTO public.programmes(id,name,description,duration_months,is_active,coachee_session_limit)
   VALUES
     (pa,'Executive Coaching Accelerator','Coaching-only demonstration',3,true,6),
@@ -201,6 +207,11 @@ END $seed$;
 DO $coverage$
 DECLARE e uuid; u uuid; coach uuid; i int; n int; sid int;
 BEGIN
+  -- Demo history is trusted seed data, written as the lifecycle service:
+  -- booking eligibility (a free requirement + the cohort pool + the goal gate,
+  -- 20261005130000) judges new bookings, not seeded history. Local to this
+  -- statement's transaction.
+  PERFORM set_config('app.session_transition','on',true);
   SELECT p.id INTO coach FROM profiles p JOIN user_roles r ON r.user_id=p.id WHERE r.role='coach' ORDER BY p.id LIMIT 1;
   FOR i IN 1..5 LOOP
     SELECT pe.id,pe.user_id INTO e,u FROM programme_enrollments pe WHERE pe.cohort_id='11111111-1111-4111-8111-111111111114' ORDER BY pe.id OFFSET (i-1) LIMIT 1;
@@ -236,6 +247,11 @@ DECLARE
   mentor_provider uuid;
   i int;
 BEGIN
+  -- Demo history is trusted seed data, written as the lifecycle service:
+  -- booking eligibility (a free requirement + the cohort pool + the goal gate,
+  -- 20261005130000) judges new bookings, not seeded history. Local to this
+  -- statement's transaction.
+  PERFORM set_config('app.session_transition','on',true);
   SELECT p.id INTO mentor_provider FROM profiles p JOIN user_roles r ON r.user_id=p.id
     WHERE r.role='coach' ORDER BY p.id OFFSET 1 LIMIT 1;
   IF mentor_provider IS NULL THEN RAISE EXCEPTION 'Missing preserved mentor provider'; END IF;
@@ -417,7 +433,13 @@ DECLARE
   cc uuid := '11111111-1111-4111-8111-111111111119';
   uid uuid; eid uuid; coach uuid; mentor uuid; w uuid;
   i int;
+  dyad_pairs int[] := ARRAY[1,2, 3,4, 5,6, 7,8, 9,11, 10,12];
 BEGIN
+  -- Demo history is trusted seed data, written as the lifecycle service:
+  -- booking eligibility (a free requirement + the cohort pool + the goal gate,
+  -- 20261005130000) judges new bookings, not seeded history. Local to this
+  -- statement's transaction.
+  PERFORM set_config('app.session_transition','on',true);
   SELECT p.id INTO coach FROM profiles p JOIN user_roles r ON r.user_id=p.id
     WHERE r.role='coach' ORDER BY p.id LIMIT 1;
   SELECT p.id INTO mentor FROM profiles p JOIN user_roles r ON r.user_id=p.id
@@ -504,7 +526,7 @@ BEGIN
       ON CONFLICT(id) DO UPDATE SET approval_status='active';
     INSERT INTO programme_enrollments(id,user_id,coachee_id,programme_id,cohort_id,organization_id,start_date,end_date,status)
       VALUES(eid,uid,uid,pc,cc,org,'2026-03-01','2026-07-05',
-        'at_risk'::enrollment_status)
+        'active'::enrollment_status)
       ON CONFLICT(id) DO UPDATE SET user_id=excluded.user_id,cohort_id=excluded.cohort_id,
         start_date=excluded.start_date,end_date=excluded.end_date,status=excluded.status;
     PERFORM generate_enrollment_schedule(eid);
@@ -549,9 +571,10 @@ BEGIN
   -- a learner's Peer partner pool (eligible_peer_partners) and the learner
   -- Peer booking gate are the Admin-assigned dyad, not the opted-in cohort.
   -- Without a dyad every Cohort C leader opens the Peer page to nobody.
-  -- Leaders are paired C1-C2, C3-C4, ... C11-C12 (the same rows the Admin
-  -- dyad editor, admin_create_peer_dyad, writes; fixed ids so a re-run is a
-  -- no-op).
+  -- Leaders are paired C1-C2, C3-C4, C5-C6, C7-C8, C9-C11, C10-C12 (the same
+  -- rows the Admin dyad editor, admin_create_peer_dyad, writes; fixed ids so a
+  -- re-run is a no-op). Only a dyad session earns Peer units (20261005140000)
+  -- and it credits both partners, so the pairs decide the Peer numbers below.
   FOR i IN 1..6 LOOP
     INSERT INTO public.peer_dyads(id,cohort_id,programme_id,status,created_by)
       VALUES(('1d1d1d1d-1d1d-41d1-81d1-'||lpad(i::text,12,'0'))::uuid,cc,pc,'active',auth.uid())
@@ -559,7 +582,7 @@ BEGIN
     INSERT INTO public.peer_dyad_members(dyad_id,enrollment_id)
       SELECT ('1d1d1d1d-1d1d-41d1-81d1-'||lpad(i::text,12,'0'))::uuid,
              ('14141414-1414-4141-8141-'||lpad(k::text,12,'0'))::uuid
-      FROM unnest(ARRAY[2*i-1, 2*i]) AS k
+      FROM unnest(ARRAY[dyad_pairs[2*i-1], dyad_pairs[2*i]]) AS k
       -- NOT EXISTS, not ON CONFLICT: the BEFORE INSERT validate_peer_dyad
       -- trigger runs before a conflict is detected and would refuse a third
       -- member on a re-run.
@@ -588,30 +611,24 @@ BEGIN
   --   8            0        0         0           0
   --   9            4        2         2           6   (fully complete)
   --  10            1        0         0           2
-  --  11            0        1         0           1
+  --  11            0        2         0           1
   --  12            0        0         0           0
   -- Triads (2 required) are seeded separately below, since a single triad
   -- session credits every attending leader at once: 1:2 2:2 3:1 4:1 5:0 6:0
-  -- 7:0 8:0 9:2 10:1 11:0 12:0.
+  -- 7:0 8:0 9:2 10:1 11:0 12:0. Peer likewise: one dyad session credits both
+  -- partners -- C1-C2 x2, C3-C4 x1, C9-C11 x2.
   DECLARE
     coaching_units integer[] := ARRAY[4,3,2,1,2,1,0,0,4,1,0,0];
-    peer_units integer[] := ARRAY[2,2,1,1,0,0,0,0,2,0,1,0];
+    -- receiver, provider, completed dyad sessions
+    peer_pairs integer[] := ARRAY[1,2,2, 3,4,1, 9,11,2];
+    seed_admin uuid := auth.uid();
     mentoring_units integer[] := ARRAY[2,1,1,0,1,0,0,0,2,0,0,0];
     training_units integer[] := ARRAY[6,5,4,3,2,1,0,0,6,2,1,0];
     coaching_due date[] := ARRAY['2026-04-01','2026-05-03','2026-06-03','2026-07-05']::date[];
     pair_due date[] := ARRAY['2026-05-03','2026-07-05']::date[];
     week_due date[] := ARRAY['2026-03-01','2026-03-08','2026-03-15','2026-03-22','2026-03-29','2026-04-05']::date[];
-    peer_coach_id uuid;
     j int;
   BEGIN
-    -- Peer coaching sessions are given by an opted-in coach, not by another
-    -- leader (validate_peer_session_enrollment() requires a coach_profiles
-    -- row with peer_coaching_opt_in = true on the giving side).
-    SELECT cp.id INTO peer_coach_id
-    FROM public.coach_profiles cp
-    WHERE cp.peer_coaching_opt_in
-    ORDER BY cp.id
-    LIMIT 1;
 
     FOR i IN 1..12 LOOP
       uid := ('13131313-1313-4131-8131-'||lpad(i::text,12,'0'))::uuid;
@@ -628,24 +645,6 @@ BEGIN
           ON CONFLICT(id) DO UPDATE SET
             coach_id=excluded.coach_id,
             coachee_id=excluded.coachee_id,
-            topic=excluded.topic,
-            start_time=excluded.start_time,
-            duration_minutes=excluded.duration_minutes,
-            status=excluded.status,
-            enrollment_id=excluded.enrollment_id;
-      END LOOP;
-
-      FOR j IN 1..peer_units[i] LOOP
-        INSERT INTO peer_sessions(
-          id,peer_coach_id,peer_coachee_id,topic,start_time,duration_minutes,status,enrollment_id
-        )
-          VALUES(
-            ('1a1a1a1a-1a1a-41a1-81a1-'||lpad((i * 10 + j)::text,12,'0'))::uuid,
-            peer_coach_id,uid,'Emerging Leaders peer coaching',pair_due[j]::timestamptz,45,'completed',eid
-          )
-          ON CONFLICT(id) DO UPDATE SET
-            peer_coach_id=excluded.peer_coach_id,
-            peer_coachee_id=excluded.peer_coachee_id,
             topic=excluded.topic,
             start_time=excluded.start_time,
             duration_minutes=excluded.duration_minutes,
@@ -688,6 +687,28 @@ BEGIN
             completed_at=excluded.completed_at;
       END LOOP;
     END LOOP;
+
+    -- Peer: completed sessions inside each Admin-assigned dyad. The dyad
+    -- booking rule (can_book_coachee_peer_session) is the receiver's own, so
+    -- each row is written under the receiver's JWT, as the RPC would be.
+    FOR i IN 0..2 LOOP
+      FOR j IN 1..peer_pairs[i*3+3] LOOP
+        PERFORM set_config('request.jwt.claim.sub',
+          '13131313-1313-4131-8131-'||lpad(peer_pairs[i*3+1]::text,12,'0'),true);
+        INSERT INTO coachee_peer_sessions(
+          id,peer_provider_id,peer_receiver_id,topic,start_time,duration_minutes,status,enrollment_id
+        )
+          VALUES(
+            ('1a1a1a1a-1a1a-41a1-81a1-'||lpad((peer_pairs[i*3+1] * 10 + j)::text,12,'0'))::uuid,
+            ('13131313-1313-4131-8131-'||lpad(peer_pairs[i*3+2]::text,12,'0'))::uuid,
+            ('13131313-1313-4131-8131-'||lpad(peer_pairs[i*3+1]::text,12,'0'))::uuid,
+            'Emerging Leaders peer coaching',pair_due[j]::timestamptz,45,'completed',
+            ('14141414-1414-4141-8141-'||lpad(peer_pairs[i*3+1]::text,12,'0'))::uuid
+          )
+          ON CONFLICT(id) DO NOTHING;
+      END LOOP;
+    END LOOP;
+    PERFORM set_config('request.jwt.claim.sub',seed_admin::text,true);
   END;
 
   -- Triads: every required Triad has its own group assignment. A completed
@@ -842,6 +863,10 @@ BEGIN
     RAISE EXCEPTION 'seed: a demo Coaching session has no matching cohort requirement';
   END IF;
 
+  -- The seed runs as the demo Admin, who has no bypass of the protected
+  -- session fields (20261005110000): attribution is trusted fixture work, so it
+  -- raises the lifecycle flag like seed-demo.sql does.
+  PERFORM set_config('app.session_transition','on',true);
   UPDATE public.sessions s
   SET
     cohort_requirement_id=req.id,
@@ -875,6 +900,7 @@ BEGIN
   ) THEN
     RAISE EXCEPTION 'seed: canonical Coaching attribution left a demo session unresolved';
   END IF;
+  PERFORM set_config('app.session_transition','off',true);
 END $canonical_coaching_fixture$;
 
 COMMIT;

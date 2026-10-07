@@ -5,6 +5,14 @@ import { canonicalExperience, canonicalJourney, canonicalProgress, ENROLLMENT_ID
 import { reflectionFeedFixture } from "@/test/fixtures/reflectionFeed";
 
 // Schedule-mismatch state (cohort_programme_schedule_state) — aligned here.
+// Assessment feedback has its own tests (AssessmentFeedbackSection.test.tsx).
+// The Final Assessment card has its own tests (FinalAssessmentResults.test.tsx).
+vi.mock("@/components/assessments/FinalAssessmentResults", () => ({
+  LearnerFinalAssessmentSection: () => null,
+  SponsorFinalAssessmentSection: () => null,
+  AdminFinalAssessmentDetail: () => null,
+}));
+vi.mock("@/components/assessments/AssessmentFeedbackSection", () => ({ AssessmentFeedbackSection: () => null }));
 vi.mock("@/hooks/useCanonicalScheduleState", () => ({
   useCanonicalScheduleState: () => ({ rows: [], mismatches: [], loading: false, error: null }),
 }));

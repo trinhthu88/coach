@@ -56,6 +56,11 @@ export const canonicalProgress: LearnerCanonicalProgress = {
   triad_completed_units: 1,
   triad_due_units: 1,
   triad_booked_units: 1,
+  // No Final Assessment in this programme.
+  final_assessment_required_units: 0,
+  final_assessment_completed_units: 0,
+  final_assessment_due_units: 0,
+  final_assessment_booked_units: 0,
 };
 
 export const canonicalEngagement: ProgrammeEngagementFacts = {

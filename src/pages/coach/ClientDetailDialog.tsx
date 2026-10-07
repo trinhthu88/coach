@@ -1,24 +1,14 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { format, isBefore } from "date-fns";
+import { format } from "date-fns";
+import { slotTodayKey } from "@/lib/slotTime";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { CheckCircle2, StickyNote, Trash2, ArrowLeft, UserMinus } from "lucide-react";
+import { CheckCircle2, StickyNote, Trash2, ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Tables } from "@/integrations/supabase/types";
 import { useClientDetail, type FlatClientAction } from "@/hooks/coach/useClientDetail";
@@ -29,8 +19,6 @@ export function ClientDetailDialog({
   coachId,
   onClose,
   onChanged,
-  onRemoved,
-  removeClient,
   completionPct,
 }: {
   coacheeId: string;
@@ -39,8 +27,6 @@ export function ClientDetailDialog({
   coachId: string;
   onClose: () => void;
   onChanged: () => void;
-  onRemoved: () => void;
-  removeClient: (coacheeId: string) => Promise<boolean>;
 }) {
   const { t } = useTranslation("dashboard");
   const {
@@ -63,19 +49,11 @@ export function ClientDetailDialog({
   } = useClientDetail(coacheeId, coachId, onChanged);
 
   const [newNote, setNewNote] = useState("");
-  const [removing, setRemoving] = useState(false);
 
   const submitNote = async () => {
     if (!newNote.trim()) return;
     await addNote(newNote);
     setNewNote("");
-  };
-
-  const confirmRemove = async () => {
-    setRemoving(true);
-    const ok = await removeClient(coacheeId);
-    setRemoving(false);
-    if (ok) onRemoved();
   };
 
   const avPalette = paletteFor(coacheeId);
@@ -92,31 +70,6 @@ export function ClientDetailDialog({
             <ArrowLeft className="h-3 w-3" /> {t("clients.detail.backToOverview")}
           </button>
 
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive">
-                <UserMinus className="h-3.5 w-3.5" /> {t("clients.detail.removeClient")}
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>{t("clients.detail.removeConfirmTitle", { name: profile?.full_name || t("clients.detail.removeConfirmDefaultName") })}</AlertDialogTitle>
-                <AlertDialogDescription>
-                  {t("clients.detail.removeConfirmBody")}
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel disabled={removing}>{t("clients.detail.cancel")}</AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={confirmRemove}
-                  disabled={removing}
-                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                >
-                  {removing ? t("clients.detail.removing") : t("clients.detail.removeClient")}
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
         </div>
 
         <div className="mb-4 flex items-start gap-3">
@@ -333,7 +286,8 @@ function ActionGroup({
       </p>
       <div className="divide-y">
         {items.map((a) => {
-          const overdue = !a.item.done && a.item.due_date && isBefore(new Date(a.item.due_date), new Date());
+          // Overdue = due before programme_today() (Vietnam), as the server counts it.
+          const overdue = !a.item.done && !!a.item.due_date && a.item.due_date < slotTodayKey();
           const lbl = labelFor(a.item.milestone_id);
           return (
             <div key={`${a.sessionId}-${a.idx}`} className="flex items-start gap-2 py-1.5">

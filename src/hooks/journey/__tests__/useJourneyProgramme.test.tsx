@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const filters: Array<[string, unknown]> = [];
+const rpcCalls: string[] = [];
 const enrollmentContext = vi.fn();
 
 vi.mock("@/hooks/useEnrollmentContext", () => ({
@@ -12,7 +13,16 @@ vi.mock("@/hooks/useEnrollmentContext", () => ({
 
 vi.mock("@/integrations/supabase/client", () => ({
   supabase: {
-    rpc: vi.fn().mockResolvedValue({ data: [{ monthly_limit: 4, used_this_month: 1 }], error: null }),
+    rpc: vi.fn(async (fn: string) => {
+      rpcCalls.push(fn);
+      if (fn === "learner_module_progress") {
+        return {
+          data: [{ module: "coaching", required_units: 3, completed_units: 1, booked_units: 1, due_units: 0, overdue_units: 0 }],
+          error: null,
+        };
+      }
+      return { data: [], error: null };
+    }),
     from: () => {
       const query = {
         select: () => query,
@@ -26,7 +36,7 @@ vi.mock("@/integrations/supabase/client", () => ({
             start_date: "2026-09-01",
             end_date: "2026-12-01",
             programme_id: "programme-current",
-            programmes: { name: "Current programme", coachee_session_limit: 4, duration_months: 3 },
+            programmes: { name: "Current programme", duration_months: 3 },
           }],
           error: null,
         }),
@@ -37,7 +47,7 @@ vi.mock("@/integrations/supabase/client", () => ({
             start_date: "2026-01-01",
             end_date: "2026-04-01",
             programme_id: "programme-history",
-            programmes: { name: "Historical programme", coachee_session_limit: 6, duration_months: 3 },
+            programmes: { name: "Historical programme", duration_months: 3 },
             cohorts: { name: "September 2026 Cohort" },
           },
           error: null,
@@ -58,6 +68,7 @@ function wrapper({ children }: { children: ReactNode }) {
 describe("useJourneyProgramme", () => {
   beforeEach(() => {
     filters.length = 0;
+    rpcCalls.length = 0;
     enrollmentContext.mockReset();
     enrollmentContext.mockReturnValue({
       selectedEnrollment: { id: "enrollment-history" },
@@ -77,5 +88,17 @@ describe("useJourneyProgramme", () => {
     expect(enrollmentContext).toHaveBeenCalledWith("learner-1", "enrollment-history");
     expect(filters).toContainEqual(["id", "enrollment-history"]);
     expect(filters).not.toContainEqual(["status", "active"]);
+  });
+
+  it("returns canonical Coaching progress and reads no session limit", async () => {
+    const { result } = renderHook(
+      () => useJourneyProgramme("learner-1", "enrollment-history"),
+      { wrapper }
+    );
+
+    await waitFor(() => expect(result.current.coaching).not.toBeNull());
+    expect(result.current.coaching).toMatchObject({ requiredUnits: 3, completedUnits: 1, bookedUnits: 1 });
+    expect(result.current.programme).not.toHaveProperty("sessionsAllowed");
+    expect(rpcCalls).not.toContain("get_coachee_session_usage_for_enrollment");
   });
 });

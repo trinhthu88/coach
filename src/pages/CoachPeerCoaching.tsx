@@ -1,7 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Loader2, Star, AlertTriangle } from "lucide-react";
+import { Loader2, Star, AlertTriangle, Info } from "lucide-react";
 import { Link } from "react-router-dom";
 import { PageHeader } from "@/components/ui/page-header";
 import { useOptedInPeerCoaches } from "@/hooks/coaches/useAllowedCoaches";
@@ -19,6 +19,13 @@ export default function CoachPeerCoaching() {
             emphasis={t("peerCoaching.header.titleEmphasis")}
             subtitle={t("peerCoaching.header.subtitle")}
           />
+
+      {/* The Coach opt-in pool is practice: only a session with the
+          Admin-assigned Peer partner earns a Peer requirement (20261005140000). */}
+      <Card className="flex items-start gap-2 border-warning/30 bg-warning/5 p-4 text-sm" data-testid="peer-practice-notice">
+        <Info className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
+        <p>{t("peerCoaching.practiceNotice")}</p>
+      </Card>
 
       {loading ? (
         <div className="flex items-center justify-center py-16">

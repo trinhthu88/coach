@@ -51,7 +51,7 @@ beforeEach(async () => {
   ];
   responses.sponsor_canonical_enrollment_metadata = responses.sponsor_canonical_enrollment_progress;
   responses.sponsor_canonical_cohort_progress = [{
-    ...responses.sponsor_cohort_summaries[0],
+    ...(responses.sponsor_cohort_summaries as Record<string, unknown>[])[0],
     coaching_required_units: 48, coaching_completed_units: 8, coaching_due_units: 20, coaching_booked_units: 0, coaching_completed_leaders: 2,
     training_required_units: 24, training_completed_units: 0, training_due_units: 12, training_booked_units: 0, training_completed_leaders: 0,
     peer_required_units: 12, peer_completed_units: 0, peer_due_units: 6, peer_booked_units: 0, peer_completed_leaders: 0,
@@ -71,12 +71,26 @@ beforeEach(async () => {
   }];
 });
 
+describe("SponsorDashboard health signal (Prompt 9c, decision 8)", () => {
+  it("shows the server's health_signal, never a ratio computed in the browser", async () => {
+    // No leader is at risk, yet the server says red (e.g. 2 of 12 behind pace):
+    // the old browser rule (at-risk share) would have shown Healthy.
+    const cohorts = responses.sponsor_canonical_cohort_progress as Record<string, unknown>[];
+    responses.sponsor_canonical_cohort_progress = [{ ...cohorts[0], at_risk_count: 0, needs_attention_count: 2, health_signal: "red" }];
+    render(<MemoryRouter><SponsorDashboard /></MemoryRouter>);
+    await waitFor(() => expect(screen.getByText("Priya Shah")).toBeInTheDocument());
+    expect(screen.getAllByText("Needs attention").length).toBeGreaterThan(0);
+  });
+});
+
 describe("SponsorDashboard privacy contract", () => {
   it("uses aggregate cohort data only and no forbidden metrics", async () => {
     render(<MemoryRouter><SponsorDashboard /></MemoryRouter>);
     await waitFor(() => expect(screen.getByText("Priya Shah")).toBeInTheDocument());
     expect(screen.getByText("Tom Baker")).toBeInTheDocument();
-    expect(screen.getAllByText("Units used").length).toBeGreaterThan(0);
+    // One label for completed programme units everywhere (Prompt 9c).
+    expect(screen.getAllByText("Programme units completed").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Units used")).toBeNull();
     expect(screen.getByText("113/192")).toBeInTheDocument();
     expect(screen.queryByText("Booked / overdue")).not.toBeInTheDocument();
     expect(screen.queryByText("Goals setup / total")).not.toBeInTheDocument();

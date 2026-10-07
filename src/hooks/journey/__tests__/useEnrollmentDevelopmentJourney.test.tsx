@@ -22,7 +22,7 @@ function wrapper({ children }: { children: ReactNode }) {
   return <QueryClientProvider client={client}>{children}</QueryClientProvider>;
 }
 
-/** Records every .eq()/.in() call per table and resolves with the table's canned rows. */
+/** Records every .eq()/.in()/.not() call per table and resolves with the table's canned rows. */
 function buildFromMock(tableData: Record<string, unknown[]>, calls: Array<[string, string, unknown]>) {
   return (table: string) => {
     const rows = tableData[table] ?? [];
@@ -37,7 +37,10 @@ function buildFromMock(tableData: Record<string, unknown[]>, calls: Array<[strin
       calls.push([table, "in", { col, val }]);
       return Promise.resolve(result);
     };
-    query.not = () => query;
+    query.not = (col: string, op: string, val: unknown) => {
+      calls.push([table, `not.${col}`, { op, val }]);
+      return query;
+    };
     query.then = (resolve: (v: typeof result) => unknown) => Promise.resolve(result).then(resolve);
     return query;
   };
@@ -65,9 +68,12 @@ type FeedRow = {
   details?: Record<string, unknown> | null;
 };
 
-function buildRpcMock(history: HistoryRow[] = [], feed: FeedRow[] = [], errors: Record<string, { message: string }> = {}) {
+type WeekRow = { id: string; week_number: number; title: string; completed_at: string | null };
+
+function buildRpcMock(history: HistoryRow[] = [], feed: FeedRow[] = [], errors: Record<string, { message: string }> = {}, weeks: WeekRow[] = []) {
   return (name: string) => {
     if (errors[name]) return Promise.resolve({ data: null, error: errors[name] });
+    if (name === "get_enrollment_training_weeks") return Promise.resolve({ data: weeks, error: null });
     if (name === "learner_session_history") return Promise.resolve({ data: history, error: null });
     if (name === "learner_reflection_feed") return Promise.resolve({ data: feed, error: null });
     return Promise.resolve({ data: null, error: null });
@@ -77,9 +83,9 @@ function buildRpcMock(history: HistoryRow[] = [], feed: FeedRow[] = [], errors: 
 const ENROLLMENT = "enrollment-1";
 const COACHEE = "learner-1";
 
-async function load(tables: Record<string, unknown[]> = {}, history: HistoryRow[] = [], feed: FeedRow[] = [], calls: Array<[string, string, unknown]> = []) {
+async function load(tables: Record<string, unknown[]> = {}, history: HistoryRow[] = [], feed: FeedRow[] = [], calls: Array<[string, string, unknown]> = [], weeks: WeekRow[] = []) {
   from.mockImplementation(buildFromMock(tables, calls));
-  rpc.mockImplementation(buildRpcMock(history, feed));
+  rpc.mockImplementation(buildRpcMock(history, feed, {}, weeks));
   const { result } = renderHook(() => useEnrollmentDevelopmentJourney(ENROLLMENT, COACHEE), { wrapper });
   await waitFor(() => expect(result.current.loading).toBe(false));
   return result;
@@ -113,10 +119,13 @@ describe("useEnrollmentDevelopmentJourney", () => {
   it("scopes table reads to the enrollment and reads sessions/reflections from the canonical projections", async () => {
     const calls: Array<[string, string, unknown]> = [];
     await load({}, [], [], calls);
-    for (const table of ["coachee_goals", "coachee_milestones", "goal_checkins", "enrollment_actions", "training_progress", "assignment_submissions", "reflection_submissions"]) {
+    for (const table of ["coachee_goals", "coachee_milestones", "goal_checkins", "enrollment_actions", "assignment_submissions", "reflection_submissions"]) {
       expect(calls).toContainEqual([table, "enrollment_id", ENROLLMENT]);
     }
     expect(rpc).toHaveBeenCalledWith("learner_session_history", { p_enrollment_id: ENROLLMENT });
+    // Week completion is canonical (20261006160000), never a raw training_progress row.
+    expect(rpc).toHaveBeenCalledWith("get_enrollment_training_weeks", { p_enrollment_id: ENROLLMENT });
+    expect(from.mock.calls.map(([table]) => table)).not.toContain("training_progress");
     expect(rpc).toHaveBeenCalledWith("learner_reflection_feed", { p_enrollment_id: ENROLLMENT });
     // Sessions and reflections are never re-queried table by table here.
     const tablesRead = from.mock.calls.map(([t]) => t);
@@ -221,10 +230,18 @@ describe("useEnrollmentDevelopmentJourney", () => {
     expect(result.current.events.some((e) => e.sourceId === "tr1" && e.type === "feedback")).toBe(false);
   });
 
+  it("asks the server for Training quizzes only, never the Final Assessment quiz", async () => {
+    const calls: Array<[string, string, unknown]> = [];
+    await load({}, [], [], calls);
+    const quizCalls = calls.filter(([table]) => table === "assignment_submissions");
+    expect(quizCalls).toContainEqual(["assignment_submissions", "assignments.assignment_type", "quiz"]);
+    // A Final Assessment quiz has no training week (20261007000100).
+    expect(quizCalls).toContainEqual(["assignment_submissions", "not.assignments.training_week_id", { op: "is", val: null }]);
+  });
+
   it("produces training, quiz and programme-reflection activity plus feed reflections", async () => {
     const result = await load(
       {
-        training_progress: [{ id: "tp1", training_week_id: "w1", completed_at: "2026-09-10T00:00:00Z", training_weeks: { title: "Delegation basics", week_number: 2 } }],
         assignment_submissions: [{ id: "as1", score_pct: 90, submitted_at: "2026-09-11T00:00:00Z", assignments: { title: "Week 2 quiz", assignment_type: "quiz", training_week_id: "w1" } }],
         reflection_submissions: [{ id: "rs1", submitted_at: "2026-10-03T00:00:00Z", programme_reflections: { title: "Mid-programme reflection", reflection_number: 1 } }],
       },
@@ -232,8 +249,16 @@ describe("useEnrollmentDevelopmentJourney", () => {
       [
         { reflection_key: "training_reflection:rs1", source_type: "training_reflection", source_table: "reflection_submissions", source_id: "rs1", occurred_at: "2026-10-03T00:00:00Z", body: "I tried pausing." },
         { reflection_key: "journey_reflection:cr1", source_type: "journey_reflection", source_table: "coachee_reflections", source_id: "cr1", occurred_at: "2026-09-12T00:00:00Z", body: "Personal note" },
+      ],
+      [],
+      [
+        { id: "w1", week_number: 2, title: "Delegation basics", completed_at: "2026-09-10T00:00:00Z" },
+        // Viewed, quiz not done: not complete by the canonical rule.
+        { id: "w2", week_number: 3, title: "Feedback", completed_at: null },
       ]
     );
+    const weeksDone = result.current.events.filter((e) => e.subtype === "training_week_completed");
+    expect(weeksDone.map((e) => e.summary)).toEqual(["Week 2: Delegation basics"]);
     const subtypes = result.current.events.map((e) => e.subtype);
     expect(subtypes).toEqual(
       expect.arrayContaining(["training_week_completed", "quiz_submitted", "programme_reflection_submitted", "training_reflection", "journey_reflection"])

@@ -13,7 +13,7 @@ import { AdminPageHeader } from "./_shared";
 import { MODULE_TYPES, ModuleConfigRow, defaultModuleRows, type ModuleRows } from "./AdminProgrammes";
 import type { TrainingWeekOption } from "./ProgrammeModuleScheduleFields";
 import type { ProgrammeModuleType } from "@/hooks/useProgrammeModules";
-import { normalizeModuleScheduleConfig, validateModuleScheduleConfig } from "@/lib/programmeModuleConfig";
+import { normalizeModuleScheduleConfig, stripRetiredSessionLimits, validateModuleScheduleConfig } from "@/lib/programmeModuleConfig";
 import type { Json } from "@/integrations/supabase/types";
 import { getFriendlyErrorMessage } from "@/lib/errors";
 import { useConfirm } from "@/hooks/use-confirm";
@@ -21,12 +21,10 @@ import { toast } from "sonner";
 
 type ProgrammeForm = {
   id?: string; name: string; description: string; duration_months: number; color: string;
-  is_active: boolean; coachee_session_limit: number;
-  mentoring_received_limit: number | null;
+  is_active: boolean;
 };
 const emptyForm: ProgrammeForm = {
   name: "", description: "", duration_months: 3, color: "cobalt", is_active: true,
-  coachee_session_limit: 8, mentoring_received_limit: null,
 };
 
 export default function ProgrammeBuilder() {
@@ -55,7 +53,6 @@ export default function ProgrammeBuilder() {
         ...p,
         color: p.color || emptyForm.color,
         description: p.description || "",
-        mentoring_received_limit: p.mentoring_received_limit ?? null,
       });
       const next = defaultModuleRows();
       (ms || []).forEach((m) => { next[m.module as ProgrammeModuleType] = { enabled: m.enabled, config: { ...next[m.module as ProgrammeModuleType].config, ...(m.config as Record<string, unknown>) } }; });
@@ -87,9 +84,9 @@ export default function ProgrammeBuilder() {
       const key = validateModuleScheduleConfig(row.config, weeks.map((w) => w.id));
       if (key) errors.push(`${t(`programmes.modules.types.${module}`)}: ${t(key)}`);
       const target = row.config.required_units;
-      const limits = module === "triads"
-        ? [row.config.max_triads]
-        : [row.config.give_limit, row.config.receive_limit];
+      // Only Triads cap the required target; Peer's monthly_limit caps
+      // practice, not requirements (20261006120000).
+      const limits = module === "triads" ? [row.config.max_triads] : [];
       const applicableLimits = limits.filter((limit): limit is number => typeof limit === "number");
       if (row.config.required === true && typeof target === "number" && applicableLimits.some((max) => target > max)) {
         errors.push(t("programmes.builder.targetExceedsMaximum", {
@@ -112,14 +109,13 @@ export default function ProgrammeBuilder() {
     try {
       const payload = {
         name: form.name.trim(), description: form.description || null, duration_months: Number(form.duration_months) || 3,
-        color: form.color || "cobalt", is_active: !!form.is_active, coachee_session_limit: Number(form.coachee_session_limit) || 0,
-        mentoring_received_limit: form.mentoring_received_limit ?? null,
+        color: form.color || "cobalt", is_active: !!form.is_active,
       };
       let id = programmeId;
       if (id) { const { error } = await supabase.from("programmes").update(payload).eq("id", id); if (error) throw error; }
       else { const { data, error } = await supabase.from("programmes").insert(payload).select("id").single(); if (error) throw error; id = data.id; }
       const { error } = await supabase.from("programme_modules").upsert(MODULE_TYPES.map((module) => ({
-        programme_id: id, module, enabled: modules[module].enabled, config: normalizeModuleScheduleConfig(modules[module].config) as Json,
+        programme_id: id, module, enabled: modules[module].enabled, config: normalizeModuleScheduleConfig(stripRetiredSessionLimits(module, modules[module].config)) as Json,
       })), { onConflict: "programme_id,module" });
       if (error) throw error;
       setDirty(false); toast.success(t("programmes.saved")); navigate("/admin/programmes");
@@ -138,14 +134,7 @@ export default function ProgrammeBuilder() {
             <div><Label>{t("programmes.descriptionLabel")}</Label><Textarea rows={3} value={form.description} onChange={(e) => field("description", e.target.value)} /></div>
             <div className="max-w-xs"><Label>{t("programmes.durationMonthsLabel")}</Label><Input type="number" min={1} value={form.duration_months} onChange={(e) => field("duration_months", Number(e.target.value))} /></div>
           </Card>
-          <Card className="p-5">
-            <h2 className="mb-1 text-sm font-semibold">{t("programmes.sessionLimitsHeading")}</h2>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div><Label>{t("programmes.coachingReceivedCoachee")}</Label><Input type="number" min={0} value={form.coachee_session_limit} onChange={(e) => field("coachee_session_limit", Number(e.target.value))} /><p className="mt-1 text-[10px] text-muted-foreground">{t("programmes.outsideRequirementsHint")}</p></div>
-              <div><Label>{t("programmes.mentoringSessionsReceived")}</Label><Input type="number" min={0} placeholder={t("coachProgrammes.unlimited")} value={form.mentoring_received_limit ?? ""} onChange={(e) => field("mentoring_received_limit", e.target.value === "" ? null : Number(e.target.value))} /></div>
-            </div>
-          </Card>
-          <Card className="p-5"><h2 className="text-sm font-semibold">{t("programmes.modules.heading")}</h2><p className="mb-3 text-xs text-muted-foreground">{t("programmes.modules.hint")}</p><div className="grid gap-3 sm:grid-cols-2">{MODULE_TYPES.map((module) => <ModuleConfigRow key={module} module={module} row={modules[module]} onToggle={(enabled) => updateModule(module, { enabled })} onConfigChange={(patch) => updateConfig(module, patch)} t={t} trainingWeeks={weeks} />)}</div></Card>
+          <Card className="p-5"><h2 className="text-sm font-semibold">{t("programmes.modules.heading")}</h2><p className="mb-3 text-xs text-muted-foreground">{t("programmes.modules.hint")}</p><div className="grid gap-3 sm:grid-cols-2">{MODULE_TYPES.map((module) => <ModuleConfigRow key={module} module={module} row={modules[module]} onToggle={(enabled) => updateModule(module, { enabled })} onConfigChange={(patch) => updateConfig(module, patch)} t={t} trainingWeeks={weeks} programmeId={programmeId} />)}</div></Card>
           <div className="flex items-center justify-between rounded-lg border p-4"><div><p className="text-sm font-medium">{t("programmes.activeLabel")}</p><p className="text-xs text-muted-foreground">{t("programmes.activeHint")}</p></div><Switch checked={form.is_active} onCheckedChange={(v) => update({ is_active: v })} /></div>
         </main>
         <aside className="space-y-4 lg:sticky lg:top-4 lg:self-start">

@@ -12,4 +12,4 @@ export const ENROLLMENT_STATUS_TONE: Record<EnrollmentStatus, Tone> = {
 };
 
 /** Canonical module order used across Learner, Sponsor and Admin. */
-export const MODULE_ORDER = ["coaching", "training", "peer_coaching", "mentoring", "triads"] as const;
+export const MODULE_ORDER = ["coaching", "training", "peer_coaching", "mentoring", "triads", "final_assessment"] as const;

@@ -108,7 +108,6 @@ export default function AdminCoachees() {
                 <th className="px-3 py-2.5 text-left font-semibold">{t("coachees.tableHeaders.organisation")}</th>
                 <th className="px-3 py-2.5 text-left font-semibold">{t("coachees.tableHeaders.programme")}</th>
                 <th className="px-3 py-2.5 text-left font-semibold">{t("coachees.tableHeaders.percentComplete")}</th>
-                <th className="px-3 py-2.5 text-left font-semibold">{t("coachees.tableHeaders.selectedCoaches")}</th>
                 <th className="px-3 py-2.5 text-right font-semibold">{t("coachees.tableHeaders.actions")}</th>
               </tr>
             </thead>
@@ -176,7 +175,6 @@ export default function AdminCoachees() {
                       );
                     })()}
                   </td>
-                  <td className="px-3 py-2.5 text-[11px]">{r.selected_coaches.length === 0 ? <span className="italic text-muted-foreground">—</span> : t("coachees.selectedCoachesCount", { count: r.selected_coaches.length })}</td>
                   <td className="px-3 py-2.5 text-right">
                     <div className="inline-flex gap-1">
                       <Button asChild variant="ghost" size="icon" title={t("coachees.viewProfile")}><Link to={`/admin/coachees/${r.id}`} aria-label={t("coachees.viewProfile")}><Eye className="h-3.5 w-3.5" /></Link></Button>
@@ -186,7 +184,7 @@ export default function AdminCoachees() {
                 </tr>
               ))}
               {filtered.length === 0 && (
-                <tr><td colSpan={11} className="p-12 text-center text-sm text-muted-foreground">{t("coachees.noMatch")}</td></tr>
+                <tr><td colSpan={10} className="p-12 text-center text-sm text-muted-foreground">{t("coachees.noMatch")}</td></tr>
               )}
             </tbody>
           </table>

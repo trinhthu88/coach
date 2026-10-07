@@ -124,6 +124,10 @@ const DETAIL: Record<string, Record<string, unknown[]>> = {
   },
 };
 
+// No Final Assessment in these programmes (FinalAssessmentResults.test.tsx covers it).
+vi.mock("@/hooks/assessments/useFinalAssessmentResult", () => ({
+  useAdminFinalAssessment: () => ({ data: null, isLoading: false, isError: false }),
+}));
 vi.mock("@/integrations/supabase/client", () => ({
   supabase: {
     rpc: (...args: unknown[]) => rpc(...args),

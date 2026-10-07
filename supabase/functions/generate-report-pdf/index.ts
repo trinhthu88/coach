@@ -25,8 +25,8 @@ interface RosterRow {
   full_name: string;
   cohort_name: string | null;
   enrollment_status: string;
-  sessions_completed: number;
-  sessions_entitled: number;
+  units_completed: number;
+  units_required: number;
 }
 
 const PAGE_SIZE: [number, number] = [612, 792]; // US Letter
@@ -95,17 +95,20 @@ Deno.serve(async (req) => {
     }
 
     const rows = enrollmentRes.data ?? [];
+    // Decision 9: programme units (every module, the Final Assessment
+    // included), the Sponsor dashboard's "Programme units completed" -- not
+    // Coaching sessions "used" against an allowance.
     const kpis = {
       leaders_enrolled: cohort.enrollment_count ?? rows.length,
-      sessions_used: cohort.coaching_completed_units ?? 0,
-      sessions_entitled: cohort.coaching_required_units ?? 0,
+      units_completed: cohort.completed_units ?? 0,
+      units_required: cohort.required_units ?? 0,
     };
     const roster = rows.map((r) => ({
       full_name: r.learner_display_name,
       cohort_name: r.cohort_label,
       enrollment_status: r.effective_enrollment_status,
-      sessions_completed: r.coaching_completed_units,
-      sessions_entitled: r.coaching_required_units,
+      units_completed: r.completed_units,
+      units_required: r.required_units,
     })) as RosterRow[];
 
     // ------------------------------------------------------------------
@@ -145,7 +148,7 @@ Deno.serve(async (req) => {
 
     text("Key metrics", { size: 13, f: bold, gap: 10 });
     text(`Leaders enrolled: ${kpis.leaders_enrolled}`);
-    text(`Coaching sessions used: ${kpis.sessions_used} / ${kpis.sessions_entitled}`);
+    text(`Programme units completed: ${kpis.units_completed} / ${kpis.units_required}`);
     text("Privacy-safe enrollment and cohort metrics only.", { gap: 18 });
 
     if (roster.length > 0) {
@@ -154,7 +157,7 @@ Deno.serve(async (req) => {
         { label: "Leader", w: 150 },
         { label: "Cohort", w: 110 },
         { label: "Status", w: 80 },
-        { label: "Sessions", w: 70 },
+        { label: "Units", w: 70 },
       ];
       newPageIfNeeded(20);
       let x = MARGIN;
@@ -171,7 +174,7 @@ Deno.serve(async (req) => {
           r.full_name,
           r.cohort_name || "—",
           r.enrollment_status,
-          `${r.sessions_completed}/${r.sessions_entitled}`,
+          `${r.units_completed}/${r.units_required}`,
         ];
         values.forEach((v, i) => {
           page.drawText(String(v).slice(0, 28), { x, y, size: 9, font, color: ink });

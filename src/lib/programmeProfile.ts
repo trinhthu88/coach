@@ -118,6 +118,9 @@ export type ProgrammeProgressFacts = Pick<
   | "triad_required_units"
   | "triad_completed_units"
   | "triad_due_units"
+  | "final_assessment_required_units"
+  | "final_assessment_completed_units"
+  | "final_assessment_due_units"
 >;
 
 /** canonical_enrollment_engagement — counts/averages only, identical for sponsor and learner. */
@@ -315,7 +318,7 @@ export function journeyWindow(
   };
 }
 
-export type ProgrammeModuleKey = "coaching" | "training" | "peer" | "mentoring" | "triads";
+export type ProgrammeModuleKey = "coaching" | "training" | "peer" | "mentoring" | "triads" | "final_assessment";
 
 export interface ProgrammeModuleRow {
   key: ProgrammeModuleKey;
@@ -324,15 +327,29 @@ export interface ProgrammeModuleRow {
   due: number | null;
 }
 
-/** Canonical module ordering + field mapping used by every module-progress rendering. */
+/**
+ * Canonical module ordering + field mapping used by every module-progress
+ * rendering. The rows add up to the enrollment's required / completed units:
+ * the Final Assessment is a module like the others (decision 9), listed only
+ * when the programme has one.
+ */
 export function programmeModuleRows(facts: ProgrammeProgressFacts): ProgrammeModuleRow[] {
-  return [
+  const rows: ProgrammeModuleRow[] = [
     { key: "coaching", completed: facts.coaching_completed_units, required: facts.coaching_required_units, due: facts.coaching_due_units },
     { key: "training", completed: facts.training_completed_units, required: facts.training_required_units, due: facts.training_due_units },
     { key: "peer", completed: facts.peer_completed_units, required: facts.peer_required_units, due: facts.peer_due_units },
     { key: "mentoring", completed: facts.mentoring_completed_units, required: facts.mentoring_required_units, due: facts.mentoring_due_units },
     { key: "triads", completed: facts.triad_completed_units, required: facts.triad_required_units, due: facts.triad_due_units },
   ];
+  if ((facts.final_assessment_required_units ?? 0) > 0) {
+    rows.push({
+      key: "final_assessment",
+      completed: facts.final_assessment_completed_units,
+      required: facts.final_assessment_required_units,
+      due: facts.final_assessment_due_units,
+    });
+  }
+  return rows;
 }
 
 /** Learning-breakdown rows that carry a configured requirement (hidden/unselected items never appear). */

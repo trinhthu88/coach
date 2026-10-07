@@ -1,4 +1,4 @@
-import { readFileSync, readdirSync, statSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
 
@@ -237,18 +237,26 @@ describe("programme profile architecture", () => {
     expect(read("hooks/sponsor/useSponsorLeaderData.ts")).toMatch(/rpc\("sponsor_canonical_leader_journey"/);
   });
 
-  it("Admin Dashboard, Analytics and Alerts read completion and status from the canonical engine", () => {
-    for (const file of ["pages/admin/AdminDashboard.tsx", "pages/admin/AdminAnalytics.tsx", "pages/admin/AdminAlerts.tsx"]) {
+  it("Admin Dashboard and Analytics read completion and status from the canonical engine", () => {
+    for (const file of ["pages/admin/AdminDashboard.tsx", "pages/admin/AdminAnalytics.tsx"]) {
       const text = read(file);
-      expect(text, file).toMatch(/fetchAdminCanonicalProgress\(/);
+      // The canonical rows, or the canonical summed completion rate (20261006200000).
+      expect(text, file).toMatch(/fetchAdminCanonicalProgress\(|fetchAdminCompletionRate\(/);
       // No second Admin completion engine, no stored-status "at risk", no snapshot reads.
       expect(text, file).not.toMatch(/get_admin_enrollment_progress|enrollment_module_(snapshots|milestones)|progress_pct/);
       expect(text, file).not.toMatch(/\.status === "at_risk"/);
     }
     expect(read("lib/adminCanonicalProgress.ts")).toMatch(/rpc\("admin_canonical_enrollment_progress"/);
-    // Alerts count overdue actions from the original action records, not a session subset.
-    expect(read("pages/admin/AdminAlerts.tsx")).toMatch(/from\("enrollment_actions"\)/);
-    expect(read("pages/admin/AdminAlerts.tsx")).not.toMatch(/withEnrollmentActions/);
+  });
+
+  it("Admin alerts are computed on read in SQL; the page derives nothing", () => {
+    // 20261006140000: admin_alerts_current() over canonical rows replaces the
+    // browser scan that re-derived overdue / at-risk / missing evidence.
+    const page = read("pages/admin/AdminAlerts.tsx");
+    expect(page).toMatch(/rpc\("admin_alerts_current"\)/);
+    expect(page).not.toMatch(/from\("(sessions|peer_sessions|coachee_peer_sessions|mentoring_sessions|enrollment_actions|assignment_submissions|programme_enrollments|session_learning_reflections)"\)/);
+    expect(page).not.toMatch(/fetchAdminCanonicalProgress|admin_enrollment_inactivity|\.insert\(/);
+    expect(existsSync(join(SRC, "pages/admin/alertScan.ts"))).toBe(false);
   });
 
   it("every Admin '% complete' is the canonical number the learner sees — never time elapsed", () => {
@@ -272,8 +280,12 @@ describe("programme profile architecture", () => {
   });
 
   it("every Coach '% complete' is the canonical number — never a milestone, session or position ratio", () => {
-    expect(read("hooks/coach/useCoachClients.ts")).toMatch(/rpc\("coach_canonical_enrollment_progress"/);
+    // One server summary per client (coach_client_summary, 20261007001100):
+    // the canonical engine's numbers, rendered.
+    expect(read("hooks/coach/useCoachClients.ts")).toMatch(/rpc\("coach_client_summary"\)/);
     expect(read("hooks/coach/useCoachClients.ts")).toMatch(/canonicalCompletionPct\(/);
+    expect(readFileSync(join(process.cwd(), "supabase/migrations/20261007001100_browser_numbers.sql"), "utf8"))
+      .toMatch(/FUNCTION public\.coach_client_summary\(\)[\s\S]*canonical_enrollment_progress\(cu\.enrollment_id/);
     // Status is the canonical pace_status too -- no coach-side heuristic.
     const coachClients = read("hooks/coach/useCoachClients.ts");
     expect(coachClients).toMatch(/pace_status/);
@@ -421,10 +433,12 @@ describe("programme profile architecture", () => {
       const readers = runtime.filter((f) => /rpc\(\s*"(admin_enrollment_inactivity|canonical_enrollment_inactivity_internal)"/.test(readFileSync(f, "utf8")));
       expect(readers.map(label).sort()).toEqual([
         "src/hooks/admin/useAdminProgrammeEngagement.ts",
-        "src/pages/admin/AdminAlerts.tsx",
-        "supabase/functions/send-programme-reminders/index.ts",
         "supabase/functions/send-weekly-admin-summary/index.ts",
       ]);
+      // Admin Alerts compute it on read (admin_alerts_current); the daily
+      // reminders no longer store a stale_programme_participant alert (Prompt 14).
+      expect(readFileSync(join(process.cwd(), "supabase/functions/send-programme-reminders/index.ts"), "utf8"))
+        .not.toMatch(/alert_type:\s*"stale_programme_participant"|from\("admin_alerts"\)\.insert/);
       // Nobody re-derives last activity or the 7-day window locally.
       const local = /lastActive|last_active_by|stale_participant"|7 \* (DAY_MS|24 \* 60 \* 60 \* 1000)[^;]*(activ|stale)/i;
       expect(runtime.filter((f) => local.test(readFileSync(f, "utf8"))).map(label)).toEqual([]);
@@ -444,6 +458,58 @@ describe("programme profile architecture", () => {
       for (const file of ["src/hooks/admin/useAdminProgrammeEngagement.ts", "supabase/functions/send-weekly-admin-summary/index.ts"]) {
         const text = readFileSync(join(process.cwd(), file), "utf8");
         expect(text, file).not.toMatch(/cohort_week_overrides|week_number\s*-\s*1|weekNumber\s*-\s*1|start_date[^\n]*\+|unlock_date/);
+      }
+    });
+
+    it("Admin shows no invented numbers and reads Mentors from cohort pools (Prompt 9d)", () => {
+      const admin = [...files.filter((f) => /src\/(pages\/admin|hooks\/admin|pages\/AdminRegistrations)/.test(f))];
+      // No default goal ratings, no 0 for a Coach with no ratings.
+      expect(admin.filter((f) => /_rating \?\? \d|rating_avg \|\| 0/.test(readFileSync(f, "utf8"))).map(label)).toEqual([]);
+      // Completion rate is the server's sum, never a mean of percentages.
+      expect(read("lib/adminCanonicalProgress.ts")).not.toMatch(/averageCanonicalCompletion/);
+      for (const file of ["pages/admin/AdminDashboard.tsx", "pages/admin/AdminAnalytics.tsx"]) {
+        expect(read(file), file).toMatch(/fetchAdminCompletionRate\(/);
+      }
+      // A learner's Mentors are their cohort's Mentor pool.
+      const mentoring = read("pages/admin/AdminMentoring.tsx");
+      expect(mentoring).not.toMatch(/from\("mentoring_allowlist"\)/);
+      expect(mentoring).toMatch(/from\("cohort_mentors"\)\.select\("cohort_id, mentor_user_id"\)/);
+    });
+
+    it("a Coach enrolled as a learner sees the Coaching they receive in the Sessions hub and Messages", () => {
+      // Prompt 9a: never one column chosen by the page-wide role.
+      for (const file of ["hooks/sessions/useSessionsData.ts", "pages/Messages.tsx"]) {
+        expect(read(file), file).toMatch(/coach_id\.eq\.\$\{[a-zA-Z.]+\},coachee_id\.eq\.\$\{[a-zA-Z.]+\}/);
+      }
+      expect(read("pages/Messages.tsx")).not.toMatch(/role === "coach" \? s(ession)?\.coachee_id/);
+      expect(read("pages/CoachMyJourney.tsx")).toMatch(/useLearnerCanonicalGoalProgress\(/);
+      expect(read("pages/CoachMyJourney.tsx")).not.toMatch(/useGoalRatingRows|upcoming\[0\]/);
+    });
+
+    it("one today: no client sends its own as-of date, and every booking page reads slots as Vietnam time", () => {
+      // 20261006150000: the server's default as-of is programme_today().
+      expect(runtime.filter((f) => /p_as_of/.test(readFileSync(f, "utf8"))).map(label)).toEqual([]);
+      for (const file of ["pages/BookSession.tsx", "pages/MentoringBookSession.tsx", "pages/CoacheePeerBookSession.tsx"]) {
+        const text = read(file);
+        expect(text, file).toMatch(/slotInstant\(ds, selectedStart\)/);
+        expect(text, file).toMatch(/slotTodayKey\(\)/);
+        // A slot time read in the browser's own zone, or "today" in UTC.
+        expect(text, file).not.toMatch(/new Date\(`\$\{ds\}T|toISOString\(\)\.slice\(0, 10\)/);
+      }
+      // Edge Functions take "today" and day boundaries in Vietnam (_shared/programmeTime.ts).
+      const utcDays = /toISOString\(\)\.slice\(0, 10\)|setUTCDate|T00:00:00Z/;
+      expect(functionFiles().filter((f) => utcDays.test(readFileSync(f, "utf8"))).map(label)).toEqual([]);
+    });
+
+    it("the reminder and daily-prompt crons read each enrollment's requirement calendar, never training week dates", () => {
+      // 20261006130000: who is overdue on a quiz / reflection, and which prompt
+      // is today's, are decided in SQL over the enrollment's own calendar.
+      const reminders = readFileSync(join(FUNCTIONS, "send-programme-reminders", "index.ts"), "utf8");
+      expect(reminders).toMatch(/rpc\("training_overdue_assignment_targets_internal"/);
+      const prompt = readFileSync(join(FUNCTIONS, "send-daily-prompt", "index.ts"), "utf8");
+      expect(prompt).toMatch(/rpc\("daily_prompt_targets_internal"/);
+      for (const [name, text] of [["send-programme-reminders", reminders], ["send-daily-prompt", prompt]]) {
+        expect(text, name).not.toMatch(/unlock_date|due_offset_days|from\("training_weeks"\)|from\("daily_prompts"\)/);
       }
     });
 
@@ -499,21 +565,21 @@ describe("programme profile architecture", () => {
     // C4/C5: a Coaching reflection lived in two places, so a learner who wrote
     // one was told the other was missing.
     it("there is one Coaching reflection store", () => {
-      // The Admin "missing reflection" alert asks the canonical store.
-      const scan = read("pages/admin/alertScan.ts");
-      expect(scan).toMatch(/reflectedSessionIds/);
-      expect(code(scan)).not.toMatch(/coachee_notes/);
-      expect(read("pages/admin/AdminAlerts.tsx")).toMatch(/session_learning_reflections/);
+      // The Admin "reflection not written yet" alert asks the canonical
+      // deliverable state, in SQL (admin_alerts_current).
+      const sql = readFileSync(join(process.cwd(), "supabase/migrations/20261006140000_admin_alerts_current.sql"), "utf8");
+      expect(sql).toMatch(/canonical_session_deliverable_state/);
+      expect(sql).not.toMatch(/coachee_notes/);
+      expect(code(read("pages/admin/AdminAlerts.tsx"))).not.toMatch(/coachee_notes/);
     });
 
     // C7: programme Coaching quantity is the cohort requirement count.
     it("the booking screen renders canonical Coaching quantity, never a per-person cap", () => {
       const book = read("pages/BookSession.tsx");
       expect(book).toMatch(/useCanonicalCoachingProgress\(/);
-      // receive_limit may only survive on the coach-as-coachee path, which
-      // can_book_session() deliberately keeps on the legacy model.
-      const programmeBranch = code(book.slice(0, book.indexOf('if (role === "coach")')));
-      expect(programmeBranch).not.toMatch(/receive_limit/);
+      // No path keeps a per-person cap: the coach-as-coachee legacy path of
+      // can_book_session() is retired (20261005130000).
+      expect(code(book)).not.toMatch(/receive_limit|monthly_limit/);
     });
 
     it("the reflection hooks are reached from a rendered surface, not only exported", () => {
@@ -541,12 +607,10 @@ describe("programme profile architecture", () => {
 
     // The lifecycle had three writers: a raw client INSERT, a service-role
     // UPDATE in an Edge Function, and a raw client UPDATE for completion.
-    //
-    // prep_file_* is deliberately excluded: the preparation document is the
-    // learner's own optional evidence, it is not a protected lifecycle field,
-    // and useMentoringPrepFile writes it directly by design.
+    // The prep file joined them in 20261007000700: learner_submit_mentoring_prep_file
+    // records it with the server's time.
     const LIFECYCLE_FIELDS =
-      /\b(status|enrollment_id|cohort_requirement_id|cohort_id|mentor_id|mentee_id|confirmed_at|cancelled_at|cancelled_by|cancel_reason|start_time|duration_minutes)\s*:/;
+      /\b(status|enrollment_id|cohort_requirement_id|cohort_id|slot_id|mentor_id|mentee_id|confirmed_at|cancelled_at|cancelled_by|cancel_reason|start_time|duration_minutes|prep_file_path|prep_file_notes|prep_file_submitted_at)\s*:/;
 
     it("no runtime code creates or mutates a Mentoring session's lifecycle directly", () => {
       for (const file of [...files, ...edgeFunctionFiles()]) {
@@ -564,6 +628,7 @@ describe("programme profile architecture", () => {
       const core = read("hooks/mentoring/useMentoringSessionCore.ts");
       expect(core).toMatch(/"transition_mentoring_session_status"/);
       expect(core).toMatch(/"update_mentoring_session_notes"/);
+      expect(read("hooks/mentoring/useMentoringPrepFile.ts")).toMatch(/"learner_submit_mentoring_prep_file"/);
       const confirm = readFileSync(
         join(process.cwd(), "supabase/functions/confirm-mentoring-session/index.ts"), "utf8");
       expect(confirm).toMatch(/"transition_mentoring_session_status"/);

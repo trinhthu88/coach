@@ -258,14 +258,23 @@ join public.programme_enrollments e on e.user_id = a.coachee_id
 where e.cohort_id is not null
 on conflict (cohort_id, coach_id) do nothing;
 
+-- Trusted historical fixture rows (the cohort has since ended, so the booking
+-- checks, which now ask enrollment_is_ongoing(), would refuse them): written
+-- as the lifecycle service.
+select set_config('app.session_transition', 'on', true);
 insert into public.sessions (coach_id, coachee_id, topic, start_time, duration_minutes, status, enrollment_id)
 values
   ('a3000000-0000-0000-0000-000000000003', 'a1000000-0000-0000-0000-000000000001', 'Past completed coaching', '2026-01-20 10:00:00+00', 60, 'completed', 'e1000000-0000-0000-0000-000000000001'),
   ('a3000000-0000-0000-0000-000000000003', 'a1000000-0000-0000-0000-000000000001', 'Future completed coaching', '2026-03-20 10:00:00+00', 60, 'completed', 'e1000000-0000-0000-0000-000000000001'),
   ('a3000000-0000-0000-0000-000000000003', 'a1000000-0000-0000-0000-000000000001', 'Booked coaching', '2026-03-01 10:00:00+00', 60, 'confirmed', 'e1000000-0000-0000-0000-000000000001');
+select set_config('app.session_transition', 'off', true);
 
+-- Trusted historical fixture row: its enrollment is no longer ongoing, and the
+-- Peer booking-scope trigger (which no flag bypasses) would refuse it.
+alter table public.peer_sessions disable trigger peer_sessions_enrollment_booking_scope;
 insert into public.peer_sessions (peer_coach_id, peer_coachee_id, topic, start_time, duration_minutes, status, enrollment_id)
 values ('a3000000-0000-0000-0000-000000000003', 'a1000000-0000-0000-0000-000000000001', 'Past peer session', '2026-01-21 10:00:00+00', 60, 'completed', 'e1000000-0000-0000-0000-000000000001');
+alter table public.peer_sessions enable trigger peer_sessions_enrollment_booking_scope;
 
 -- Learner Peer sessions require an assigned dyad
 -- (20260929100000_canonical_contract_hardening): the learner and the partner
@@ -277,13 +286,19 @@ values
   ('a8000000-0000-0000-0000-000000000001', 'e1000000-0000-0000-0000-000000000001'),
   ('a8000000-0000-0000-0000-000000000001', 'e2000000-0000-0000-0000-000000000002');
 
+-- Trusted historical fixture row (its enrollment is no longer ongoing).
+select set_config('app.session_transition', 'on', true);
 insert into public.coachee_peer_sessions (peer_provider_id, peer_receiver_id, topic, start_time, duration_minutes, status, enrollment_id)
 values ('a2000000-0000-0000-0000-000000000002', 'a1000000-0000-0000-0000-000000000001', 'Future peer session', '2026-03-21 10:00:00+00', 60, 'completed', 'e1000000-0000-0000-0000-000000000001');
+select set_config('app.session_transition', 'off', true);
 
+-- Trusted historical fixture row (its enrollment is no longer ongoing).
+select set_config('app.session_transition', 'on', true);
 insert into public.mentoring_sessions (mentor_id, mentee_id, topic, start_time, duration_minutes, status, prep_file_path, enrollment_id)
 values
   ('a3000000-0000-0000-0000-000000000003', 'a1000000-0000-0000-0000-000000000001', 'Past mentoring', '2026-01-22 10:00:00+00', 60, 'completed', 'test/past.pdf', 'e1000000-0000-0000-0000-000000000001'),
   ('a3000000-0000-0000-0000-000000000003', 'a1000000-0000-0000-0000-000000000001', 'Future mentoring', '2026-03-22 10:00:00+00', 60, 'completed', 'test/future.pdf', 'e1000000-0000-0000-0000-000000000001');
+select set_config('app.session_transition', 'off', true);
 
 -- A dyad for Triad 1 and a dyad for Triad 2 (every required Triad has its
 -- own group assignment); each completed session fulfils its own Triad for

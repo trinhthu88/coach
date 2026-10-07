@@ -29,13 +29,11 @@ const LANGUAGES = [
 interface NotificationPrefs {
   weekly_digest: boolean;
   at_risk_alerts: boolean;
-  session_milestones: boolean;
   monthly_auto_report: boolean;
 }
 const DEFAULT_PREFS: NotificationPrefs = {
   weekly_digest: true,
   at_risk_alerts: true,
-  session_milestones: true,
   monthly_auto_report: false,
 };
 
@@ -155,7 +153,14 @@ export default function SponsorSettings() {
     if (!user) return;
     setSavingPrefs(true);
     try {
-      const { error } = await supabase.from("profiles").update({ notification_prefs: { ...prefs } }).eq("id", user.id);
+      // Only the settings that exist: a retired one (the 90% session alert,
+      // decision 9) leaves the stored prefs on the next save.
+      const saved: NotificationPrefs = {
+        weekly_digest: prefs.weekly_digest,
+        at_risk_alerts: prefs.at_risk_alerts,
+        monthly_auto_report: prefs.monthly_auto_report,
+      };
+      const { error } = await supabase.from("profiles").update({ notification_prefs: { ...saved } }).eq("id", user.id);
       if (error) throw error;
       await refreshProfile();
       toast.success(t("settings.notifications.saved"));
@@ -365,11 +370,6 @@ export default function SponsorSettings() {
                   label={t("settings.notifications.atRiskAlerts")}
                   checked={prefs.at_risk_alerts}
                   onChange={(v) => setPrefs({ ...prefs, at_risk_alerts: v })}
-                />
-                <NotificationRow
-                  label={t("settings.notifications.sessionMilestones")}
-                  checked={prefs.session_milestones}
-                  onChange={(v) => setPrefs({ ...prefs, session_milestones: v })}
                 />
                 <NotificationRow
                   label={t("settings.notifications.monthlyAutoReport")}

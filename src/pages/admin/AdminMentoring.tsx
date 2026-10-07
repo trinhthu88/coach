@@ -52,17 +52,19 @@ export default function AdminMentoring() {
     const [
       { data: roles },
       { data: profiles },
-      { data: allowlist },
+      { data: enrollments },
       { data: moduleAccess },
       { data: cohortMentorRows },
     ] = await Promise.all([
       supabase.from("user_roles").select("user_id, role"),
       supabase.from("profiles").select("id, full_name, email"),
-      supabase.from("mentoring_allowlist").select("id, mentee_user_id, mentor_user_id"),
+      // A learner's Mentors are the Mentor pool of their ongoing enrollment's
+      // cohort (cohort_mentors) -- the pool booking reads -- not the legacy
+      // mentoring_allowlist.
+      supabase.from("programme_enrollments").select("user_id, cohort_id").in("status", ["active", "paused"]),
       supabase.from("user_module_access").select("user_id, enabled").eq("module", "mentoring"),
-      // Mentor identity is a Coach with a cohort assignment; this is only used
-      // for the headline count, never to decide eligibility.
-      supabase.from("cohort_mentors").select("mentor_user_id").eq("is_active", true),
+      // Mentor identity is a Coach with an active cohort assignment.
+      supabase.from("cohort_mentors").select("cohort_id, mentor_user_id").eq("is_active", true),
     ]);
 
     const profileById = new Map((profiles || []).map((p) => [p.id, p]));
@@ -74,13 +76,18 @@ export default function AdminMentoring() {
       if (p) coachNameById.set(id, p.full_name);
     });
 
-    const menteeCountByMentor = new Map<string, number>();
+    const mentorsByCohort = new Map<string, string[]>();
+    (cohortMentorRows || []).forEach((m) => {
+      mentorsByCohort.set(m.cohort_id, [...(mentorsByCohort.get(m.cohort_id) || []), m.mentor_user_id]);
+    });
     const mentorsByMentee = new Map<string, { id: string; name: string }[]>();
-    (allowlist || []).forEach((a) => {
-      menteeCountByMentor.set(a.mentor_user_id, (menteeCountByMentor.get(a.mentor_user_id) || 0) + 1);
-      const arr = mentorsByMentee.get(a.mentee_user_id) || [];
-      arr.push({ id: a.mentor_user_id, name: coachNameById.get(a.mentor_user_id) || "—" });
-      mentorsByMentee.set(a.mentee_user_id, arr);
+    (enrollments || []).forEach((e) => {
+      if (!e.cohort_id) return;
+      const pool = (mentorsByCohort.get(e.cohort_id) || [])
+        .filter((mentorId) => mentorId !== e.user_id)
+        .map((mentorId) => ({ id: mentorId, name: coachNameById.get(mentorId) || "—" }));
+      const seen = new Set((mentorsByMentee.get(e.user_id) || []).map((m) => m.id));
+      mentorsByMentee.set(e.user_id, [...(mentorsByMentee.get(e.user_id) || []), ...pool.filter((m) => !seen.has(m.id))]);
     });
 
     const enabledByUser = new Map((moduleAccess || []).map((m) => [m.user_id, m.enabled]));

@@ -48,7 +48,7 @@ export function ProgrammeProgressParticipation({
       <span className="sr-only">{t("leaderDrawer.participation.title")}</span>
       <h2 className="font-serif text-[17px] font-normal">{text("progressTitle")}</h2>
       <div className="mt-[18px] flex flex-col gap-3.5">
-        <ProgressRow label={t("leaderDrawer.progress.completedRequired")} value={`${facts.completed_units} / ${facts.required_units}`} pct={completion} color={NAVY} />
+        <ProgressRow label={t("shared.unitsCompleted")} value={`${facts.completed_units} / ${facts.required_units}`} pct={completion} color={NAVY} />
         <ProgressRow
           label={t("leaderDrawer.progress.adherence")}
           value={facts.due_adherence_pct == null ? "—" : formatPercent(adherence)}

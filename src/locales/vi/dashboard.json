@@ -19,7 +19,8 @@
         "overdue_action": "Hành động quá hạn",
         "current_requirement": "Hiện tại",
         "upcoming_session": "Session sắp tới",
-        "upcoming_requirement": "Sắp tới"
+        "upcoming_requirement": "Sắp tới",
+        "new_feedback": "Nhận xét mới"
       },
       "overdueCount_one": "{{count}} quá hạn",
       "overdueCount_other": "{{count}} quá hạn",
@@ -218,11 +219,6 @@
     "titleLead": "Khách hàng",
     "titleEmphasis": "của tôi",
     "subtitle": "Tất cả học viên đang hoạt động trong nháy mắt — tiến độ, mức độ tương tác và ghi chú riêng tư.",
-    "atCapNotice": "Đã mời {{used}} trong số {{limit}} khách hàng.",
-    "contactUs": "Liên hệ chúng tôi",
-    "forMore": "để biết thêm.",
-    "usedOfLimit": "Đã mời {{used}} trong số {{limit}} khách hàng",
-    "inviteAClient": "Mời khách hàng",
     "stats": {
       "activeClients": "Khách hàng đang hoạt động",
       "activeClientsHint_other": "{{count}} không có buổi sắp tới",
@@ -261,33 +257,9 @@
         "completed": "Hoàn thành"
       }
     },
-    "invite": {
-      "requiredFields": "Cần có họ tên và email",
-      "success": "Đã mời — đang chờ quản trị viên phê duyệt",
-      "limitReached": "Bạn đã đạt giới hạn {{limit}} khách hàng được mời.",
-      "emailRegistered": "Email đó đã được đăng ký trên Clariva.",
-      "dialogTitle": "Mời khách hàng",
-      "dialogDescription": "Họ sẽ nhận được email để thiết lập tài khoản. Quyền truy cập của họ đang chờ quản trị viên phê duyệt.",
-      "fullNameLabel": "Họ và tên",
-      "fullNamePlaceholder": "Jane Doe",
-      "emailLabel": "Email",
-      "emailPlaceholder": "jane@company.com",
-      "sessionLimitLabel": "Giới hạn session hàng tháng (không bắt buộc)",
-      "sessionLimitPlaceholder": "Sử dụng mặc định của nền tảng nếu để trống",
-      "atCapPrefix": "Liên hệ",
-      "atCapSuffix": "nếu bạn muốn mời thêm khách hàng.",
-      "cancel": "Hủy",
-      "sendInvite": "Gửi lời mời"
-    },
     "detail": {
       "defaultName": "Khách hàng",
       "backToOverview": "Về trang tổng quan",
-      "removeClient": "Xóa khách hàng",
-      "removeConfirmTitle": "Xóa {{name}}?",
-      "removeConfirmDefaultName": "khách hàng này",
-      "removeConfirmBody": "Họ sẽ mất quyền truy cập để đặt session mới hoặc nhắn tin cho bạn. Các session, ghi chú và lịch sử trước đây vẫn được giữ lại — đây không phải là xóa vĩnh viễn, và bạn có thể được phân công lại cho họ sau này nếu cần.",
-      "cancel": "Hủy",
-      "removing": "Đang xóa…",
       "clientAlreadyRemoved": "Khách hàng này đã được gỡ trước đó",
       "clientRemoved": "Đã gỡ khách hàng",
       "statedGoals": "Mục tiêu đã nêu:",
@@ -318,6 +290,21 @@
       "deleteNote": "Xóa ghi chú",
       "ratedByCoachee": "— được đánh giá bởi học viên",
       "milestonesDone": "Đã xong {{done}}/{{total}} cột mốc"
+    },
+    "referAClient": "Giới thiệu khách hàng",
+    "refer": {
+      "dialogTitle": "Giới thiệu khách hàng",
+      "dialogDescription": "Cho Admin biết về người muốn được bạn coaching. Admin sẽ xem xét yêu cầu và thiết lập chương trình coaching.",
+      "fullNameLabel": "Họ và tên",
+      "emailLabel": "Email",
+      "programmeLabel": "Chương trình đề xuất",
+      "programmeNone": "Không đề xuất",
+      "noteLabel": "Ghi chú cho Admin (không bắt buộc)",
+      "grantsNothing": "Giới thiệu không tạo tài khoản hay cấp quyền truy cập. Admin sẽ quyết định và thiết lập chương trình.",
+      "requiredFields": "Cần nhập họ tên và email",
+      "success": "Đã gửi giới thiệu cho Admin",
+      "cancel": "Hủy",
+      "send": "Gửi giới thiệu"
     }
   },
   "availability": {

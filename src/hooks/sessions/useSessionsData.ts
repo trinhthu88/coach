@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { AppRole } from "@/context/AuthContext";
-import type { Tables } from "@/integrations/supabase/types";
+import type { Database, Tables } from "@/integrations/supabase/types";
 import type { SessionStatus } from "@/lib/sessionStatusMeta";
 import { withEnrollmentActions, type EnrollmentActionItem } from "@/lib/enrollmentActions";
 import { fetchMyTriads, type TriadGroupEntry, type TriadSessionView } from "@/hooks/triads/useMyTriads";
@@ -44,6 +44,12 @@ export interface SessionRow {
    * Null when the viewer has no attributable enrollment (e.g. the coach side).
    */
   viewer_enrollment_id: string | null;
+  /**
+   * Coaching rows: true when the viewer is this session's Coach, false when
+   * they are its learner (a Coach enrolled as a learner receives Coaching too).
+   * Undefined for other kinds.
+   */
+  viewer_is_coach?: boolean;
   programmeName: string | null;
   cohortName: string | null;
   /**
@@ -51,8 +57,14 @@ export interface SessionRow {
    * Null for peer/mentoring/triad rows and for legacy Coaching sessions that
    * predate the requirement link -- attribution is never invented for those.
    */
-  coachingRequirementOrdinal: number | null;
-  coachingRequirementDueOn: string | null;
+  /**
+   * The programme requirement this session is booked against ("Coaching 2",
+   * "Peer 1", "Mentoring 1") and its due date: from learner_session_history for
+   * the viewer's own enrollments, from the Coach wrapper for Coaching the viewer
+   * gives. Null when the session holds none (practice, legacy rows).
+   */
+  requirementUnit: number | null;
+  requirementDueOn: string | null;
   enrollment_actions: import("@/lib/enrollmentActions").EnrollmentActionItem[];
   coachee_rating: number | null;
   coachee_rating_comment: string | null;
@@ -69,7 +81,14 @@ export interface SessionEnrollmentContext {
 
 export interface CoachingRequirementContext {
   ordinal: number;
-  dueOn: string;
+  dueOn: string | null;
+}
+
+/** The next live session of one module of one of the viewer's enrollments (learner_next_session_by_module). */
+export interface NextSessionByModule {
+  enrollmentId: string;
+  module: Database["public"]["Enums"]["programme_module_type"];
+  nextSessionAt: string;
 }
 
 export function attachEnrollmentContext<T extends { enrollment_id?: string | null }>(
@@ -93,12 +112,30 @@ export type PeerParticipationIndex = Map<string, string | null>;
  *   triad                              -> the viewer's own group membership enrollment
  *   anything the viewer delivers       -> null (no enrollment of theirs)
  */
+/**
+ * The hub lists a viewer's own (learner-side) session only if its enrollment's
+ * learner_session_history holds it. Rows with no viewer enrollment (sessions
+ * the viewer delivers) and rows of an enrollment whose history could not be
+ * read are kept.
+ */
+export function listedByHistory<T extends { id: string; viewer_enrollment_id: string | null }>(
+  rows: T[],
+  historyByEnrollment: Map<string, Set<string>>,
+): T[] {
+  return rows.filter((row) => {
+    const history = row.viewer_enrollment_id ? historyByEnrollment.get(row.viewer_enrollment_id) : undefined;
+    return !history || history.has(row.id);
+  });
+}
+
 export function viewerEnrollmentFor(
-  row: { kind: SessionKind; id: string; enrollment_id: string | null },
+  row: { kind: SessionKind; id: string; enrollment_id: string | null; viewer_is_coach?: boolean },
   participations: PeerParticipationIndex,
 ): string | null {
   switch (row.kind) {
     case "coaching":
+      // The Coaching enrollment is the learner's: the Coach side has none.
+      return row.viewer_is_coach ? null : row.enrollment_id ?? null;
     case "mentoring-mentee":
     case "triad":
       return row.enrollment_id ?? null;
@@ -140,7 +177,27 @@ export function normalizeTriadSession(group: TriadGroupEntry, session: TriadSess
   };
 }
 
-async function fetchSessionsData(userId: string, role: AppRole): Promise<SessionRow[]> {
+/**
+ * A session booked from the Coach opt-in pool (peer_sessions) is practice: it
+ * earns no Peer requirement. Only an Admin-assigned dyad session
+ * (coachee_peer_sessions) does (20261005140000).
+ */
+export function isPeerPracticeKind(kind: SessionKind): boolean {
+  return kind === "peer-give" || kind === "peer-receive";
+}
+
+/**
+ * The Coaching requirement wrapper for the viewer's role. The Coaching rows of
+ * the list are the viewer's own: as Coach (coach_id) or as learner
+ * (coachee_id). Other roles load no Coaching rows.
+ */
+export function coachingFulfilmentRpc(role: AppRole) {
+  if (role === "coach") return "coach_coaching_requirement_fulfilment" as const;
+  if (role === "coachee") return "learner_coaching_requirement_fulfilment" as const;
+  return null;
+}
+
+async function fetchSessionsData(userId: string, role: AppRole): Promise<{ rows: SessionRow[]; nextSessions: NextSessionByModule[] }> {
   type Enriched<T extends { id: string; enrollment_id?: string | null }> = T & {
     enrollment_actions: EnrollmentActionItem[];
   };
@@ -151,12 +208,13 @@ async function fetchSessionsData(userId: string, role: AppRole): Promise<Session
   let triads: ReturnType<typeof normalizeTriadSession>[] = [];
 
   if (role === "coach" || role === "coachee") {
-    const col = role === "coach" ? "coach_id" : "coachee_id";
-    const { data } = await supabase
-      .from("sessions")
-      .select("*")
-      .eq(col, userId)
-      .order("start_time", { ascending: false });
+    // A Coach's own Coaching rows are the sessions they give AND the ones they
+    // receive as a learner (a Coach can be enrolled in a programme too).
+    const query = supabase.from("sessions").select("*");
+    const { data } = await (role === "coach"
+      ? query.or(`coach_id.eq.${userId},coachee_id.eq.${userId}`)
+      : query.eq("coachee_id", userId)
+    ).order("start_time", { ascending: false });
     sess = await withEnrollmentActions(data || [], "coaching");
   }
 
@@ -169,7 +227,9 @@ async function fetchSessionsData(userId: string, role: AppRole): Promise<Session
     peer = await withEnrollmentActions(data || [], "peer_coaching");
   }
 
-  if (role === "coachee") {
+  // Admin-assigned dyad sessions: a learner's, and a Coach's when the Coach is
+  // enrolled as a learner.
+  if (role === "coach" || role === "coachee") {
     const { data } = await supabase
       .from("coachee_peer_sessions")
       .select("*")
@@ -216,7 +276,7 @@ async function fetchSessionsData(userId: string, role: AppRole): Promise<Session
   }
 
   const allRows = [
-    ...sess.map((s) => ({ ...s, kind: "coaching" as SessionKind })),
+    ...sess.map((s) => ({ ...s, kind: "coaching" as SessionKind, viewer_is_coach: s.coach_id === userId })),
     ...peer.map((s) => ({
       ...s,
       coach_id: s.peer_coach_id,
@@ -263,41 +323,81 @@ async function fetchSessionsData(userId: string, role: AppRole): Promise<Session
       enrollmentContexts[row.id] = { programmeName: programme?.name ?? null, cohortName: cohort?.name ?? null };
     }
   }
-  // Which Coaching requirement each session fulfils, so the Coach can see
-  // WHICH programme unit an incoming request is for rather than just a date.
+  // Which programme requirement each session is booked against, so a request
+  // reads "Coaching 2, due 5 Jul" rather than a bare date.
   //
-  // Read through canonical_coaching_requirement_fulfilment rather than
-  // cohort_requirement_dates: the requirement schedule has exactly one table
-  // reader (the Admin schedule hook) so that no surface can reconstruct it,
-  // and this function already maps session -> requirement for us.
+  // The viewer's OWN enrollments read learner_session_history -- every module,
+  // with the requirement's unit and due date (20261006180000) -- and
+  // learner_next_session_by_module. Coaching the viewer GIVES reads the Coach
+  // wrapper of canonical_coaching_requirement_fulfilment, which returns only the
+  // units the Coach's own sessions fulfil.
   //
-  // The requirement label is decoration on top of the session list: if this
-  // lookup fails the rows must still render unlabelled, rather than the whole
-  // list disappearing over a missing ordinal.
+  // These are decoration on top of the session list: if a lookup fails the rows
+  // still render unlabelled rather than the whole list disappearing.
   const requirementBySession: Record<string, CoachingRequirementContext> = {};
+  const nextSessions: NextSessionByModule[] = [];
+  // Which sessions belong to each of the viewer's own enrollments: exactly
+  // learner_session_history's rows (enrollment-scoped, canonical attribution).
+  const historyByEnrollment = new Map<string, Set<string>>();
+  const ownEnrollmentIds = Array.from(
+    new Set(allRows.map((row) => row.viewer_enrollment_id).filter((id): id is string => Boolean(id))),
+  );
   await Promise.all(
-    enrollmentIds.map(async (enrollmentId) => {
+    ownEnrollmentIds.map(async (enrollmentId) => {
       try {
-        const { data } = await supabase.rpc("canonical_coaching_requirement_fulfilment", {
-          p_enrollment_id: enrollmentId,
-        });
-        for (const row of data ?? []) {
-          if (row.session_id && row.ordinal != null && row.due_on) {
-            requirementBySession[row.session_id] = { ordinal: row.ordinal, dueOn: row.due_on };
+        const [history, next] = await Promise.all([
+          supabase.rpc("learner_session_history", { p_enrollment_id: enrollmentId }),
+          supabase.rpc("learner_next_session_by_module", { p_enrollment_id: enrollmentId }),
+        ]);
+        if (!history.error) historyByEnrollment.set(enrollmentId, new Set((history.data ?? []).map((row) => row.source_id)));
+        for (const row of history.data ?? []) {
+          if (row.requirement_unit_number != null) {
+            requirementBySession[row.source_id] = { ordinal: row.requirement_unit_number, dueOn: row.requirement_due_on };
           }
         }
+        // Programme modules only: coach-pool practice (is_practice) earns no unit.
+        for (const row of (next.data ?? []).filter((r) => !r.is_practice)) {
+          nextSessions.push({ enrollmentId, module: row.module, nextSessionAt: row.next_session_at });
+        }
       } catch (error) {
-        console.error("Coaching requirement context failed to load", error);
+        console.error("Session history context failed to load", error);
       }
     }),
   );
+  const fulfilmentRpc = coachingFulfilmentRpc(role);
+  const coachedEnrollmentIds = Array.from(
+    new Set(sess.filter((row) => row.coach_id === userId).map((row) => row.enrollment_id).filter((id): id is string => Boolean(id))),
+  );
+  if (fulfilmentRpc === "coach_coaching_requirement_fulfilment") {
+    await Promise.all(
+      coachedEnrollmentIds.map(async (enrollmentId) => {
+        try {
+          const { data } = await supabase.rpc(fulfilmentRpc, { p_enrollment_id: enrollmentId });
+          for (const row of data ?? []) {
+            if (row.session_id && row.ordinal != null) {
+              requirementBySession[row.session_id] = { ordinal: row.ordinal, dueOn: row.due_on };
+            }
+          }
+        } catch (error) {
+          console.error("Coaching requirement context failed to load", error);
+        }
+      }),
+    );
+  }
 
-  const rowsWithContext = attachEnrollmentContext(allRows, enrollmentContexts).map((row) => {
-    const req = requirementBySession[row.id];
+  // The list of the viewer's own (learner-side) sessions is learner_session_history's:
+  // a row attributed to one of their enrollments appears only if that
+  // enrollment's history holds it. Sessions the viewer delivers (Coach,
+  // Mentor) carry no viewer enrollment and are listed as before. If a history
+  // read failed, that enrollment's rows still render rather than vanish.
+  const listedRows = listedByHistory(allRows, historyByEnrollment);
+
+  const rowsWithContext = attachEnrollmentContext(listedRows, enrollmentContexts).map((row) => {
+    const req = row.kind === "triad" ? undefined : requirementBySession[row.id];
     return {
       ...row,
-      coachingRequirementOrdinal: req?.ordinal ?? null,
-      coachingRequirementDueOn: req?.dueOn ?? null,
+      requirementUnit: req?.ordinal ?? null,
+      requirementDueOn: req?.dueOn ?? null,
     };
   });
 
@@ -311,13 +411,15 @@ async function fetchSessionsData(userId: string, role: AppRole): Promise<Session
     byId = new Map((profs || []).map((p) => [p.id, p]));
   }
 
-  return rowsWithContext.map((s) => ({
+  const rows = rowsWithContext.map((s) => ({
     ...s,
     coach: byId.get(s.coach_id) || null,
     coachee: byId.get(s.coachee_id) || null,
     // Triad participant names come from the one canonical Triad member source.
     triad: s.kind === "triad" && "triad" in s ? (s.triad as TriadSessionContext) : null,
   }));
+  nextSessions.sort((a, b) => a.nextSessionAt.localeCompare(b.nextSessionAt));
+  return { rows, nextSessions };
 }
 
 export function useSessionsData(userId: string | undefined, role: AppRole | null) {
@@ -328,5 +430,5 @@ export function useSessionsData(userId: string | undefined, role: AppRole | null
     staleTime: 30_000,
   });
 
-  return { sessions: data ?? [], loading: isLoading, reload: refetch };
+  return { sessions: data?.rows ?? [], nextSessions: data?.nextSessions ?? [], loading: isLoading, reload: refetch };
 }

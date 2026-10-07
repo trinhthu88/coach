@@ -51,18 +51,8 @@ export function useAdminCoacheeMutations(onChanged: () => void) {
         spoken_languages: editing.spoken_languages,
       }).eq("id", editing.id);
 
-      const oldIds = new Set((original?.selected_coaches || []).map((c) => c.id));
-      const newIds = new Set(editing.selected_coaches.map((c) => c.id));
-      const toAdd = [...newIds].filter((i) => !oldIds.has(i));
-      const toRemove = [...oldIds].filter((i) => !newIds.has(i));
-      if (toAdd.length) {
-        await supabase.from("coachee_coach_allowlist").insert(
-          toAdd.map((cid) => ({ coachee_id: editing.id, coach_id: cid, source: "admin_added" }))
-        );
-      }
-      for (const cid of toRemove) {
-        await supabase.from("coachee_coach_allowlist").delete().eq("coachee_id", editing.id).eq("coach_id", cid);
-      }
+      // No coach allowlist writes: a learner's Coach is the cohort Coach pool or
+      // an Admin coaching engagement (20261006170000).
 
       toast.success(t("coacheeEditSheet.toast.coacheeUpdated"));
       onChanged();

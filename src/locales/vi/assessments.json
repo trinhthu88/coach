@@ -1,0 +1,209 @@
+{
+  "triadN": "Triad {{n}}",
+  "finalAttempt": "Final Assessment (lần {{n}})",
+  "kind": {
+    "triad": "Triad",
+    "final_assessment": "Final Assessment"
+  },
+  "outcome": {
+    "pass": "Đạt",
+    "not_pass": "Không đạt",
+    "resubmit": "Nộp lại"
+  },
+  "fileError": "Không mở được file.",
+  "dashboardCard": {
+    "title": "Bài nộp cần đánh giá ({{count}})",
+    "pending": "{{count}} bài đang chờ bạn đánh giá",
+    "none": "Không có bài nào đang chờ bạn đánh giá.",
+    "overdue": "{{count}} bài quá hạn",
+    "returned": "{{count}} bài Admin trả lại",
+    "open": "Mở danh sách bài nộp"
+  },
+  "inbox": {
+    "eyebrow": "Người đánh giá",
+    "title": "Bài nộp",
+    "subtitle": "Bài suy ngẫm Triad và Final Assessment Admin đã phân công cho bạn. Nhận xét của bạn chỉ đến học viên sau khi Admin duyệt.",
+    "tabs": {
+      "to_assess": "Cần đánh giá",
+      "returned": "Bị trả lại",
+      "awaiting_validation": "Chờ Admin duyệt",
+      "released": "Đã gửi học viên"
+    },
+    "filters": {
+      "cohort": "Cohort",
+      "kind": "Loại",
+      "allCohorts": "Tất cả cohort",
+      "allKinds": "Tất cả loại"
+    },
+    "loadError": "Không tải được danh sách bài nộp của bạn.",
+    "empty": {
+      "to_assess": "Hiện không có bài nào cần đánh giá.",
+      "returned": "Chưa có nhận xét nào bị trả lại.",
+      "awaiting_validation": "Không có nhận xét nào đang chờ Admin duyệt.",
+      "released": "Chưa có nhận xét nào của bạn được gửi học viên."
+    },
+    "due": "Hạn {{date}}",
+    "overdue": "Quá hạn",
+    "submitted": "Nộp ngày {{date}}",
+    "released": "Gửi ngày {{date}}",
+    "open": "Mở"
+  },
+  "detail": {
+    "back": "Tất cả bài nộp",
+    "notFound": "Bài nộp này không được phân công cho bạn hoặc không còn tồn tại.",
+    "returnReasonTitle": "Admin đã trả lại nhận xét của bạn",
+    "recording": "Bản ghi âm",
+    "noRecording": "Bài nộp này không có bản ghi âm.",
+    "audioUnsupported": "Trình duyệt của bạn không phát được bản ghi âm này.",
+    "transcript": "Bản chép lời",
+    "noTranscript": "Không có bản chép lời.",
+    "transcriptFile": "File chép lời",
+    "reflection": "Câu trả lời suy ngẫm",
+    "reflectionSubmitted": "Nộp ngày {{date}}",
+    "noReflection": "Không có câu trả lời.",
+    "sections": {
+      "coach": "Vai trò Coach",
+      "coachee": "Vai trò Coachee",
+      "observer": "Vai trò Quan sát viên",
+      "general": "Tổng quan"
+    },
+    "quiz": "Điểm quiz",
+    "quizScore": "Đúng {{correct}}/{{total}} câu ({{pct}}%)",
+    "quizReadOnly": "Chấm tự động. Chỉ xem.",
+    "noQuiz": "Không có điểm quiz.",
+    "historyOnly": "Nhận xét này đã được gửi học viên. Bạn không còn xem được nội dung bài nộp.",
+    "yourReview": "Nhận xét của bạn (phiên bản {{version}})",
+    "awaitingValidation": "Admin đang xem nhận xét của bạn trước khi gửi học viên.",
+    "form": {
+      "title": "Nhận xét của bạn",
+      "feedbackLabel": "Nhận xét cho học viên",
+      "feedbackPlaceholder": "Học viên đã làm tốt điều gì, và một điều nên thử tiếp theo là gì?",
+      "outcomeLabel": "Kết quả",
+      "resubmitLastAttempt": "Đây là lần nộp cuối, nên kết quả là Đạt hoặc Không đạt.",
+      "pdfLabel": "File PDF nhận xét (không bắt buộc, tối đa 10 MB)",
+      "pdfChosen": "{{name}} ({{size}})",
+      "removePdf": "Gỡ",
+      "pdfType": "File nhận xét phải là PDF.",
+      "pdfSize": "File PDF nhận xét phải từ 10 MB trở xuống.",
+      "needsContent": "Hãy viết nhận xét hoặc đính kèm file PDF.",
+      "needsOutcome": "Hãy chọn kết quả.",
+      "submit": "Gửi Admin",
+      "resubmit": "Gửi nhận xét đã chỉnh sửa",
+      "submitted": "Đã gửi nhận xét để Admin duyệt.",
+      "hint": "Admin duyệt nhận xét của bạn trước khi học viên xem được."
+    }
+  },
+  "feedback": {
+    "sectionTitle": "Nhận xét & kết quả",
+    "sectionAside": "Chỉ bạn xem được",
+    "sectionSubtitle": "Nhận xét của người đánh giá, được gửi sau khi Admin duyệt.",
+    "loadError": "Không tải được nhận xét đánh giá của bạn.",
+    "triadTitle": "Nhận xét về Triad {{n}}",
+    "finalTitle": "Kết quả Final Assessment",
+    "finalAttemptTitle": "Kết quả Final Assessment (lần {{n}})",
+    "byAssessor": "Từ {{name}} · gửi ngày {{date}}",
+    "new": "Mới",
+    "result": "Kết quả",
+    "quiz": "Quiz",
+    "quizScore": "Đúng {{correct}}/{{total}} câu ({{pct}}%)",
+    "attachment": "File PDF nhận xét",
+    "open": "Mở nhận xét",
+    "hide": "Ẩn nhận xét"
+  },
+  "final": {
+    "title": "Final Assessment",
+    "subtitle": "Bài đánh giá cuối chương trình: một bài quiz và một buổi coaching được ghi âm, do người đánh giá xem xét.",
+    "due": "Hạn {{date}}",
+    "loadError": "Không tải được Final Assessment của bạn.",
+    "notInProgramme": "Chương trình của bạn không có Final Assessment.",
+    "instructions": "Hướng dẫn",
+    "state": {
+      "not_submitted": "Chưa nộp",
+      "submitted": "Đã nộp",
+      "under_review": "Đang đánh giá",
+      "completed": "Đã có kết quả",
+      "resubmit_requested": "Yêu cầu nộp lại"
+    },
+    "submittedBody": "Đã nộp ngày {{date}}. Người đánh giá sẽ sớm được phân công.",
+    "underReviewBody": "Đã nộp ngày {{date}}. Người đánh giá đang xem bài; bạn sẽ được thông báo khi có kết quả.",
+    "attemptN": "Lần nộp {{n}}/2",
+    "abovePassMark": "đạt hoặc vượt ngưỡng {{pct}}%",
+    "belowPassMark": "dưới ngưỡng đạt {{pct}}%",
+    "notPassFinal": "Đây là kết quả cuối cùng.",
+    "readFeedback": "Xem nhận xét của người đánh giá",
+    "resubmitBody": "Người đánh giá đề nghị bạn nộp lại. Đây là lần nộp {{n}}/2: hãy làm lại quiz và tải lên bản ghi âm mới.",
+    "steps": {
+      "quiz": "Quiz",
+      "recording": "Bản ghi âm",
+      "transcript": "Bản chép lời",
+      "review": "Xem lại & nộp"
+    },
+    "quizHint": "Trả lời tất cả câu hỏi. Điểm của bạn được hiển thị cùng kết quả, sau khi nhận xét của người đánh giá được gửi.",
+    "quizSubmit": "Nộp câu trả lời quiz",
+    "quizSubmittedToast": "Đã lưu câu trả lời quiz.",
+    "quizTaken": "Đã lưu câu trả lời quiz. Điểm sẽ được hiển thị cùng kết quả.",
+    "quizLoadError": "Không tải được quiz.",
+    "recordingLabel": "Bản ghi âm buổi coaching của bạn (MP3, tối đa {{mb}} MB)",
+    "recordingTip": "Mẹo: xuất bản ghi âm dạng MP3 ở 64 kbps (mono). Khi đó một buổi 60 phút khoảng 30 MB.",
+    "recordingType": "Bản ghi âm phải là file MP3. Không nhận video hay định dạng âm thanh khác.",
+    "recordingSize": "Bản ghi âm phải từ {{mb}} MB trở xuống. Hãy xuất ở 64 kbps để giảm dung lượng.",
+    "uploading": "Đang tải lên… {{pct}}%",
+    "uploadFailed": "Tải lên không thành công. Vui lòng thử lại.",
+    "recordingUploaded": "Đã tải lên: {{name}}. Chọn file khác để thay thế.",
+    "transcriptLabel": "Bản chép lời",
+    "transcriptRequired": "Final Assessment này yêu cầu có bản chép lời.",
+    "transcriptOptional": "Bản chép lời không bắt buộc, nhưng giúp người đánh giá.",
+    "transcriptPlaceholder": "Dán bản chép lời của buổi coaching vào đây.",
+    "auto": {
+      "button": "Tạo bản chép lời tự động",
+      "running": "Đang chép lời… có thể mất một đến hai phút.",
+      "needsRecording": "Hãy tải lên bản ghi âm trước để nhận bản chép lời tự động.",
+      "draftNotice": "Đây là bản nháp tự động. Hãy đọc lại và sửa tên riêng cùng các lỗi trước khi nộp.",
+      "empty": "Không nhận diện được lời nói trong bản ghi âm. Vui lòng nhập hoặc dán bản chép lời.",
+      "errors": {
+        "not_configured": "Chưa có tính năng chép lời tự động. Vui lòng nhập hoặc dán bản chép lời.",
+        "not_open": "Final Assessment này không còn nhận bản chép lời.",
+        "not_found": "Không tìm thấy bản ghi âm. Vui lòng tải lên lại.",
+        "transcription_failed": "Chép lời tự động không thành công. Vui lòng thử lại, hoặc nhập hoặc dán bản chép lời.",
+        "unknown": "Chép lời tự động không thành công. Vui lòng thử lại, hoặc nhập hoặc dán bản chép lời.",
+        "consent_required": "Vui lòng đánh dấu đồng ý trước khi chép lời tự động.",
+        "limit_reached": "Bạn đã dùng hết lượt chép lời tự động cho lần nộp này."
+      },
+      "consent": "Bản ghi âm của bạn sẽ được gửi đến một dịch vụ chép lời bên ngoài (OpenAI) để tạo bản nháp. OpenAI không dùng bản ghi này để huấn luyện.",
+      "remaining_other": "Còn {{count}}/{{cap}} lượt chép lời tự động cho lần nộp này.",
+      "usedUp": "Bạn đã dùng hết {{cap}} lượt chép lời tự động cho lần nộp này. Vui lòng sửa bản nháp hoặc tự nhập bản chép lời."
+    },
+    "review": {
+      "quizDone": "Đã trả lời quiz",
+      "quizMissing": "Chưa trả lời quiz",
+      "recordingDone": "Đã tải lên bản ghi âm ({{name}})",
+      "recordingMissing": "Chưa tải lên bản ghi âm",
+      "transcriptDone": "Đã thêm bản chép lời",
+      "transcriptMissing": "Thiếu bản chép lời",
+      "transcriptSkipped": "Không có bản chép lời (không bắt buộc)",
+      "lockedAfterSubmit": "Sau khi nộp, câu trả lời, bản ghi âm và bản chép lời không thể thay đổi.",
+      "submit": "Nộp Final Assessment"
+    },
+    "submittedToast": "Đã nộp Final Assessment.",
+    "back": "Quay lại",
+    "next": "Tiếp"
+  },
+  "results": {
+    "title": "Final Assessment",
+    "result": "Kết quả",
+    "quiz": "Quiz",
+    "due": "Hạn",
+    "attempt": "Lần nộp",
+    "submitted": "Ngày nộp",
+    "released": "Ngày có kết quả",
+    "outcome": "Đánh giá của người chấm",
+    "open": "Đến Final Assessment",
+    "view": "Xem Final Assessment",
+    "sponsorState": {
+      "not_submitted": "Chưa nộp",
+      "under_review": "Đang đánh giá",
+      "completed": "Hoàn thành"
+    },
+    "sponsorNote": "Nhà tài trợ chỉ thấy trạng thái và kết quả Đạt / Không đạt, không bao giờ thấy bản ghi âm, câu trả lời hay nhận xét."
+  }
+}

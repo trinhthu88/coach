@@ -4,17 +4,15 @@ import { Target, ListChecks, ArrowRight } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useActiveEnrollment } from "@/hooks/useActiveEnrollment";
 import { useJourneyGoals } from "@/hooks/journey/useJourneyGoals";
-import { useJourneyRatings } from "@/hooks/journey/useJourneyRatings";
-import { useGoalRatingRows } from "@/hooks/journey/useJourneyDerived";
 import { useEnrollmentActionsSummary } from "@/hooks/dashboard/useEnrollmentActionsSummary";
-import { useLearnerCanonicalProgress } from "@/hooks/useLearnerCanonicalProgress";
+import { useLearnerCanonicalGoalProgress, useLearnerCanonicalProgress } from "@/hooks/useLearnerCanonicalProgress";
 import { deriveNextUp } from "@/lib/nextUp";
 import { DashboardCardShell, CardFooterLink, CardEmptyHint } from "./shared";
 
 /**
  * Goals + actions + "what's next" — all sourced from the same
  * enrollment-scoped canonical records the Journey page and Sponsor Leader
- * Detail read (coachee_goals/coachee_goal_ratings for goal progress,
+ * Detail read (learner_canonical_goal_progress for goal progress,
  * enrollment_actions for commitments, learner_canonical_journey/experience
  * for requirement state). Nothing here is computed a second, different way.
  */
@@ -25,12 +23,11 @@ export function MyGoalCard() {
   const enrollmentId = activeEnrollmentId ?? undefined;
 
   const { goals, loading: goalsLoading, error: goalsError } = useJourneyGoals(user?.id, { enrollmentId });
-  const { ratings, loading: ratingsLoading } = useJourneyRatings(user?.id, enrollmentId);
-  const { ratingRows } = useGoalRatingRows(goals, ratings);
+  const goalProgress = useLearnerCanonicalGoalProgress(enrollmentId);
   const actions = useEnrollmentActionsSummary(enrollmentId);
   const { journey, experience, loading: progressLoading } = useLearnerCanonicalProgress(enrollmentId);
 
-  const loading = enrollmentLoading || goalsLoading || ratingsLoading || actions.loading || progressLoading;
+  const loading = enrollmentLoading || goalsLoading || goalProgress.loading || actions.loading || progressLoading;
   const journeyPath = role === "coach" ? "/coach/my-journey" : "/coachee/journey";
 
   if (loading) {
@@ -51,7 +48,7 @@ export function MyGoalCard() {
 
   const activeGoals = goals.filter((g) => g.status === "active");
   const primaryGoal = activeGoals[0] ?? null;
-  const primaryProgress = primaryGoal ? ratingRows.find((r) => r.goalId === primaryGoal.id)?.progress ?? null : null;
+  const primaryProgress = primaryGoal && !goalProgress.error ? goalProgress.progressByGoal[primaryGoal.id] ?? null : null;
 
   const nextUp = deriveNextUp({
     journey,

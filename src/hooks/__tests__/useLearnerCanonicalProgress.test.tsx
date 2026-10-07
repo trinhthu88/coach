@@ -141,17 +141,15 @@ describe("useLearnerCanonicalProgress", () => {
     expect(result.current.error).toBeNull();
   });
 
-  it("passes p_as_of through to every RPC when given", async () => {
+  it("never sends its own as-of date: the server's default is programme_today()", async () => {
     rpc.mockResolvedValue({ data: [], error: null });
 
-    renderHook(() => useLearnerCanonicalProgress("enrollment-1", "2026-06-30"), { wrapper });
+    renderHook(() => useLearnerCanonicalProgress("enrollment-1"), { wrapper });
 
     await waitFor(() =>
-      expect(rpc).toHaveBeenCalledWith("learner_canonical_progress", {
-        p_enrollment_id: "enrollment-1",
-        p_as_of: "2026-06-30",
-      })
+      expect(rpc).toHaveBeenCalledWith("learner_canonical_progress", { p_enrollment_id: "enrollment-1" })
     );
+    for (const [, args] of rpc.mock.calls) expect(args).not.toHaveProperty("p_as_of");
   });
 
   it("surfaces an RPC error instead of silently returning empty data", async () => {

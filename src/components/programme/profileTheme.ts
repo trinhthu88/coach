@@ -15,6 +15,7 @@ export const PROFILE_COLORS = {
   TEAL: "#2c8fa8",
   GREEN: "#17663f",
   AMBER: "#a8541c",
+  PLUM: "#7a5aa8",
   RED: "#a8341c",
   MUTED: "#6a6560",
   FAINT: "#9a938a",
@@ -71,6 +72,7 @@ export function moduleScopeLabelFor(module: string, t: (key: string) => string) 
     peer_coaching: t("cohortDetail.modules.peer"),
     mentoring: t("cohortDetail.modules.mentoring"),
     triads: t("cohortDetail.modules.triads"),
+    final_assessment: t("cohortDetail.modules.final_assessment"),
   };
   return labels[module] ?? humaniseModule(module);
 }
@@ -87,5 +89,6 @@ export const LEARNER_MODULE_PATH: Record<string, string> = {
   peer_coaching: "/coachee/peer-practice",
   mentoring: "/mentoring",
   triads: "/triads",
+  final_assessment: "/final-assessment",
 };
 

@@ -9,22 +9,20 @@ import { DailyPromptEmail } from "../_shared/email-templates/daily-prompt.tsx";
 // service (or a pg_cron -> pg_net call) hitting this endpoint with the
 // CRON_SECRET shared secret, hence verify_jwt = false in config.toml.
 //
-// The prompt for a given day is the same for every enrollee of a programme
-// (it only depends on that programme's current training_week + today's
-// date), so this resolves it once per programme rather than once per user —
-// see get_todays_prompt() for the equivalent per-caller logic this mirrors.
+// Who gets which prompt today is decided in SQL by
+// daily_prompt_targets_internal(): each enrollment's current Training week
+// comes from its own cohort's Training calendar (cohort overrides included)
+// and "today" is the programme time zone (Asia/Ho_Chi_Minh). The in-app
+// get_todays_prompt() reads the same daily_prompt_for_enrollment_internal().
 
 const SITE_URL = "https://clariva.club";
 
-interface TrainingWeekRow {
-  id: string;
-  week_number: number;
-  unlock_date: string;
-}
-
-interface EnrollmentRow {
-  id: string;
+interface PromptTarget {
+  enrollment_id: string;
   user_id: string;
+  prompt_id: string;
+  prompt_text: string;
+  prompt_text_vi: string | null;
 }
 
 interface ProfileRow {
@@ -32,14 +30,6 @@ interface ProfileRow {
   full_name: string | null;
   email: string | null;
   preferred_language: string | null;
-}
-
-function dayNumberFor(unlockDate: string): number {
-  const unlock = new Date(`${unlockDate}T00:00:00Z`);
-  const today = new Date();
-  const todayUTC = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()));
-  const days = Math.floor((todayUTC.getTime() - unlock.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-  return Math.min(7, Math.max(1, days));
 }
 
 Deno.serve(async (req) => {
@@ -63,125 +53,73 @@ Deno.serve(async (req) => {
     const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const admin = createClient(SUPABASE_URL, SERVICE_KEY);
 
-    const { data: modules, error: modulesErr } = await admin
-      .from("programme_modules")
-      .select("programme_id")
-      .eq("module", "daily_prompt")
-      .eq("enabled", true);
-    if (modulesErr) throw modulesErr;
-    const programmeIds = [...new Set((modules ?? []).map((m) => m.programme_id))];
+    const { data: targetRows, error: targetsErr } = await admin.rpc("daily_prompt_targets_internal");
+    if (targetsErr) throw targetsErr;
+    const targets = (targetRows ?? []) as PromptTarget[];
 
     let notified = 0;
-    let skipped = 0;
 
-    for (const programmeId of programmeIds) {
-      const { data: currentWeek } = await admin
-        .from("training_weeks")
-        .select("id, week_number, unlock_date")
-        .eq("programme_id", programmeId)
-        .eq("is_visible", true)
-        .not("unlock_date", "is", null)
-        .lte("unlock_date", new Date().toISOString().slice(0, 10))
-        .order("week_number", { ascending: false })
-        .limit(1)
-        .maybeSingle<TrainingWeekRow>();
-      if (!currentWeek) continue;
+    const { data: profileRows } = targets.length
+      ? await admin
+          .from("profiles")
+          .select("id, full_name, email, preferred_language")
+          .in("id", [...new Set(targets.map((target) => target.user_id))])
+      : { data: [] };
+    const profileById = new Map(((profileRows ?? []) as ProfileRow[]).map((profile) => [profile.id, profile]));
 
-      const dayNum = dayNumberFor(currentWeek.unlock_date);
-      // day_offset = dayNum is a day-pinned prompt; day_offset = null means
-      // "any day this week" and matches every day — same OR shape as
-      // get_todays_prompt(). Ordered so a day-pinned prompt wins over an
-      // "any day" one on the same day, then by admin's sort_order.
-      const { data: prompt } = await admin
-        .from("daily_prompts")
-        .select("id, prompt_text, prompt_text_vi")
-        .eq("training_week_id", currentWeek.id)
-        .eq("is_visible", true)
-        .or(`day_offset.eq.${dayNum},day_offset.is.null`)
-        .order("day_offset", { ascending: true, nullsFirst: false })
-        .order("sort_order", { ascending: true })
-        .limit(1)
-        .maybeSingle();
-      if (!prompt) continue;
+    for (const target of targets) {
+      const profile = profileById.get(target.user_id);
+      if (!profile) continue;
+      const enrollmentId = target.enrollment_id;
+      const prompt = { id: target.prompt_id, prompt_text: target.prompt_text, prompt_text_vi: target.prompt_text_vi };
 
-      const { data: enrollments } = await admin
-        .from("programme_enrollments")
-        .select("id, user_id")
-        .eq("programme_id", programmeId)
-        .in("status", ["active", "at_risk", "paused"]);
-      const enrollmentRows = (enrollments ?? []) as EnrollmentRow[];
-      const userIds = [...new Set(enrollmentRows.map((e) => e.user_id))];
-      const enrollmentByUser = new Map(enrollmentRows.map((enrollment) => [enrollment.user_id, enrollment.id]));
-      if (userIds.length === 0) continue;
+      const isVi = profile.preferred_language === "vi";
+      const promptText = (isVi && prompt.prompt_text_vi) || prompt.prompt_text;
 
-      const { data: existingResponses } = await admin
-        .from("daily_prompt_responses")
-        .select("user_id")
-        .eq("daily_prompt_id", prompt.id)
-        .in("user_id", userIds);
-      const alreadyNotified = new Set((existingResponses ?? []).map((r) => r.user_id));
-
-      const pendingIds = userIds.filter((id) => !alreadyNotified.has(id));
-      skipped += alreadyNotified.size;
-      if (pendingIds.length === 0) continue;
-
-      const { data: profiles } = await admin
-        .from("profiles")
-        .select("id, full_name, email, preferred_language")
-        .in("id", pendingIds);
-
-      for (const profile of (profiles ?? []) as ProfileRow[]) {
-        const enrollmentId = enrollmentByUser.get(profile.id);
-        if (!enrollmentId) continue;
-
-        const isVi = profile.preferred_language === "vi";
-        const promptText = (isVi && prompt.prompt_text_vi) || prompt.prompt_text;
-
-        const { error: notifErr } = await admin.from("notifications").insert({
-          user_id: profile.id,
-          notification_type: "daily_prompt",
-          title: "Today's coaching nudge",
-          title_vi: "Gợi ý coaching hôm nay",
-          body: promptText,
-          link: "/dashboard",
-        });
-        if (notifErr) {
-          console.error("Failed to insert daily_prompt notification", { userId: profile.id, error: notifErr });
-        }
-
-        const { error: responseErr } = await admin.from("daily_prompt_responses").upsert(
-          { daily_prompt_id: prompt.id, user_id: profile.id, enrollment_id: enrollmentId, opened_at: null },
-          { onConflict: "enrollment_id,daily_prompt_id", ignoreDuplicates: true }
-        );
-        if (responseErr) {
-          console.error("Failed to seed daily_prompt_responses row", { userId: profile.id, error: responseErr });
-        }
-
-        if (profile.email) {
-          const props = {
-            fullName: profile.full_name || "there",
-            promptText,
-            dashboardUrl: `${SITE_URL}/dashboard`,
-            isVi,
-          };
-          const html = await renderAsync(React.createElement(DailyPromptEmail, props));
-          const text = await renderAsync(React.createElement(DailyPromptEmail, props), { plainText: true });
-          const result = await sendEmail({
-            to: profile.email,
-            subject: isVi ? "Gợi ý coaching hôm nay" : "Today's coaching nudge",
-            html,
-            text,
-          });
-          if (!result.ok) {
-            console.error("Failed to send daily-prompt email", { error: result.error, email: profile.email });
-          }
-        }
-
-        notified++;
+      const { error: notifErr } = await admin.from("notifications").insert({
+        user_id: profile.id,
+        notification_type: "daily_prompt",
+        title: "Today's coaching nudge",
+        title_vi: "Gợi ý coaching hôm nay",
+        body: promptText,
+        link: "/dashboard",
+      });
+      if (notifErr) {
+        console.error("Failed to insert daily_prompt notification", { userId: profile.id, error: notifErr });
       }
+
+      const { error: responseErr } = await admin.from("daily_prompt_responses").upsert(
+        { daily_prompt_id: prompt.id, user_id: profile.id, enrollment_id: enrollmentId, opened_at: null },
+        { onConflict: "enrollment_id,daily_prompt_id", ignoreDuplicates: true }
+      );
+      if (responseErr) {
+        console.error("Failed to seed daily_prompt_responses row", { userId: profile.id, error: responseErr });
+      }
+
+      if (profile.email) {
+        const props = {
+          fullName: profile.full_name || "there",
+          promptText,
+          dashboardUrl: `${SITE_URL}/dashboard`,
+          isVi,
+        };
+        const html = await renderAsync(React.createElement(DailyPromptEmail, props));
+        const text = await renderAsync(React.createElement(DailyPromptEmail, props), { plainText: true });
+        const result = await sendEmail({
+          to: profile.email,
+          subject: isVi ? "Gợi ý coaching hôm nay" : "Today's coaching nudge",
+          html,
+          text,
+        });
+        if (!result.ok) {
+          console.error("Failed to send daily-prompt email", { error: result.error, email: profile.email });
+        }
+      }
+
+      notified++;
     }
 
-    return new Response(JSON.stringify({ ok: true, notified, skipped }), {
+    return new Response(JSON.stringify({ ok: true, notified }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {

@@ -1,21 +1,60 @@
 import { useTranslation } from "react-i18next";
+import { useQuery } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Star, Loader2, Info, AlertTriangle } from "lucide-react";
 import { Link } from "react-router-dom";
 import { PageHeader } from "@/components/ui/page-header";
-import { useProgrammeModules } from "@/hooks/useProgrammeModules";
-import { useCoachAsCoacheeAllowlist } from "@/hooks/coaches/useAllowedCoaches";
+import { useActiveEnrollment } from "@/hooks/useActiveEnrollment";
+import { useLearnerModuleProgress } from "@/hooks/useLearnerModuleProgress";
+import { useCohortCoachPool } from "@/hooks/coaching/useCanonicalCoaching";
+import { supabase } from "@/integrations/supabase/client";
+import { getFriendlyErrorMessage } from "@/lib/errors";
 
+interface CoachCardDetails {
+  id: string;
+  title: string | null;
+  specialties: string[] | null;
+  rating_avg: number | null;
+}
+
+/**
+ * A Coach's own Coach (as a learner) is their cohort's Coach pool
+ * (enrollment_coaching_coach_pool), exactly as for every learner -- the
+ * retired coach_as_coachee_allowlist plays no part. The pool decides who is
+ * listed; coach_profiles only adds what the card shows.
+ */
 export default function CoachFindCoach() {
   const { t } = useTranslation("coaches");
-  const { getConfig, loading: modulesLoading } = useProgrammeModules();
-  const { coaches, loading, error, reload: load } = useCoachAsCoacheeAllowlist();
+  const { enrollmentId } = useActiveEnrollment();
+  const pool = useCohortCoachPool(enrollmentId);
+  const poolIds = (pool.data ?? []).map((c) => c.id);
+  const details = useQuery({
+    queryKey: ["coach-find-coach-details", poolIds],
+    enabled: poolIds.length > 0,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("coach_profiles")
+        .select("id, title, specialties, rating_avg")
+        .in("id", poolIds);
+      if (error) throw error;
+      return (data ?? []) as CoachCardDetails[];
+    },
+  });
+  const detailsById = new Map((details.data ?? []).map((d) => [d.id, d]));
+  const coaches = (pool.data ?? []).map((c) => ({ ...c, ...detailsById.get(c.id) }));
+  const loading = (!!enrollmentId && pool.isLoading) || (poolIds.length > 0 && details.isLoading);
+  const failure = pool.error ?? details.error;
+  const error = failure ? getFriendlyErrorMessage(failure, t) : null;
+  const load = () => {
+    void pool.refetch();
+    void details.refetch();
+  };
 
-  // Coaching module's receive_limit — null/absent = unlimited. Comes from
-  // the coach's active programme's programme_modules config.
-  const receiveLimit = (getConfig("coaching").receive_limit as number | null | undefined) ?? null;
+  // The canonical Coaching module row of the Coach's own enrollment
+  // (learner_module_progress) -- never a module-config allowance.
+  const coachingRow = useLearnerModuleProgress(enrollmentId).byModule.coaching;
 
   return (
     <div className="space-y-6">
@@ -31,11 +70,16 @@ export default function CoachFindCoach() {
         <Info className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
         <div>
           {t("findCoach.notice")}
-          {!modulesLoading && receiveLimit === null && (
-            <> {t("findCoach.allowancePrefix")} <strong>{t("findCoach.unlimitedValue")}</strong> {t("findCoach.allowanceSuffix")}</>
-          )}
-          {!modulesLoading && typeof receiveLimit === "number" && (
-            <> {t("findCoach.allowancePrefix")} <strong>{receiveLimit}</strong> {t("findCoach.allowanceSuffix")}</>
+          {coachingRow && (
+            <>
+              {" "}
+              <span data-testid="coaching-requirement-progress">
+                {t("findCoach.requirementProgress", {
+                  done: coachingRow.completed_units + coachingRow.booked_units,
+                  required: coachingRow.required_units,
+                })}
+              </span>
+            </>
           )}
         </div>
       </Card>
@@ -62,7 +106,7 @@ export default function CoachFindCoach() {
             <div key={c.id} className="surface-card hover-lift flex flex-col gap-3 p-5">
               <div className="flex items-center gap-3">
                 <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary-soft text-sm font-bold text-primary">
-                  {(c.profiles?.full_name || "?")
+                  {(c.fullName || "?")
                     .split(" ")
                     .map((n) => n[0])
                     .join("")
@@ -70,13 +114,15 @@ export default function CoachFindCoach() {
                     .toUpperCase()}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-[15px] font-semibold">{c.profiles?.full_name}</p>
+                  <p className="truncate text-[15px] font-semibold">{c.fullName}</p>
                   <p className="truncate text-xs text-muted-foreground">{c.title || t("findCoach.defaultTitle")}</p>
                 </div>
-                <span className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-foreground">
-                  <Star className="h-3 w-3 fill-warning text-warning" />
-                  {Number(c.rating_avg).toFixed(1)}
-                </span>
+                {c.rating_avg != null && (
+                  <span className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-foreground">
+                    <Star className="h-3 w-3 fill-warning text-warning" />
+                    {Number(c.rating_avg).toFixed(1)}
+                  </span>
+                )}
               </div>
 
               {c.specialties && c.specialties.length > 0 && (

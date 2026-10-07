@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate } from "react-router-dom";
 import { differenceInCalendarDays } from "date-fns";
-import { Users, CheckCircle2, AlertTriangle, CalendarCheck, ShieldCheck, Loader2, ArrowRight, Building2, Clock, ChevronDown, MessageCircle, type LucideIcon, Info, FileDown, Layers } from "lucide-react";
+import { Users, CheckCircle2, AlertTriangle, CalendarCheck, ShieldCheck, Loader2, ArrowRight, Building2, Clock, ChevronDown, MessageCircle, type LucideIcon, FileDown, Layers } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -15,7 +15,7 @@ import {
   RosterTable,
   HealthSignalPill,
 } from "@/pages/sponsor/_shared";
-import { healthSignal } from "@/pages/sponsor/sponsorUtils";
+import { fromServerHealthSignal } from "@/pages/sponsor/sponsorUtils";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/AuthContext";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -84,7 +84,6 @@ export default function SponsorDashboard() {
   const cohortHealthRows = useMemo(() => {
     return cohortSummaries.map((summary) => {
       const leaders = summary.enrollment_count ?? 0;
-      const atRisk = summary.at_risk_count ?? 0;
       return {
         cohortName: summary.cohort_label,
         cohortId: summary.cohort_id,
@@ -93,7 +92,8 @@ export default function SponsorDashboard() {
         completedUnits: summary.completed_units,
         requiredUnits: summary.required_units,
         completionPct: canonicalCompletionPct(summary.full_completion_pct) ?? 0,
-        signal: healthSignal(atRisk, leaders),
+        // decision 8, computed by the server (sponsor_health_signal)
+        signal: fromServerHealthSignal(summary.health_signal),
       };
     });
   }, [cohortSummaries]);
@@ -110,26 +110,6 @@ export default function SponsorDashboard() {
   const alerts = useMemo(() => {
     const list: { key: string; icon: LucideIcon; tone: "warning" | "info"; message: string; to?: string }[] = [];
 
-    const byCohort = new Map<string, { used: number; entitled: number }>();
-    roster.forEach((r) => {
-      const key = r.cohort_label || "";
-      if (!key) return;
-      const agg = byCohort.get(key) || { used: 0, entitled: 0 };
-      agg.used += r.completed_units;
-      agg.entitled += r.required_units;
-      byCohort.set(key, agg);
-    });
-    byCohort.forEach((agg, cohortName) => {
-      if (agg.entitled > 0 && agg.used / agg.entitled >= 0.9) {
-        list.push({
-          key: `session-threshold-${cohortName}`,
-          icon: Info,
-          tone: "info",
-          message: t("dashboard.alerts.sessionThreshold", { name: cohortName }),
-        });
-      }
-    });
-
     if (contractDaysRemaining != null && contractDaysRemaining < 60) {
       list.push({
         key: "contract-expiry",
@@ -140,7 +120,7 @@ export default function SponsorDashboard() {
     }
 
     return list;
-  }, [roster, contractDaysRemaining, t]);
+  }, [contractDaysRemaining, t]);
 
 
   const contactAdmin = async () => {
@@ -298,7 +278,7 @@ export default function SponsorDashboard() {
             <HeadlineStat label={t("dashboard.kpis.enrolledActive")} value={kpis ? kpis.active_count : "—"} icon={Users} tone="primary" />
             <HeadlineStat label={t("dashboard.kpis.leadersEnrolled")} value={kpis ? kpis.enrollment_count : "—"} icon={Users} tone="primary" />
             <HeadlineStat
-              label={t("dashboard.kpis.sessionsUsed")}
+              label={t("shared.unitsCompleted")}
               value={kpis ? `${kpis.completed_units} / ${kpis.required_units}` : "—"}
               icon={CalendarCheck}
               tone="secondary"
@@ -327,7 +307,7 @@ export default function SponsorDashboard() {
                     <th className="px-2 py-2 text-left font-semibold">{t("dashboard.healthMatrix.columns.cohort")}</th>
                     <th className="px-2 py-2 text-left font-semibold">{t("dashboard.healthMatrix.columns.leaders")}</th>
                     <th className="px-2 py-2 text-left font-semibold hidden sm:table-cell">{t("dashboard.healthMatrix.columns.onTrack")}</th>
-                    <th className="px-2 py-2 text-left font-semibold hidden md:table-cell">{t("dashboard.healthMatrix.columns.unitsUsed")}</th>
+                    <th className="px-2 py-2 text-left font-semibold hidden md:table-cell">{t("shared.unitsCompleted")}</th>
                     <th className="px-2 py-2 text-left font-semibold">{t("dashboard.healthMatrix.columns.signal")}</th>
                   </tr>
                 </thead>

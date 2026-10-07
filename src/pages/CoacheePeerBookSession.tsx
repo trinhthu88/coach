@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { ChevronLeft, ChevronRight, ChevronRightCircle, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { addDays, format, startOfDay } from "date-fns";
+import { slotInstant, slotTodayKey } from "@/lib/slotTime";
 import { toast } from "sonner";
 import { getFriendlyErrorMessage } from "@/lib/errors";
 import { computeStartOptions } from "./bookingSlots";
@@ -73,7 +74,7 @@ export default function CoacheePeerBookSession() {
     setLoadError(false);
     (async () => {
       try {
-        const today = new Date().toISOString().slice(0, 10);
+        const today = slotTodayKey();
         const slotQuery = supabase
           .from("coachee_availability")
           .select("id, slot_date, start_time, end_time")
@@ -152,7 +153,7 @@ export default function CoacheePeerBookSession() {
     if (!opt) return;
     setSubmitting(true);
     const ds = dateKey(selectedDate);
-    const startISO = new Date(`${ds}T${selectedStart}:00`).toISOString();
+    const startISO = slotInstant(ds, selectedStart).toISOString();
 
     const { error } = await supabase.rpc("book_coachee_peer_session", {
       p_provider_id: partner.userId,

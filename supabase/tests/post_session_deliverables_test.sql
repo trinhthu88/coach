@@ -67,12 +67,17 @@ values ('d6000000-0000-0000-0000-000000000001', 'a6000000-0000-0000-0000-0000000
 select set_config('request.jwt.claim.sub', 'a6000000-0000-0000-0000-000000000001', true);
 
 -- Coaching: S1 fully evidenced below, S2 held with nothing written, S3 not held.
+-- Trusted historical fixture rows (the cohort has since ended, so the booking
+-- checks, which now ask enrollment_is_ongoing(), would refuse them): written
+-- as the lifecycle service.
+select set_config('app.session_transition', 'on', true);
 insert into public.sessions (id, coach_id, coachee_id, topic, start_time, duration_minutes, status, enrollment_id, coachee_rating)
 values
   ('f6000000-0000-0000-0000-000000000001', 'a6000000-0000-0000-0000-000000000009', 'a6000000-0000-0000-0000-000000000001',
    'Coaching one', '2026-01-12T10:00:00Z', 60, 'completed', 'e6000000-0000-0000-0000-000000000001', 5),
   ('f6000000-0000-0000-0000-000000000002', 'a6000000-0000-0000-0000-000000000009', 'a6000000-0000-0000-0000-000000000001',
    'Coaching two', '2026-01-26T10:00:00Z', 60, 'completed', 'e6000000-0000-0000-0000-000000000001', null);
+select set_config('app.session_transition', 'off', true);
 
 -- Peer: P1 learner 1 RECEIVES (with a legacy receiver note and rating 3);
 -- P2 learner 1 PROVIDES to learner 2. Learners 1 and 2 are an assigned Peer
@@ -82,20 +87,29 @@ values ('f6000000-0000-0000-0000-0000000000d1', 'd6000000-0000-0000-0000-0000000
 insert into public.peer_dyad_members (dyad_id, enrollment_id) values
   ('f6000000-0000-0000-0000-0000000000d1', 'e6000000-0000-0000-0000-000000000001'),
   ('f6000000-0000-0000-0000-0000000000d1', 'e6000000-0000-0000-0000-000000000002');
+-- Trusted historical fixture row (its enrollment is no longer ongoing).
+select set_config('app.session_transition', 'on', true);
 insert into public.coachee_peer_sessions (id, peer_provider_id, peer_receiver_id, topic, start_time, duration_minutes, status, enrollment_id, receiver_notes, receiver_rating)
 values ('f6000000-0000-0000-0000-000000000011', 'a6000000-0000-0000-0000-000000000002', 'a6000000-0000-0000-0000-000000000001',
   'Peer received', '2026-02-02T10:00:00Z', 60, 'completed', 'e6000000-0000-0000-0000-000000000001', 'Peer note: open questions helped.', 3);
+select set_config('app.session_transition', 'off', true);
 select set_config('request.jwt.claim.sub', 'a6000000-0000-0000-0000-000000000002', true);
+-- Trusted historical fixture row (its enrollment is no longer ongoing).
+select set_config('app.session_transition', 'on', true);
 insert into public.coachee_peer_sessions (id, peer_provider_id, peer_receiver_id, topic, start_time, duration_minutes, status, enrollment_id)
 values ('f6000000-0000-0000-0000-000000000012', 'a6000000-0000-0000-0000-000000000001', 'a6000000-0000-0000-0000-000000000002',
   'Peer given', '2026-02-09T10:00:00Z', 60, 'completed', 'e6000000-0000-0000-0000-000000000002');
+select set_config('app.session_transition', 'off', true);
 select set_config('request.jwt.claim.sub', 'a6000000-0000-0000-0000-000000000001', true);
 
 -- Mentoring: M1 completed with a legacy mentee note.
+-- Trusted historical fixture row (its enrollment is no longer ongoing).
+select set_config('app.session_transition', 'on', true);
 insert into public.mentoring_sessions (id, enrollment_id, mentor_id, mentee_id, topic, start_time, duration_minutes, status, mentee_notes)
 values ('f6000000-0000-0000-0000-000000000021', 'e6000000-0000-0000-0000-000000000001', 'a6000000-0000-0000-0000-000000000008',
   'a6000000-0000-0000-0000-000000000001', 'Mentoring one', '2026-01-19T10:00:00Z', 60, 'completed',
   'Mentee note: map stakeholders earlier.');
+select set_config('app.session_transition', 'off', true);
 
 -- Triads: T1 completed, T2 still confirmed (never a deliverable yet).
 insert into public.triad_groups (id, cohort_requirement_date_id, is_active)

@@ -17,7 +17,7 @@ import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { getSessionStatusPillMeta as getStatusMeta } from "@/lib/sessionStatusMeta";
-import { useSessionsData } from "@/hooks/sessions/useSessionsData";
+import { isPeerPracticeKind, useSessionsData } from "@/hooks/sessions/useSessionsData";
 import { useActiveEnrollment } from "@/hooks/useActiveEnrollment";
 import { scopeLearnerSessions } from "@/lib/learnerSessionScope";
 import { sessionRowDetailPath as sessionDetailPath } from "@/lib/sessionPaths";
@@ -44,7 +44,7 @@ export default function Sessions() {
   const searchTerm = searchParams.get("q") || "";
   const kindFilter = (searchParams.get("kind") as KindFilter) || "all";
 
-  const { sessions: allSessions, loading, reload: load } = useSessionsData(user?.id, role);
+  const { sessions: allSessions, nextSessions, loading, reload: load } = useSessionsData(user?.id, role);
   // A learner's hub follows their ONE active enrollment (useActiveEnrollment);
   // sessions of their own earlier programmes are shown only on request.
   const active = useActiveEnrollment();
@@ -119,6 +119,19 @@ export default function Sessions() {
         }
       />
 
+
+      {/* The next live session of each programme module, from
+          learner_next_session_by_module -- never picked from the rows here. */}
+      {!loading && nextSessions.length > 0 && (
+        <div data-testid="next-sessions" className="flex flex-wrap gap-2 text-[12px]">
+          <span className="font-semibold text-muted-foreground">{t("list.nextSessions")}</span>
+          {nextSessions.map((n) => (
+            <span key={`${n.enrollmentId}:${n.module}`} className="rounded-full border bg-card px-2.5 py-0.5">
+              {t(`list.moduleNames.${n.module}`, { defaultValue: n.module })} · {format(new Date(n.nextSessionAt), "MMM d · HH:mm")}
+            </span>
+          ))}
+        </div>
+      )}
 
       {loading ? (
         <div className="space-y-3">
@@ -251,11 +264,13 @@ function SessionCard({
   // For peer/mentoring sessions: the giver (peer-giver / mentor) acts as
   // "coach", the receiver (peer-receiver / mentee) acts as "coachee".
   const userIsGiver = session.kind === "peer-give" || session.kind === "coachee-peer-give" || session.kind === "mentoring-mentor";
+  // Coaching: whether the viewer coaches THIS session (a Coach can also be its learner).
+  const viewerCoaches = session.viewer_is_coach ?? role === "coach";
   const counterpart = isPeer || isCoacheePeer || isMentoring
     ? userIsGiver
       ? session.coachee
       : session.coach
-    : role === "coach"
+    : viewerCoaches
     ? session.coachee
     : session.coach;
   const startTime = session.start_time ?? session.triad?.scheduledStartTime;
@@ -265,7 +280,7 @@ function SessionCard({
   const showRating =
     !isMentoring &&
     !isTriad &&
-    ((!isPeer && !isCoacheePeer && role === "coachee" && session.status === "completed") ||
+    ((!isPeer && !isCoacheePeer && !viewerCoaches && session.status === "completed") ||
       ((isPeer || isCoacheePeer) && !userIsGiver && session.status === "completed")) &&
     // The rating belongs to the learner's own enrollment (submit_session_satisfaction).
     !!session.enrollment_id;
@@ -276,7 +291,7 @@ function SessionCard({
   // doesn't, so mentoring sessions are completed from there instead.
   const canMarkComplete =
     !isMentoring &&
-    ((isPeer || isCoacheePeer) ? userIsGiver : role === "coach") &&
+    ((isPeer || isCoacheePeer) ? userIsGiver : viewerCoaches) &&
     start != null &&
     start < new Date() &&
     (session.status === "confirmed" ||
@@ -288,12 +303,17 @@ function SessionCard({
   const markComplete = async (e: React.MouseEvent) => {
     e.stopPropagation();
     setCompleting(true);
-    const { error } = await supabase.rpc("transition_session_status", {
-      p_session_id: session.id,
-      p_kind: isCoacheePeer ? "coachee_peer" : isPeer ? "peer" : "coaching",
-      p_action: "complete",
-      p_reason: null,
-    });
+    // Coaching completion belongs to complete_coaching_session(): the Coach
+    // marks the session held. transition_session_status() only confirms
+    // Coaching (20261005100000).
+    const { error } = isPeer || isCoacheePeer
+      ? await supabase.rpc("transition_session_status", {
+          p_session_id: session.id,
+          p_kind: isCoacheePeer ? "coachee_peer" : "peer",
+          p_action: "complete",
+          p_reason: undefined,
+        })
+      : await supabase.rpc("complete_coaching_session", { p_session_id: session.id });
     setCompleting(false);
     if (error) return toast.error(error.message);
     toast.success(t("list.toast.markedComplete"));
@@ -310,7 +330,7 @@ function SessionCard({
     ? userIsGiver
       ? { label: t("list.roleBadge.coach"), className: "bg-success/10 text-success border-success/20" }
       : { label: t("list.roleBadge.coachee"), className: "bg-primary/10 text-primary border-primary/20" }
-    : role === "coach"
+    : viewerCoaches
     ? { label: t("list.roleBadge.coach"), className: "bg-success/10 text-success border-success/20" }
     : { label: t("list.roleBadge.coachee"), className: "bg-primary/10 text-primary border-primary/20" };
   // Triad members rotate through coach / coachee / observer: no fixed role.
@@ -324,11 +344,17 @@ function SessionCard({
     ? [
         session.triad ? t("list.triadSession", { n: session.triad.unitNumber }) : null,
       ].filter(Boolean).join(" · ")
+    // Coach opt-in pool: practice, never Peer programme evidence.
+    : isPeerPracticeKind(session.kind)
+      ? t("list.peerPracticeNoCredit")
     // Which programme unit a Coaching session fulfils. The Coach needs this to
     // judge an incoming request: "Coaching 2, due 5 Jul" is actionable in a way
     // that a bare date is not.
-    : session.coachingRequirementOrdinal != null
-      ? t("list.coachingRequirement", { n: session.coachingRequirementOrdinal })
+    : session.requirementUnit != null
+      ? t(
+          isMentoring ? "list.mentoringRequirement" : isCoacheePeer ? "list.peerRequirement" : "list.coachingRequirement",
+          { n: session.requirementUnit },
+        )
       : "";
   const displayTitle = session.topic || t("list.triadSessionTitle");
   const displayDate = start ? format(start, "MMM d · HH:mm") : t("list.noTimeYet");
@@ -337,9 +363,9 @@ function SessionCard({
     session.cohortName ? t("list.cohortLabel", { name: session.cohortName }) : "",
     // A pending request is the moment the deadline matters most, so surface it
     // there rather than on every row.
-    session.status === "pending_coach_approval" && session.coachingRequirementDueOn
+    session.status === "pending_coach_approval" && session.requirementDueOn
       ? t("list.requirementDue", {
-          date: format(new Date(`${session.coachingRequirementDueOn}T00:00:00`), "d MMM yyyy"),
+          date: format(new Date(`${session.requirementDueOn}T00:00:00`), "d MMM yyyy"),
         })
       : "",
   ]

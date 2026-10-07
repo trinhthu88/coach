@@ -164,7 +164,8 @@
       "training": "Training",
       "quiz": "Quizzes",
       "assessment": "Assessments",
-      "daily_prompt": "Daily prompts"
+      "daily_prompt": "Daily prompts",
+      "final_assessment": "Final Assessment"
     },
     "pace": {
       "completed": "Completed",

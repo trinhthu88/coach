@@ -26,6 +26,11 @@ export interface ProgrammeJourneyProps {
   /** When provided, checkpoints become selectable and this renders the selected checkpoint's detail. */
   renderDetail?: (point: ProgrammeJourneyPoint) => ReactNode;
   id?: string;
+  /**
+   * The enrollment's canonical EFFECTIVE status (canonical_enrollment_progress),
+   * when the viewer has one. Shown instead of the date-derived lifecycle chip.
+   */
+  effectiveStatus?: "active" | "paused" | "completed" | "at_risk" | null;
   /** Canonical required-vs-scheduled mismatches (cohort_programme_schedule_state), shown identically to every role. */
   scheduleMismatches?: { module: string; required_units: number; scheduled_units: number; state: string }[];
 }
@@ -52,6 +57,7 @@ export function ProgrammeJourney({
   renderDetail,
   id,
   scheduleMismatches = [],
+  effectiveStatus = null,
 }: ProgrammeJourneyProps) {
   const { t } = useTranslation("sponsor");
   const text = useProfileText(viewer);
@@ -75,8 +81,10 @@ export function ProgrammeJourney({
           <p className="mt-1.5 text-[11.5px] text-[#9a938a]">{text("journeySubtitle")}</p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <span className="rounded-full bg-[#e4f3f7] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[.1em] text-[#2c8fa8]">
-            {t(`cohortDetail.programmeDetails.status.${status}`)}
+          <span data-testid="journey-status" className="rounded-full bg-[#e4f3f7] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[.1em] text-[#2c8fa8]">
+            {effectiveStatus
+              ? t(`cohortDetail.programmeDetails.enrollmentStatus.${effectiveStatus}`)
+              : t(`cohortDetail.programmeDetails.status.${status}`)}
           </span>
           {action}
         </div>

@@ -6,6 +6,7 @@ import { useAuth } from "@/context/AuthContext";
 import { Input } from "@/components/ui/input";
 import { Loader2 } from "lucide-react";
 import { format } from "date-fns";
+import { slotInstant, slotTodayKey } from "@/lib/slotTime";
 import { cn } from "@/lib/utils";
 import { getFriendlyErrorMessage } from "@/lib/errors";
 import { useTriadSession } from "@/hooks/triads/useTriadSession";
@@ -61,7 +62,7 @@ export function TriadAlternativeProposal({
       .select("slot_date, start_time")
       .eq("coachee_id", user.id)
       .eq("is_booked", false)
-      .gte("slot_date", format(new Date(), "yyyy-MM-dd"))
+      .gte("slot_date", slotTodayKey())
       .order("slot_date", { ascending: true });
     if (untilDate) query = query.lte("slot_date", untilDate);
     query.then(({ data }) => setMySlots((data ?? []) as AvailabilitySlot[]));
@@ -76,7 +77,9 @@ export function TriadAlternativeProposal({
       toast.error(t("alternative.dateRequired"));
       return;
     }
-    const start = new Date(`${date}T${time}:00`);
+    // The picked date and time are Vietnam wall-clock time, whatever the
+    // browser's zone (slotTime.ts) -- the same instant the server reads.
+    const start = slotInstant(date, time);
     const end = new Date(start.getTime() + 60 * 60 * 1000);
     try {
       if (mode === "schedule") {

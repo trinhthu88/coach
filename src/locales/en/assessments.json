@@ -1,0 +1,210 @@
+{
+  "triadN": "Triad {{n}}",
+  "finalAttempt": "Final Assessment (attempt {{n}})",
+  "kind": {
+    "triad": "Triad",
+    "final_assessment": "Final Assessment"
+  },
+  "outcome": {
+    "pass": "Pass",
+    "not_pass": "Not pass",
+    "resubmit": "Resubmit"
+  },
+  "fileError": "The file could not be opened.",
+  "dashboardCard": {
+    "title": "Submissions to assess ({{count}})",
+    "pending": "{{count}} waiting for your review",
+    "none": "Nothing waiting for your review.",
+    "overdue": "{{count}} overdue",
+    "returned": "{{count}} returned by Admin",
+    "open": "Open submissions"
+  },
+  "inbox": {
+    "eyebrow": "Assessor",
+    "title": "Submissions",
+    "subtitle": "Triad reflections and Final Assessments Admin has assigned you. Your feedback reaches the learner only after Admin approves it.",
+    "tabs": {
+      "to_assess": "To assess",
+      "returned": "Returned to me",
+      "awaiting_validation": "Awaiting validation",
+      "released": "Released"
+    },
+    "filters": {
+      "cohort": "Cohort",
+      "kind": "Kind",
+      "allCohorts": "All cohorts",
+      "allKinds": "All kinds"
+    },
+    "loadError": "Your submissions could not be loaded.",
+    "empty": {
+      "to_assess": "Nothing to assess right now.",
+      "returned": "No reviews have been returned to you.",
+      "awaiting_validation": "No reviews are waiting for Admin.",
+      "released": "No feedback of yours has been released yet."
+    },
+    "due": "Due {{date}}",
+    "overdue": "Overdue",
+    "submitted": "Submitted {{date}}",
+    "released": "Released {{date}}",
+    "open": "Open"
+  },
+  "detail": {
+    "back": "All submissions",
+    "notFound": "This submission is not assigned to you, or it no longer exists.",
+    "returnReasonTitle": "Admin returned your review",
+    "recording": "Recording",
+    "noRecording": "No recording for this submission.",
+    "audioUnsupported": "Your browser cannot play this recording.",
+    "transcript": "Transcript",
+    "noTranscript": "No transcript.",
+    "transcriptFile": "Transcript file",
+    "reflection": "Reflection answers",
+    "reflectionSubmitted": "Submitted {{date}}",
+    "noReflection": "No written answers.",
+    "sections": {
+      "coach": "As Coach",
+      "coachee": "As Coachee",
+      "observer": "As Observer",
+      "general": "Overall"
+    },
+    "quiz": "Quiz score",
+    "quizScore": "{{correct}} of {{total}} correct ({{pct}}%)",
+    "quizReadOnly": "Scored automatically. Read only.",
+    "noQuiz": "No quiz score.",
+    "historyOnly": "This feedback has been released. The learner's content is no longer shown to you.",
+    "yourReview": "Your review (version {{version}})",
+    "awaitingValidation": "Admin is reviewing your feedback before it is released.",
+    "form": {
+      "title": "Your feedback",
+      "feedbackLabel": "Feedback for the learner",
+      "feedbackPlaceholder": "What did they do well, and what is one thing to try next?",
+      "outcomeLabel": "Result",
+      "resubmitLastAttempt": "This is the last attempt, so the result is Pass or Not pass.",
+      "pdfLabel": "Feedback PDF (optional, max 10 MB)",
+      "pdfChosen": "{{name}} ({{size}})",
+      "removePdf": "Remove",
+      "pdfType": "The feedback file must be a PDF.",
+      "pdfSize": "The feedback PDF must be 10 MB or smaller.",
+      "needsContent": "Write feedback or attach a PDF.",
+      "needsOutcome": "Choose a result.",
+      "submit": "Send to Admin",
+      "resubmit": "Send the revised review",
+      "submitted": "Review sent to Admin for approval.",
+      "hint": "Admin approves your review before the learner sees it."
+    }
+  },
+  "feedback": {
+    "sectionTitle": "Feedback & results",
+    "sectionAside": "Visible only to you",
+    "sectionSubtitle": "Assessor feedback, released after Admin has approved it.",
+    "loadError": "Your assessment feedback could not be loaded.",
+    "triadTitle": "Feedback on Triad {{n}}",
+    "finalTitle": "Final Assessment result",
+    "finalAttemptTitle": "Final Assessment result (attempt {{n}})",
+    "byAssessor": "From {{name}} · released {{date}}",
+    "new": "New",
+    "result": "Result",
+    "quiz": "Quiz",
+    "quizScore": "{{correct}} of {{total}} correct ({{pct}}%)",
+    "attachment": "Feedback PDF",
+    "open": "Open feedback",
+    "hide": "Hide feedback"
+  },
+  "final": {
+    "title": "Final Assessment",
+    "subtitle": "Your end-of-programme assessment: a quiz and a recorded coaching session, reviewed by an assessor.",
+    "due": "Due {{date}}",
+    "loadError": "Your Final Assessment could not be loaded.",
+    "notInProgramme": "Your programme has no Final Assessment.",
+    "instructions": "Instructions",
+    "state": {
+      "not_submitted": "Not submitted",
+      "submitted": "Submitted",
+      "under_review": "Under review",
+      "completed": "Result released",
+      "resubmit_requested": "Resubmission requested"
+    },
+    "submittedBody": "Submitted {{date}}. An assessor will be assigned soon.",
+    "underReviewBody": "Submitted {{date}}. Your assessor is reviewing it; you will be notified when the result is released.",
+    "attemptN": "Attempt {{n}} of 2",
+    "abovePassMark": "at or above the {{pct}}% pass mark",
+    "belowPassMark": "below the {{pct}}% pass mark",
+    "notPassFinal": "This result is final.",
+    "readFeedback": "Read your assessor's feedback",
+    "resubmitBody": "Your assessor has asked you to resubmit. This is attempt {{n}} of 2: take the quiz again and upload a new recording.",
+    "steps": {
+      "quiz": "Quiz",
+      "recording": "Recording",
+      "transcript": "Transcript",
+      "review": "Review & submit"
+    },
+    "quizHint": "Answer every question. Your score is shown with your result, after your assessor's review is released.",
+    "quizSubmit": "Submit quiz answers",
+    "quizSubmittedToast": "Quiz answers saved.",
+    "quizTaken": "Quiz answers saved. Your score will be shown with your result.",
+    "quizLoadError": "The quiz could not be loaded.",
+    "recordingLabel": "Your coaching session recording (MP3, up to {{mb}} MB)",
+    "recordingTip": "Tip: export the recording as MP3 at 64 kbps (mono). A 60-minute session is then about 30 MB.",
+    "recordingType": "The recording must be an MP3 file. Video and other audio formats are not accepted.",
+    "recordingSize": "The recording must be {{mb}} MB or smaller. Export it at 64 kbps to make it smaller.",
+    "uploading": "Uploading… {{pct}}%",
+    "uploadFailed": "The upload failed. Please try again.",
+    "recordingUploaded": "Uploaded: {{name}}. Choose another file to replace it.",
+    "transcriptLabel": "Transcript",
+    "transcriptRequired": "A transcript is required for this Final Assessment.",
+    "transcriptOptional": "A transcript is optional, but helps your assessor.",
+    "transcriptPlaceholder": "Paste the transcript of your session here.",
+    "auto": {
+      "button": "Draft a transcript automatically",
+      "running": "Transcribing… this can take a minute or two.",
+      "needsRecording": "Upload your recording first to get an automatic transcript draft.",
+      "draftNotice": "This is an automatic draft. Read it through and correct names and any mistakes before you submit.",
+      "empty": "No speech was recognised in the recording. Please type or paste the transcript.",
+      "errors": {
+        "not_configured": "Automatic transcription is not available. Please type or paste the transcript.",
+        "not_open": "This Final Assessment can no longer take a transcript.",
+        "not_found": "The recording could not be found. Please upload it again.",
+        "transcription_failed": "Automatic transcription failed. Please try again, or type or paste the transcript.",
+        "unknown": "Automatic transcription failed. Please try again, or type or paste the transcript.",
+        "consent_required": "Please tick the box to agree before drafting automatically.",
+        "limit_reached": "You have used all automatic drafts for this attempt."
+      },
+      "consent": "Your recording will be sent to an external transcription service (OpenAI) to create the draft. OpenAI does not use it for training.",
+      "remaining_one": "{{count}} of {{cap}} automatic drafts left for this attempt.",
+      "remaining_other": "{{count}} of {{cap}} automatic drafts left for this attempt.",
+      "usedUp": "You have used all {{cap}} automatic drafts for this attempt. Please edit the draft or type the transcript."
+    },
+    "review": {
+      "quizDone": "Quiz answered",
+      "quizMissing": "Quiz not answered yet",
+      "recordingDone": "Recording uploaded ({{name}})",
+      "recordingMissing": "Recording not uploaded yet",
+      "transcriptDone": "Transcript added",
+      "transcriptMissing": "Transcript missing",
+      "transcriptSkipped": "No transcript (optional)",
+      "lockedAfterSubmit": "After you submit, your answers, recording and transcript can no longer be changed.",
+      "submit": "Submit Final Assessment"
+    },
+    "submittedToast": "Final Assessment submitted.",
+    "back": "Back",
+    "next": "Next"
+  },
+  "results": {
+    "title": "Final Assessment",
+    "result": "Result",
+    "quiz": "Quiz",
+    "due": "Due",
+    "attempt": "Attempt",
+    "submitted": "Submitted",
+    "released": "Released",
+    "outcome": "Assessor's outcome",
+    "open": "Go to the Final Assessment",
+    "view": "View the Final Assessment",
+    "sponsorState": {
+      "not_submitted": "Not submitted",
+      "under_review": "Under review",
+      "completed": "Completed"
+    },
+    "sponsorNote": "Sponsors see the status and the Pass / Not pass result only, never the recording, answers or feedback."
+  }
+}

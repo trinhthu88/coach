@@ -134,7 +134,43 @@
     "goalSettingOpensLabel": "Bắt đầu đặt mục tiêu",
     "goalSettingDueLabel": "Hạn đặt mục tiêu",
     "goalSettingHint": "Mỗi học viên đặt 1–3 mục tiêu trong giai đoạn này. Để trống = từ ngày bắt đầu khóa đến 7 ngày sau. Chỉ là ngày nhắc nhở, không tính là yêu cầu của chương trình.",
-    "deleteBlockedEnrollments": "Nhóm này đã có học viên ghi danh nên không thể xóa. Hãy chuyển hoặc kết thúc các ghi danh trước."
+    "deleteBlockedEnrollments": "Nhóm này đã có học viên ghi danh nên không thể xóa. Hãy chuyển hoặc kết thúc các ghi danh trước.",
+    "kind": {
+      "all": "Tất cả",
+      "group": "Nhóm",
+      "engagement": "1:1",
+      "engagementBadge": "1:1"
+    },
+    "engagement": {
+      "newEngagement": "Tạo chương trình coaching 1:1",
+      "title": "Chương trình coaching 1:1 mới",
+      "description": "Một chương trình 1:1: khóa riêng, coach này là Coach duy nhất, các buổi Coaching đến hạn đều từ ngày bắt đầu đến ngày kết thúc.",
+      "learner": "Học viên",
+      "coach": "Coach",
+      "programme": "Chương trình (chỉ Coaching)",
+      "noProgramme": "Không có chương trình đang hoạt động nào chỉ gồm Coaching.",
+      "organisation": "Tổ chức",
+      "noOrganisation": "Không có tổ chức",
+      "start": "Bắt đầu",
+      "end": "Kết thúc",
+      "datesHint": "Hạn các buổi Coaching được chia đều giữa hai ngày này.",
+      "choose": "Chọn…",
+      "create": "Tạo chương trình",
+      "created": "Đã tạo chương trình coaching 1:1"
+    },
+    "assessors": {
+      "title": "Danh sách người đánh giá",
+      "intro": "Chọn các Coach được đánh giá bài nộp Triad và Final Assessment của cohort này. Độc lập với Coaching và Mentoring.",
+      "assignedCount": "{{count}} người",
+      "noCoaches": "Chưa có Coach nào để thêm làm người đánh giá. Hãy thêm Coach trong Admin → Coaches trước.",
+      "loadError": "Không tải được danh sách Coach.",
+      "noneAssignedWarning": "Cohort này chưa có người đánh giá nào, nên chưa thể phân công bài nộp nào.",
+      "inactiveAssignedWarning": "{{count}} tài khoản Coach trong danh sách đang ngừng hoạt động và không thể đánh giá.",
+      "accountInactive": "tài khoản ngừng hoạt động",
+      "assigned": "Đã thêm Coach vào danh sách người đánh giá.",
+      "unassigned": "Đã gỡ Coach khỏi danh sách người đánh giá.",
+      "toggleLabel": "Thêm {{name}} vào danh sách người đánh giá của cohort này"
+    }
   },
   "dashboard": {
     "eyebrow": "Tổ chức",
@@ -163,7 +199,6 @@
     "scopeCoachRoster": "Danh sách coach",
     "scopeCoachee": "Học viên",
     "scopeAllProgrammes": "Tất cả chương trình",
-    "scanComplete": "Quét hoàn tất · {{count}} cảnh báo đang hoạt động",
     "alertResolved": "Đã xử lý cảnh báo",
     "eyebrow": "Tổ chức",
     "title": "Cảnh báo",
@@ -173,18 +208,70 @@
     "filterWarning": "Cảnh báo",
     "filterInfo": "Thông tin",
     "statOpen": "Đang mở",
-    "statOpenHint": "trên tổng số {{total}} cảnh báo",
     "statCritical": "Nghiêm trọng",
     "statCriticalHint": "doanh thu khóa học có nguy cơ bị ảnh hưởng",
     "statWarning": "Cảnh báo",
     "statWarningHint": "tiêu chuẩn dịch vụ có dấu hiệu không đạt yêu cầu",
-    "statResolvedToday": "Đã xử lý hôm nay",
-    "statResolvedTodayHint": "do bạn xử lý",
-    "runScan": "Quét kiểm tra",
-    "allClear": "Không có cảnh báo nào. Hãy thực hiện quét kiểm tra để cập nhật dữ liệu.",
     "nothingHere": "Hiện chưa có gì ở đây.",
     "resolve": "Xử lý",
-    "resolvedCount": "Đã xử lý ({{count}})"
+    "resolvedCount": "Đã xử lý ({{count}})",
+    "someone": "Một học viên",
+    "aCoach": "Một coach",
+    "statOpenLiveHint": "đúng tại thời điểm này",
+    "statInfo": "Thông tin",
+    "statInfoHint": "nhắc nhở, không chặn việc gì",
+    "refresh": "Làm mới",
+    "allClearLive": "Hiện không có cảnh báo nào.",
+    "severity": {
+      "critical": "Nghiêm trọng",
+      "warning": "Cảnh báo",
+      "info": "Thông tin"
+    },
+    "types": {
+      "programme_at_risk": {
+        "title": "{{name}} — chương trình có nguy cơ",
+        "message": "Chương trình đã kết thúc khi chưa hoàn thành ({{pct}} hoàn thành){{contact}} · cần xem xét."
+      },
+      "needs_attention": {
+        "title": "{{name}} — cần chú ý",
+        "message": "{{count}} hoạt động bắt buộc đã quá hạn{{contact}}.",
+        "messageBehind": "Đang chậm so với tiến độ chương trình{{contact}}."
+      },
+      "overdue_actions": {
+        "title": "{{name}} — {{count}} hành động quá hạn",
+        "message": "{{count}} hành động đã quá hạn{{contact}}."
+      },
+      "reflection_outstanding": {
+        "title": "{{name}} — chưa viết suy ngẫm",
+        "message": "{{count}} buổi đã hoàn thành chưa có suy ngẫm (gần nhất {{date}}){{contact}}. Các buổi này vẫn được tính; đây chỉ là nhắc nhở."
+      },
+      "mentor_feedback_outstanding": {
+        "title": "{{name}} — mentor chưa gửi nhận xét",
+        "message": "Mentor chưa gửi nhận xét cho {{count}} buổi mentoring đã hoàn thành{{contact}}. Các buổi này vẫn được tính; đây chỉ là nhắc nhở."
+      },
+      "prep_file_outstanding": {
+        "title": "{{name}} — chưa có tài liệu chuẩn bị",
+        "message": "{{count}} buổi mentoring đã bắt đầu mà chưa có tài liệu chuẩn bị{{contact}}. Tài liệu này không bắt buộc và không ảnh hưởng đến việc hoàn thành."
+      },
+      "stale_programme_participant": {
+        "title": "{{name}} — không có hoạt động trong 7+ ngày",
+        "message": "Hoạt động gần nhất {{date}}{{contact}}.",
+        "messageNever": "Chưa có hoạt động nào kể từ khi ghi danh{{contact}}."
+      },
+      "low_quiz_scores": {
+        "title": "{{name}} — điểm quiz trung bình {{pct}}",
+        "message": "Trung bình {{pct}} qua {{count}} bài quiz{{contact}} — dưới ngưỡng 50%."
+      },
+      "goal_setup_overdue": {
+        "title": "{{name}} — quá hạn đặt mục tiêu",
+        "message": "Chưa có mục tiêu đang hoạt động từ {{date}}{{contact}} · học viên không thể đặt lịch cho đến khi đặt mục tiêu."
+      },
+      "coach_flagged_session": {
+        "title": "{{coach}} đã gắn cờ một buổi với {{name}}",
+        "message": "{{coach}}: {{note}}",
+        "messageNoNote": "{{coach}} đã gắn cờ buổi này để admin chú ý nhưng không để lại ghi chú."
+      }
+    }
   },
   "coachees": {
     "exported": "Đã xuất",
@@ -216,7 +303,6 @@
       "sessionLimit": "Giới hạn session",
       "programme": "Chương trình",
       "cohort": "Nhóm",
-      "selectedCoaches": "Coach đã chọn",
       "sheetName": "Học viên",
       "completedUnits": "Hoạt động bắt buộc đã hoàn thành (ghi danh hiện tại)",
       "organisation": "Tổ chức"
@@ -230,12 +316,10 @@
       "done": "Đã hoàn thành",
       "programme": "Chương trình",
       "percentComplete": "% Hoàn thành",
-      "selectedCoaches": "Coach đã chọn",
       "actions": "Thao tác",
       "requiredActivities": "Hoạt động bắt buộc",
       "organisation": "Tổ chức"
     },
-    "selectedCoachesCount_other": "{{count}} coach",
     "viewProfile": "Xem hồ sơ",
     "edit": "Sửa",
     "noMatch": "Không có học viên nào khớp với bộ lọc của bạn.",
@@ -289,8 +373,6 @@
     "start": "Bắt đầu",
     "current": "Hiện tại",
     "target": "Mục tiêu",
-    "selectedCoaches": "Coach đã chọn",
-    "none": "Không có",
     "recentSessions": "Session gần đây",
     "noSessionsYet": "Chưa có session nào.",
     "close": "Đóng",
@@ -452,11 +534,9 @@
     "hspGroup": "Nhóm HSP",
     "duration": "Thời lượng",
     "monthsValue_other": "{{count}} tháng",
-    "coachingReceivedCoachee": "Số phiên Coaching đã nhận (Học viên)",
     "coachingReceivedCoach": "Số phiên Coaching đã nhận (Coach)",
     "peerReceived": "Số phiên Coaching đồng cấp đã nhận",
     "peerGiven": "Số phiên Coaching đồng cấp đã thực hiện",
-    "mentoringReceived": "Số phiên Mentoring đã nhận",
     "edit": "Sửa",
     "delete": "Xóa",
     "empty": "Chưa có chương trình nào. Tạo một chương trình để bắt đầu ghi danh học viên.",
@@ -478,12 +558,10 @@
     "nameLabel": "Tên",
     "descriptionLabel": "Mô tả",
     "durationMonthsLabel": "Thời lượng (tháng)",
-    "sessionLimitsHeading": "Giới hạn session (áp dụng mặc định khi ghi danh)",
     "deadLimitsWarning": "Giới hạn session của coach, session đồng cấp đã nhận, và session đồng cấp đã thực hiện bên dưới không còn được áp dụng — các giới hạn này giờ được thiết lập riêng cho từng coach tại trang",
     "deadLimitsWarningLink": "Danh sách coach",
     "peerSessionsReceived": "Session đồng cấp — đã nhận",
     "peerSessionsGiven": "Session đồng cấp — đã thực hiện",
-    "mentoringSessionsReceived": "Session Mentoring — đã nhận",
     "coachesOnly": "Chỉ dành cho coach",
     "activeLabel": "Đang hoạt động",
     "activeHint": "Hiển thị cho các lượt ghi danh mới.",
@@ -510,8 +588,7 @@
       "hint": "Các tính năng chương trình này bao gồm, và cấu hình của chúng. Áp dụng cho bất kỳ ai đang ghi danh hoạt động — coach hoặc coachee.",
       "give": "Cho",
       "receive": "Nhận",
-      "giveLimit": "Giới hạn cho",
-      "receiveLimit": "Giới hạn nhận",
+      "monthlyPracticeLimit": "Số buổi luyện tập mỗi tháng",
       "monthlyLimit": "Giới hạn hàng tháng",
       "groupSize": "Số người / nhóm",
       "maxTriads": "Số triad tối đa",
@@ -526,7 +603,8 @@
         "training": "Đào tạo",
         "quiz": "Quiz",
         "assessment": "Đánh giá",
-        "daily_prompt": "Nhắc nhở hàng ngày"
+        "daily_prompt": "Nhắc nhở hàng ngày",
+        "final_assessment": "Final Assessment"
       },
       "schedule": {
         "required": "Bắt buộc",
@@ -556,9 +634,29 @@
         "distributionSettingsInvalid": "Cài đặt lịch trình không hợp lệ.",
         "trainingWeekIdsInvalid": "Các tuần đào tạo đã chọn không hợp lệ.",
         "trainingWeeksInsufficient": "Số tuần đào tạo được chọn phải bằng số đơn vị bắt buộc."
-      }
+      },
+      "assessedTriads": "Triad được đánh giá (bài suy ngẫm được gửi tới người đánh giá)",
+      "triadN": "Triad {{n}}"
     },
-    "outsideRequirementsHint": "Số buổi coaching học viên được đặt ngoài yêu cầu chương trình (chỉ áp dụng khi chương trình không yêu cầu Coaching)."
+    "finalAssessment": {
+      "media": "Định dạng chấp nhận",
+      "mediaValue": "Chỉ âm thanh MP3 (audio/mpeg)",
+      "maxSize": "Dung lượng tối đa",
+      "maxSizeValue": "50 MB",
+      "transcript": "Bản chép lời",
+      "transcriptModes": {
+        "none": "Không có",
+        "optional": "Không bắt buộc",
+        "required": "Bắt buộc"
+      },
+      "quiz": "Quiz",
+      "quizHint": "Học viên làm quiz trước; điểm được gửi cùng kết quả.",
+      "passMark": "Ngưỡng đạt (%)",
+      "saveFirst": "Hãy lưu chương trình trước, rồi thêm câu hỏi quiz.",
+      "createQuiz": "Tạo quiz",
+      "instructions": "Hướng dẫn (tiếng Anh)",
+      "instructionsVi": "Hướng dẫn (tiếng Việt)"
+    }
   },
   "coachProgrammes": {
     "unlimited": "Không giới hạn",
@@ -577,7 +675,6 @@
     "menteeSessionsReceived": "Số phiên Coaching với vai trò Mentee",
     "peerGiven": "Coaching đồng cấp đã thực hiện",
     "peerReceived": "Coaching đồng cấp đã nhận",
-    "mentoringReceived": "Mentoring đã nhận",
     "mentoringGiven": "Mentoring đã thực hiện",
     "edit": "Sửa",
     "delete": "Xóa",
@@ -600,7 +697,6 @@
     "dialogTitleNew": "Chương trình coach mới",
     "nameLabel": "Tên",
     "descriptionLabel": "Mô tả",
-    "sessionLimitsHeading": "Giới hạn session (để trống = không giới hạn)",
     "clientCoachingGivenLabel": "Coaching cho khách hàng — đã cung cấp",
     "menteeSessionsReceivedLabel": "Session mentee — đã nhận",
     "peerSessionsGivenLabel": "Session đồng cấp — đã thực hiện",
@@ -682,7 +778,8 @@
       "flaggedLabel": "Đã gắn cờ",
       "flagged": "Đã tạo cảnh báo",
       "alreadyFlagged": "Đã gắn cờ và chưa xử lý"
-    }
+    },
+    "practiceSessions": "Thực hành Peer"
   },
   "sessions": {
     "sessionUpdated": "Đã cập nhật session",
@@ -731,7 +828,15 @@
     "cancel": "Hủy",
     "save": "Lưu",
     "unitPostSessionPending": "Chờ theo dõi sau buổi",
-    "evidenceComplete": "Đã hoàn tất theo dõi"
+    "evidenceComplete": "Đã hoàn tất theo dõi",
+    "changeReasonLabel": "Lý do thay đổi (bắt buộc)",
+    "changeReasonPlaceholder": "Được ghi vào nhật ký thay đổi của session…",
+    "reopenAs": "mở lại thành {{status}}",
+    "notesReadOnly": "Ghi chú thuộc về người viết và không thể sửa tại đây.",
+    "errors": {
+      "reasonRequired": "Vui lòng nhập lý do cho thay đổi này.",
+      "detailsLocked": "Không thể đổi thời gian, thời lượng, chủ đề và link cùng với trạng thái này, hoặc khi session đã hoàn thành."
+    }
   },
   "coaches": {
     "eyebrow": "Tổ chức",
@@ -757,19 +862,17 @@
       "coach": "Coach",
       "status": "Trạng thái",
       "registered": "Đã đăng ký",
-      "coachingReceived": "Coaching đã nhận",
-      "peerReceived": "Coach đồng cấp đã nhận",
+      "coachingReceived": "Coaching (hoàn thành / yêu cầu)",
+      "peerReceived": "Peer coaching (hoàn thành / yêu cầu)",
       "peerGiven": "Coach đồng cấp đã thực hiện",
       "programme": "Chương trình",
       "percentComplete": "% Hoàn thành",
-      "assigned": "Được chỉ định",
       "coacheesCount": "# Học viên",
       "rating": "Đánh giá",
       "booked": "Đã đặt lịch",
       "done": "Đã hoàn thành",
       "actions": "Thao tác"
     },
-    "assignedCoachesCount_other": "{{count}} coach",
     "viewProfile": "Xem hồ sơ",
     "noMatch": "Không có coach nào khớp với bộ lọc của bạn.",
     "programmeRequired": "Cần có chương trình",
@@ -780,17 +883,16 @@
     "status": "Trạng thái",
     "programme": "Chương trình",
     "selectProgrammePlaceholder": "Chọn một chương trình…",
-    "programmeHint": "Bắt buộc. Đây là hành trình coaching của riêng coach này (theo dõi tiến độ), tách biệt với giới hạn session bên dưới.",
+    "programmeHint": "Bắt buộc. Đây là hành trình coaching của riêng coach này (theo dõi tiến độ).",
     "cohort": "Nhóm",
     "noneOption": "— Không có —",
-    "sessionLimits": "Giới hạn session",
+    "ownProgramme": "Chương trình của chính coach (với vai trò học viên)",
     "changeCoachProgramme": "Đổi chương trình coach",
     "notEnrolled": "Chưa ghi danh",
-    "coachingReceived": "Coaching đã nhận",
-    "peerReceived": "Đồng cấp đã nhận",
+    "coachingReceived": "Coaching hoàn thành / yêu cầu",
+    "peerReceived": "Peer coaching hoàn thành / yêu cầu",
     "peerGiven": "Đồng cấp đã thực hiện",
     "programmeProgress": "Tiến độ chương trình",
-    "assignedCoachesLabel": "Coach được chỉ định (khi coach này được coaching)",
     "sessionsDeliveredPrefix": "Session đã thực hiện:",
     "completedLabel": "đã hoàn thành",
     "bookedLabel": "đã đặt",
@@ -804,13 +906,9 @@
       "registered": "Đã đăng ký",
       "status": "Trạng thái",
       "coachProgramme": "Chương trình coach",
-      "coachSessionLimit": "Giới hạn session coach",
-      "coachSessionsUsed": "Session coach đã dùng",
-      "assignedCoaches": "Coach đã chỉ định",
-      "peerReceivedLimit": "Giới hạn đồng cấp đã nhận",
-      "peerReceivedUsed": "Đồng cấp đã nhận đã dùng",
-      "peerGivenLimit": "Giới hạn đồng cấp đã thực hiện",
-      "peerGivenUsed": "Đồng cấp đã thực hiện đã dùng",
+      "coachingUnits": "Coaching hoàn thành / yêu cầu",
+      "peerUnits": "Peer coaching hoàn thành / yêu cầu",
+      "peerGivenUsed": "Session peer coaching đã thực hiện",
       "coacheesCount": "# Học viên",
       "avgRating": "Đánh giá trung bình",
       "bookedSessions": "Session coaching đã đặt",
@@ -849,50 +947,40 @@
       "booked": "Đã đặt lịch",
       "done": "Đã hoàn thành",
       "limit": "Giới hạn",
-      "selectedCoaches": "Coach đã chọn",
       "actions": "Thao tác"
     },
     "noCoacheesMatch": "Không có học viên nào khớp với bộ lọc của bạn.",
-    "noneAssigned": "Chưa chỉ định",
     "edit": "Sửa",
     "regPrefix": "Đăng ký",
     "coachTableHeaders": {
       "name": "Tên",
       "email": "Email",
       "statusGetCoached": "Trạng thái (được coaching)",
-      "coachLimitTotal": "Giới hạn coach (tổng)",
-      "assignedCoaches": "Coach đã chỉ định",
-      "peerLimitTotal": "Giới hạn đồng cấp (tổng)",
+      "coachingUnits": "Coaching (hoàn thành / yêu cầu)",
+      "peerUnits": "Peer coaching (hoàn thành / yêu cầu)",
       "given": "Đã thực hiện (session / học viên / ★)",
       "actions": "Thao tác"
     },
     "noCoachesMatch": "Không có coach nào khớp với bộ lọc của bạn.",
-    "none": "Không có",
     "suspend": "Đình chỉ",
     "reactivate": "Kích hoạt lại",
     "editDialogTitle": "Sửa {{name}}",
     "monthlySessionLimit": "Giới hạn session hàng tháng",
-    "coachesThisCoacheeCanBook_other": "Coach mà học viên này có thể đặt lịch ({{count}})",
-    "searchCoachesPlaceholder": "Tìm coach…",
-    "noCoaches": "Không có coach.",
-    "cancel": "Hủy",
-    "save": "Lưu",
-    "sessionLimits": "Giới hạn session",
+    "close": "Đóng",
+    "ownProgramme": "Chương trình của chính coach (với vai trò học viên)",
     "changeCoachProgramme": "Đổi chương trình coach",
     "notEnrolled": "Chưa ghi danh",
-    "coachingReceived": "Coaching đã nhận",
-    "peerReceived": "Đồng cấp đã nhận",
-    "coachesAssignedForSessions_other": "Coach được chỉ định cho session coaching của coach này ({{count}})",
+    "coachingReceived": "Coaching hoàn thành / yêu cầu",
+    "peerReceived": "Peer coaching hoàn thành / yêu cầu",
     "exported": "Đã xuất",
     "export": {
       "name": "Tên",
       "email": "Email",
       "registered": "Đã đăng ký",
       "status": "Trạng thái",
-      "bookedSessions": "Session đã đặt",
-      "sessionsDone": "Session đã xong",
+      "bookedSessions": "Đơn vị Coaching đã đặt",
+      "sessionsDone": "Đơn vị Coaching hoàn thành",
       "monthlyLimit": "Giới hạn hàng tháng",
-      "selectedCoaches": "Coach đã chọn",
       "coacheesSheetName": "Học viên",
       "exportButton": "Xuất"
     },
@@ -954,7 +1042,25 @@
     "rejectConfirmTitle": "Từ chối {{name}}?",
     "rejectConfirmDescription": "Người này sẽ không thể truy cập nền tảng. Bạn có thể hoàn tác sau từ bảng này.",
     "coachAssignment": "Phân công Coach",
-    "coachAssignmentMovedToCohort": "Coaching của chương trình được phân công theo nhóm. Quản lý danh sách Coach tại Quản trị → Nhóm → Coaching."
+    "coachAssignmentMovedToCohort": "Coaching của chương trình được phân công theo nhóm. Quản lý danh sách Coach tại Quản trị → Nhóm → Coaching.",
+    "referrals": {
+      "title": "Giới thiệu từ Coach",
+      "hint": "Đề xuất của Coach; chưa có gì được tạo cho tới khi bạn xử lý.",
+      "empty": "Không có giới thiệu nào đang chờ.",
+      "name": "Người được giới thiệu",
+      "referredBy": "Được giới thiệu bởi",
+      "suggestedProgramme": "Chương trình đề xuất",
+      "received": "Ngày nhận",
+      "status": "Trạng thái",
+      "action": "Bước tiếp theo",
+      "noProgramme": "Không có đề xuất",
+      "approveAndStart": "Duyệt và bắt đầu engagement",
+      "approved": "{{name}} đã có tài khoản",
+      "statusLabels": {
+        "pending": "Đang chờ",
+        "approved": "Đã duyệt"
+      }
+    }
   },
   "pager": {
     "pageOf": "Trang {{page}} / {{total}}",
@@ -1100,7 +1206,11 @@
     "assignmentPending": "Đang chờ xếp nhóm",
     "overdue": "Quá hạn",
     "priorPartners": "· từng cùng nhóm với {{names}}",
-    "repeatedPartnersWarning": "Đã từng cùng nhóm ở Triad khác: {{pairs}}"
+    "repeatedPartnersWarning": "Đã từng cùng nhóm ở Triad khác: {{pairs}}",
+    "tabs": {
+      "cohorts": "Cohort",
+      "submissions": "Bài nộp"
+    }
   },
   "userDetail": {
     "eyebrow": "Admin · Chi tiết người dùng",
@@ -1129,7 +1239,8 @@
       "reflections": "Suy ngẫm",
       "feedback": "Phản hồi",
       "satisfaction": "Mức độ hài lòng",
-      "calendar": "Lịch yêu cầu"
+      "calendar": "Lịch yêu cầu",
+      "finalAssessment": "Final Assessment"
     },
     "fields": {
       "programme": "Chương trình",
@@ -1301,5 +1412,118 @@
       "failed": "Thất bại",
       "pending": "Đang chờ"
     }
+  },
+  "assessments": {
+    "eyebrow": "Chương trình",
+    "title": "Đánh giá",
+    "subtitle": "Bài nộp Triad và Final Assessment: phân công người đánh giá từ danh sách người đánh giá của cohort, đọc nhận xét, rồi duyệt để gửi cho học viên hoặc trả lại kèm lý do.",
+    "triadN": "Triad {{n}}",
+    "finalAttempt": "Final Assessment (lần {{n}})",
+    "kind": {
+      "triad": "Triad",
+      "final_assessment": "Final Assessment"
+    },
+    "status": {
+      "awaiting_assignment": "Chờ phân công",
+      "with_assessor": "Người đánh giá đang xử lý",
+      "awaiting_validation": "Chờ duyệt",
+      "returned": "Đã trả lại người đánh giá",
+      "released": "Đã gửi học viên"
+    },
+    "outcome": {
+      "pass": "Đạt",
+      "not_pass": "Không đạt",
+      "resubmit": "Nộp lại"
+    },
+    "filters": {
+      "programme": "Chương trình",
+      "cohort": "Cohort",
+      "kind": "Loại",
+      "status": "Trạng thái",
+      "allProgrammes": "Tất cả chương trình",
+      "allCohorts": "Tất cả cohort",
+      "allKinds": "Tất cả loại",
+      "allStatuses": "Tất cả trạng thái"
+    },
+    "columns": {
+      "learner": "Học viên",
+      "cohort": "Cohort",
+      "assessment": "Bài đánh giá",
+      "submitted": "Ngày nộp",
+      "status": "Trạng thái",
+      "assessor": "Người đánh giá",
+      "assessorDue": "Hạn đánh giá",
+      "learnerViewed": "Học viên đã xem",
+      "actions": "Thao tác"
+    },
+    "loadError": "Không tải được danh sách bài đánh giá.",
+    "empty": "Không có bài nộp nào khớp với bộ lọc.",
+    "overdue": "Quá hạn",
+    "notViewed": "Chưa xem",
+    "selectAll": "Chọn tất cả bài nộp có thể phân công",
+    "selectRow": "Chọn {{name}}",
+    "selectedCount": "Đã chọn {{count}}",
+    "assignSelected": "Phân công bài đã chọn",
+    "clearSelection": "Bỏ chọn",
+    "assign": "Phân công",
+    "reassign": "Phân công lại",
+    "validate": "Duyệt",
+    "readReview": "Xem nhận xét",
+    "assignTitleOne": "Phân công người đánh giá: {{name}}, {{assessment}}",
+    "assignTitleMany": "Phân công người đánh giá cho {{count}} bài nộp",
+    "assignHint": "Chỉ hiển thị các Coach trong danh sách người đánh giá của cohort. Coach phụ trách chương trình của học viên không được đánh giá học viên đó. Người đánh giá có 7 ngày.",
+    "poolLoadError": "Không tải được danh sách người đánh giá.",
+    "noPool": "Danh sách người đánh giá của cohort này đang trống. Hãy thêm Coach trong Admin → Cohorts → Danh sách người đánh giá.",
+    "noSharedPool": "Không có Coach nào thuộc danh sách người đánh giá của tất cả cohort đã chọn. Hãy chọn bài nộp của một cohort, hoặc bổ sung danh sách người đánh giá.",
+    "assessorLabel": "Người đánh giá",
+    "assessorPlaceholder": "Chọn một Coach",
+    "currentAssessor": "Hiện do {{name}} đánh giá. Phân công lại sẽ tính lại 7 ngày.",
+    "assignedToast": "Đã phân công người đánh giá cho {{count}} bài nộp.",
+    "reviewTitle": "Nhận xét: {{name}}, {{assessment}}",
+    "reviewMeta": "Của {{assessor}} · phiên bản {{version}} · {{date}}",
+    "outcomeLabel": "Kết quả",
+    "feedbackLabel": "Nhận xét",
+    "noFeedbackText": "Không có nhận xét bằng văn bản; xem file PDF đính kèm.",
+    "fileError": "Không mở được file.",
+    "returnedWith": "Đã trả lại với lý do:",
+    "releasedOn": "Đã gửi ngày {{date}}.",
+    "viewedOn": "Học viên đã xem ngày {{date}}.",
+    "notViewedYet": "Học viên chưa mở.",
+    "returnReasonLabel": "Lý do trả lại (người đánh giá sẽ thấy)",
+    "returnReasonPlaceholder": "Người đánh giá cần chỉnh sửa gì?",
+    "approve": "Duyệt và gửi học viên",
+    "return": "Trả lại người đánh giá",
+    "returnToAssessor": "Trả lại kèm lý do",
+    "approvedToast": "Đã duyệt. Học viên đã được thông báo.",
+    "returnedToast": "Đã trả lại người đánh giá.",
+    "cancel": "Hủy",
+    "close": "Đóng",
+    "errors": {
+      "ownCoach": "Coach này là Coach phụ trách chương trình của học viên nên không được đánh giá học viên đó.",
+      "notInPool": "Coach này không thuộc danh sách người đánh giá của cohort.",
+      "stale": "Bài nộp đã thay đổi kể từ khi tải danh sách. Danh sách đã được làm mới.",
+      "reasonRequired": "Hãy ghi lý do trước khi trả lại nhận xét."
+    },
+    "transcription": {
+      "title": "Chép lời tự động (Final Assessment)",
+      "thisMonth": "Tháng này",
+      "allTime": "Từ trước đến nay",
+      "totals": "{{calls}} lượt · {{minutes}} phút âm thanh · ≈ ${{usd}}",
+      "estimate": "Ước tính theo giá OpenAI Whisper ${{price}} mỗi phút âm thanh. Mỗi học viên có tối đa 3 bản nháp tự động cho mỗi lần nộp.",
+      "when": "Thời gian",
+      "learner": "Học viên",
+      "attempt": "Lần nộp",
+      "minutes": "Phút âm thanh",
+      "status": "Trạng thái",
+      "statuses": {
+        "pending": "Đang chạy",
+        "succeeded": "Xong",
+        "failed": "Lỗi"
+      },
+      "loadError": "Không tải được chi phí chép lời."
+    },
+    "emailNotSent": "Chưa gửi email",
+    "emailNotSentYet": "Email thông báo chưa được gửi; hệ thống sẽ tự gửi lại.",
+    "emailedOn": "Đã gửi email {{date}}."
   }
 }

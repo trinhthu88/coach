@@ -10,8 +10,10 @@
 -- training 6/6), several leaders are partially complete, several have
 -- little/no activity. These numbers were hand-reconciled from the seed and
 -- must not regress:
---   coaching 18/48, peer 9/24, mentoring 7/24, triads 9/24, training 30/72
---   -> 73/192 total, 2 leaders completing every requirement.
+--   coaching 18/48, peer 10/24, mentoring 7/24, triads 9/24, training 30/72
+--   -> 74/192 total, 2 leaders completing every requirement.
+-- Peer is earned only in Admin-assigned dyads and a dyad session credits both
+-- partners (20261005140000): C1-C2 2+2, C3-C4 1+1, C9-C11 2+2.
 -- This guards two P0 bugs found and fixed alongside this fixture:
 --   1. get_sponsor_programme_progress/get_sponsor_programme_journey double-
 --      counted every peer_coaching unit (LEFT JOIN peer_sessions and LEFT
@@ -45,10 +47,10 @@ select ok(
 -- Peer coaching is not double-counted (regression guard for bug #1).
 select is(
   (select peer_completed_units from public.sponsor_canonical_cohort_progress('11111111-1111-4111-8111-111111111119'::uuid, current_date)),
-  9, 'peer coaching completed units are not double-counted across peer_sessions/coachee_peer_sessions');
+  10, 'peer coaching completed units are not double-counted across peer_sessions/coachee_peer_sessions');
 select is(
   (select peer_completed_leaders from public.sponsor_canonical_cohort_progress('11111111-1111-4111-8111-111111111119'::uuid, current_date)),
-  3, 'exactly the leaders who really finished peer coaching count as having completed it');
+  4, 'exactly the leaders who really finished peer coaching count as having completed it');
 
 select is(
   (select coaching_completed_units from public.sponsor_canonical_cohort_progress('11111111-1111-4111-8111-111111111119'::uuid, current_date)), 18, 'coaching completed units');
@@ -88,7 +90,7 @@ select is(
 select is(
   (select required_units from public.sponsor_canonical_cohort_progress('11111111-1111-4111-8111-111111111119'::uuid, current_date)), 192, 'entitlement is admin requirement x leaders (16 x 12)');
 select is(
-  (select completed_units from public.sponsor_canonical_cohort_progress('11111111-1111-4111-8111-111111111119'::uuid, current_date)), 73, 'total completed units reconcile to the hand-computed sum');
+  (select completed_units from public.sponsor_canonical_cohort_progress('11111111-1111-4111-8111-111111111119'::uuid, current_date)), 74, 'total completed units reconcile to the hand-computed sum');
 
 -- Cohort card totals reconcile with roster rows (invariant 3).
 select is(
