@@ -27,3 +27,4 @@
 - [Deployment 2 retirement hardening](deployment-2-retirement-hardening.md) — exact archive conflicts fail closed; preserve prior provenance only for exact round snapshots and allow only expected auto-drops.
 - [Deployment 2 isolated rehearsal](triad-deployment-2-isolated-rehearsal.md) — when Supabase health gating blocks local reset, validate the standalone retirement transaction against a loopback PostgreSQL fixture.
 - [Training learning breakdown configuration](learning-breakdown-configuration.md) — normalize legacy null child-content config only when selected visible weeks contain the relevant visible activity.
+- [Branch and PR workflow](branch-and-pr-workflow.md) — start repository work on a new branch, open a PR into `main`, and never push commits directly to `main`.
