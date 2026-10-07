@@ -53,10 +53,12 @@ values ('ae600000-0000-4000-8000-000000000003', 'ae600000-0000-4000-8000-0000000
 select set_config('request.jwt.claims', json_build_object('sub', 'ae000000-0000-4000-8000-000000000004')::text, true);
 select public.admin_set_cohort_assessor('ae200000-0000-4000-8000-000000000001', 'ae000000-0000-4000-8000-000000000002');
 
+-- The submission learner_triad_submit_reflection creates for an assessed
+-- Triad (trusted fixture; learner_submit_assessment refuses Triads).
+insert into public.assessment_submissions (id, enrollment_id, kind, cohort_requirement_id, triad_reflection_id, status, submitted_at)
+values ('ae400000-0000-4000-8000-000000000001', 'ae300000-0000-4000-8000-000000000001', 'triad',
+        (select id from ids where name = 'triad1'), 'ae600000-0000-4000-8000-000000000003', 'awaiting_assignment', now());
 set local role authenticated;
-select set_config('request.jwt.claims', json_build_object('sub', 'ae000000-0000-4000-8000-000000000001')::text, true);
-select public.learner_submit_assessment('ae400000-0000-4000-8000-000000000001', 'ae300000-0000-4000-8000-000000000001',
-  (select id from ids where name = 'triad1'), 'triad', 'ae600000-0000-4000-8000-000000000003');
 select set_config('request.jwt.claims', json_build_object('sub', 'ae000000-0000-4000-8000-000000000004')::text, true);
 select public.admin_assign_assessor(array['ae400000-0000-4000-8000-000000000001']::uuid[], 'ae000000-0000-4000-8000-000000000002');
 

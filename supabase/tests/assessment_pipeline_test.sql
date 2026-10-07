@@ -31,7 +31,7 @@ insert into public.organizations (id, name) values ('ac500000-0000-4000-8000-000
 insert into public.sponsor_profiles (user_id, organization_id) values ('ac000000-0000-4000-8000-000000000006', 'ac500000-0000-4000-8000-000000000001');
 insert into public.programmes (id, name) values ('ac100000-0000-4000-8000-000000000001', 'Assessed Programme');
 insert into public.programme_modules (programme_id, module, enabled, config) values
-  ('ac100000-0000-4000-8000-000000000001', 'triads', true, '{"required": true, "required_units": 1}'),
+  ('ac100000-0000-4000-8000-000000000001', 'triads', true, '{"required": true, "required_units": 1, "assessed_units": [1]}'),
   ('ac100000-0000-4000-8000-000000000001', 'coaching', true, '{"required": true, "required_units": 1}');
 insert into public.cohorts (id, name, programme_id, start_date, end_date) values
   ('ac200000-0000-4000-8000-000000000001', 'Assess Cohort', 'ac100000-0000-4000-8000-000000000001',
@@ -54,8 +54,10 @@ insert into ids select 'triad1', d.id from public.cohort_requirement_dates d
  where d.cohort_id = 'ac200000-0000-4000-8000-000000000001' and d.module = 'triads';
 insert into ids select 'other_triad1', d.id from public.cohort_requirement_dates d
  where d.cohort_id = 'ac200000-0000-4000-8000-000000000002' and d.module = 'triads';
-insert into ids values ('sub', 'ac400000-0000-4000-8000-000000000001');
 grant all on ids to authenticated;
+-- Storage paths, built from the submission ids the Triad reflection creates.
+create temporary table paths (name text primary key, path text);
+grant all on paths to authenticated;
 
 -- L's own Coach O has a Coaching session with L.
 select set_config('app.session_transition', 'on', true);
@@ -65,7 +67,7 @@ select 'ac300000-0000-4000-8000-000000000001', d.id, 'ac000000-0000-4000-8000-00
 from public.cohort_requirement_dates d where d.cohort_id = 'ac200000-0000-4000-8000-000000000001' and d.module = 'coaching';
 select set_config('app.session_transition', '', true);
 
--- A completed Triad 1 and L's reflection.
+-- A completed Triad 1 (assessed): L and M grouped.
 insert into public.triad_groups (id, cohort_requirement_date_id, is_active)
 values ('ac600000-0000-4000-8000-000000000001', (select id from ids where name = 'triad1'), true);
 insert into public.triad_group_members (triad_group_id, enrollment_id, member_order) values
@@ -73,19 +75,12 @@ insert into public.triad_group_members (triad_group_id, enrollment_id, member_or
   ('ac600000-0000-4000-8000-000000000001', 'ac300000-0000-4000-8000-000000000007', 2);
 insert into public.triad_sessions (id, triad_group_id, scheduled_start_time, status)
 values ('ac600000-0000-4000-8000-000000000002', 'ac600000-0000-4000-8000-000000000001', now() - interval '1 day', 'completed');
-insert into public.triad_reflections (id, triad_session_id, enrollment_id, satisfaction_rating)
-values ('ac600000-0000-4000-8000-000000000003', 'ac600000-0000-4000-8000-000000000002', 'ac300000-0000-4000-8000-000000000001', 4);
 
 -- Assessor pool: A, B and O.
 select set_config('request.jwt.claims', json_build_object('sub', 'ac000000-0000-4000-8000-000000000004')::text, true);
 select public.admin_set_cohort_assessor('ac200000-0000-4000-8000-000000000001', c)
 from unnest(array['ac000000-0000-4000-8000-000000000002', 'ac000000-0000-4000-8000-000000000008',
                   'ac000000-0000-4000-8000-000000000005']::uuid[]) c;
-
--- "Uploads" (storage rows as the storage API writes them).
-insert into storage.objects (bucket_id, name, owner_id, metadata) values
-  ('assessment-files', 'ac300000-0000-4000-8000-000000000001/ac400000-0000-4000-8000-000000000001/notes.txt',
-   'ac000000-0000-4000-8000-000000000001', '{"mimetype": "text/plain", "size": 120}');
 
 -- ===========================================================================
 -- R1. No direct writes from the app
@@ -115,22 +110,34 @@ select throws_ok($$select public.learner_submit_assessment((select id from ids w
   '42501', null, 'R2a. another learner cannot submit for L');
 select set_config('request.jwt.claims', json_build_object('sub', 'ac000000-0000-4000-8000-000000000001')::text, true);
 select throws_ok($$select public.learner_submit_assessment(gen_random_uuid(), 'ac300000-0000-4000-8000-000000000001',
-  (select id from ids where name = 'other_triad1'), 'triad', 'ac600000-0000-4000-8000-000000000003')$$,
-  '42501', null, 'R2b. only a requirement of the learner''s own cohort');
-select lives_ok($$select public.learner_submit_assessment((select id from ids where name = 'sub'), 'ac300000-0000-4000-8000-000000000001',
-  (select id from ids where name = 'triad1'), 'triad', 'ac600000-0000-4000-8000-000000000003', null, null, 'uploaded',
-  '[{"storage_path": "ac300000-0000-4000-8000-000000000001/ac400000-0000-4000-8000-000000000001/notes.txt", "file_kind": "transcript"}]')$$,
-  'R2c. L submits Triad 1, linked to their reflection');
-select throws_ok($$select public.learner_submit_assessment(gen_random_uuid(), 'ac300000-0000-4000-8000-000000000001',
   (select id from ids where name = 'triad1'), 'triad', 'ac600000-0000-4000-8000-000000000003')$$,
-  '23505', null, 'R2d. once per attempt (a Triad has one)');
+  '22023', 'A Triad is submitted with its reflection, not here',
+  'R2b. a Triad is never submitted through learner_submit_assessment (decision 5)');
+select lives_ok($$select public.learner_triad_submit_reflection('ac600000-0000-4000-8000-000000000002', 4::smallint)$$,
+  'R2c. L submits Triad 1 by submitting the reflection');
+reset role;
+insert into ids select 'refl', r.id from public.triad_reflections r
+ where r.triad_session_id = 'ac600000-0000-4000-8000-000000000002' and r.enrollment_id = 'ac300000-0000-4000-8000-000000000001';
+insert into ids select 'sub', s.id from public.assessment_submissions s where s.triad_reflection_id = (select id from ids where name = 'refl');
+insert into paths select 'notes', 'ac300000-0000-4000-8000-000000000001/' || (select id from ids where name = 'sub') || '/notes.txt';
+-- A learner file on the submission (storage row as the storage API writes
+-- it, registered as the pipeline registers it; trusted fixture).
+insert into storage.objects (bucket_id, name, owner_id, metadata)
+values ('assessment-files', (select path from paths where name = 'notes'), 'ac000000-0000-4000-8000-000000000001',
+        '{"mimetype": "text/plain", "size": 120}');
+insert into public.assessment_files (submission_id, uploaded_by, uploaded_by_role, file_kind, storage_path, mime, size_bytes)
+values ((select id from ids where name = 'sub'), 'ac000000-0000-4000-8000-000000000001', 'learner', 'transcript',
+        (select path from paths where name = 'notes'), 'text/plain', 120);
+set local role authenticated;
+select throws_ok($$select public.learner_triad_submit_reflection('ac600000-0000-4000-8000-000000000002', 4::smallint)$$,
+  '23505', null, 'R2d. once (a Triad has one attempt)');
 -- (Storage refuses direct SQL deletes; the Storage API deletes under the
 -- policy below, which refuses any registered file.)
-select ok(public.assessment_object_registered('ac300000-0000-4000-8000-000000000001/ac400000-0000-4000-8000-000000000001/notes.txt')
+select ok(public.assessment_object_registered((select path from paths where name = 'notes'))
   and exists (select 1 from pg_policies where schemaname = 'storage' and tablename = 'objects'
               and policyname = 'Assessment files: delete before registration' and qual ~ 'NOT assessment_object_registered'),
   'R2e. a submitted file is locked: the delete policy refuses registered files');
-select is(public.assessment_object_writable('ac300000-0000-4000-8000-000000000001/ac400000-0000-4000-8000-000000000001/more.txt'),
+select is(public.assessment_object_writable('ac300000-0000-4000-8000-000000000001/' || (select id from ids where name = 'sub') || '/more.txt'),
   false, 'R2f. ... nor add to a submitted submission');
 reset role;
 select is((select status from public.assessment_submissions where id = (select id from ids where name = 'sub')),
@@ -162,9 +169,9 @@ select results_eq(
 set local role authenticated;
 select set_config('request.jwt.claims', json_build_object('sub', 'ac000000-0000-4000-8000-000000000002')::text, true);
 select results_eq($$select inbox_tab, triad_reflection_id from public.coach_assessment_inbox()$$,
-  $$values ('to_assess'::text, 'ac600000-0000-4000-8000-000000000003'::uuid)$$,
+  $$values ('to_assess'::text, (select id from ids where name = 'refl'))$$,
   'R4a. A sees the submission and its reflection link');
-select is(public.assessment_object_readable('ac300000-0000-4000-8000-000000000001/ac400000-0000-4000-8000-000000000001/notes.txt'),
+select is(public.assessment_object_readable((select path from paths where name = 'notes')),
   true, 'R4b. ... and may open its files');
 select set_config('request.jwt.claims', json_build_object('sub', 'ac000000-0000-4000-8000-000000000003')::text, true);
 select is((select count(*)::int from public.coach_assessment_inbox()), 0, 'R4c. another coach sees nothing');
@@ -172,7 +179,7 @@ select set_config('request.jwt.claims', json_build_object('sub', 'ac000000-0000-
 select public.admin_assign_assessor(array[(select id from ids where name = 'sub')], 'ac000000-0000-4000-8000-000000000008');
 select set_config('request.jwt.claims', json_build_object('sub', 'ac000000-0000-4000-8000-000000000002')::text, true);
 select is((select count(*)::int from public.coach_assessment_inbox()), 0, 'R4d. reassigned away, A loses it');
-select is(public.assessment_object_readable('ac300000-0000-4000-8000-000000000001/ac400000-0000-4000-8000-000000000001/notes.txt'),
+select is(public.assessment_object_readable((select path from paths where name = 'notes')),
   false, 'R4e. ... and its files');
 select set_config('request.jwt.claims', json_build_object('sub', 'ac000000-0000-4000-8000-000000000008')::text, true);
 select is((select count(*)::int from public.coach_assessment_inbox()), 1, 'R4f. B now has it');
@@ -279,28 +286,31 @@ select results_eq(
   $$values (false, 52428800::bigint, false, true)$$,
   'R10a. private bucket, 50 MB, MP3 accepted, video refused');
 -- A second submission (learner M) to test the assessor's files.
-select set_config('request.jwt.claims', json_build_object('sub', 'ac000000-0000-4000-8000-000000000007')::text, true);
-insert into public.triad_reflections (id, triad_session_id, enrollment_id, satisfaction_rating)
-values ('ac600000-0000-4000-8000-000000000004', 'ac600000-0000-4000-8000-000000000002', 'ac300000-0000-4000-8000-000000000007', 5);
 set local role authenticated;
-insert into storage.objects (bucket_id, name, owner_id, metadata) values
-  ('assessment-files', 'ac300000-0000-4000-8000-000000000007/ac400000-0000-4000-8000-000000000007/clip.mp4',
-   'ac000000-0000-4000-8000-000000000007', '{"mimetype": "video/mp4", "size": 1000}');
-select throws_ok($$select public.learner_submit_assessment('ac400000-0000-4000-8000-000000000007', 'ac300000-0000-4000-8000-000000000007',
-  (select id from ids where name = 'triad1'), 'triad', 'ac600000-0000-4000-8000-000000000004', null, null, 'uploaded',
-  '[{"storage_path": "ac300000-0000-4000-8000-000000000007/ac400000-0000-4000-8000-000000000007/clip.mp4", "file_kind": "transcript"}]')$$,
-  '22023', null, 'R10b. a video passed as a transcript is refused by the submit function');
-select lives_ok($$select public.learner_submit_assessment('ac400000-0000-4000-8000-000000000007', 'ac300000-0000-4000-8000-000000000007',
-  (select id from ids where name = 'triad1'), 'triad', 'ac600000-0000-4000-8000-000000000004')$$,
-  'R10c. M submits without files');
+select set_config('request.jwt.claims', json_build_object('sub', 'ac000000-0000-4000-8000-000000000007')::text, true);
+select lives_ok($$select public.learner_triad_submit_reflection('ac600000-0000-4000-8000-000000000002', 5::smallint)$$,
+  'R10b. M submits Triad 1 by reflecting: a Triad carries no files');
+reset role;
+insert into ids select 'msub', s.id from public.assessment_submissions s
+ where s.enrollment_id = 'ac300000-0000-4000-8000-000000000007' and s.kind = 'triad';
+insert into paths
+select 'clip', 'ac300000-0000-4000-8000-000000000007/' || (select id from ids where name = 'msub') || '/clip.mp4'
+union all
+select 'feedback', 'ac300000-0000-4000-8000-000000000007/' || (select id from ids where name = 'msub') || '/feedback.pdf';
+set local role authenticated;
 select set_config('request.jwt.claims', json_build_object('sub', 'ac000000-0000-4000-8000-000000000004')::text, true);
-select public.admin_assign_assessor(array['ac400000-0000-4000-8000-000000000007'::uuid], 'ac000000-0000-4000-8000-000000000002');
+select public.admin_assign_assessor(array[(select id from ids where name = 'msub')], 'ac000000-0000-4000-8000-000000000002');
 select set_config('request.jwt.claims', json_build_object('sub', 'ac000000-0000-4000-8000-000000000002')::text, true);
 insert into storage.objects (bucket_id, name, owner_id, metadata) values
-  ('assessment-files', 'ac300000-0000-4000-8000-000000000007/ac400000-0000-4000-8000-000000000007/feedback.pdf',
+  ('assessment-files', (select path from paths where name = 'clip'),
+   'ac000000-0000-4000-8000-000000000002', '{"mimetype": "video/mp4", "size": 1000}'),
+  ('assessment-files', (select path from paths where name = 'feedback'),
    'ac000000-0000-4000-8000-000000000002', '{"mimetype": "application/pdf", "size": 12582912}');
-select throws_ok($$select public.coach_submit_review('ac400000-0000-4000-8000-000000000007', null, null,
-  '[{"storage_path": "ac300000-0000-4000-8000-000000000007/ac400000-0000-4000-8000-000000000007/feedback.pdf", "file_kind": "feedback_pdf"}]')$$,
+select throws_ok($$select public.coach_submit_review((select id from ids where name = 'msub'), null, null,
+  jsonb_build_array(jsonb_build_object('storage_path', (select path from paths where name = 'clip'), 'file_kind', 'feedback_pdf')))$$,
+  '22023', 'Feedback must be a PDF file', 'R10c. a video passed as the feedback PDF is refused by the review function');
+select throws_ok($$select public.coach_submit_review((select id from ids where name = 'msub'), null, null,
+  jsonb_build_array(jsonb_build_object('storage_path', (select path from paths where name = 'feedback'), 'file_kind', 'feedback_pdf')))$$,
   '22023', null, 'R10d. a 12 MB feedback PDF is refused (10 MB)');
 
 -- ===========================================================================

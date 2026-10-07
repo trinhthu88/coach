@@ -22,7 +22,7 @@ function wrapper({ children }: { children: ReactNode }) {
   return <QueryClientProvider client={client}>{children}</QueryClientProvider>;
 }
 
-/** Records every .eq()/.in() call per table and resolves with the table's canned rows. */
+/** Records every .eq()/.in()/.not() call per table and resolves with the table's canned rows. */
 function buildFromMock(tableData: Record<string, unknown[]>, calls: Array<[string, string, unknown]>) {
   return (table: string) => {
     const rows = tableData[table] ?? [];
@@ -37,7 +37,10 @@ function buildFromMock(tableData: Record<string, unknown[]>, calls: Array<[strin
       calls.push([table, "in", { col, val }]);
       return Promise.resolve(result);
     };
-    query.not = () => query;
+    query.not = (col: string, op: string, val: unknown) => {
+      calls.push([table, `not.${col}`, { op, val }]);
+      return query;
+    };
     query.then = (resolve: (v: typeof result) => unknown) => Promise.resolve(result).then(resolve);
     return query;
   };
@@ -225,6 +228,15 @@ describe("useEnrollmentDevelopmentJourney", () => {
     expect(event?.title).toBe("Triad Self-Reflection");
     expect(event?.summary).toBe("Stayed curious longer than usual.");
     expect(result.current.events.some((e) => e.sourceId === "tr1" && e.type === "feedback")).toBe(false);
+  });
+
+  it("asks the server for Training quizzes only, never the Final Assessment quiz", async () => {
+    const calls: Array<[string, string, unknown]> = [];
+    await load({}, [], [], calls);
+    const quizCalls = calls.filter(([table]) => table === "assignment_submissions");
+    expect(quizCalls).toContainEqual(["assignment_submissions", "assignments.assignment_type", "quiz"]);
+    // A Final Assessment quiz has no training week (20261007000100).
+    expect(quizCalls).toContainEqual(["assignment_submissions", "not.assignments.training_week_id", { op: "is", val: null }]);
   });
 
   it("produces training, quiz and programme-reflection activity plus feed reflections", async () => {

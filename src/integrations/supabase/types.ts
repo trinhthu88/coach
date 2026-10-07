@@ -5730,6 +5730,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      assignment_is_final_assessment_quiz: {
+        Args: { p_assignment_id: string }
+        Returns: boolean
+      }
       attribute_activity_to_cadence_milestone: {
         Args: {
           p_activity_id: string

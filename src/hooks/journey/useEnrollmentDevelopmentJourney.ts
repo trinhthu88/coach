@@ -38,7 +38,7 @@ const REFLECTION_TITLE: Record<string, string> = {
  *                lists use; peer practice from coachee_peer_sessions)
  *  feedback   -> mentoring_feedback, peer_session_competency_feedback (by the
  *                enrollment's session ids)
- *  training   -> training_progress, assignment_submissions (quiz),
+ *  training   -> training_progress, assignment_submissions (Training quizzes),
  *                reflection_submissions (submission activity)
  *  reflection -> learner_reflection_feed (the canonical learner reflection
  *                projection My Journey → Reflections renders). Goal check-in
@@ -67,10 +67,14 @@ async function fetchDevelopmentJourney(enrollmentId: string, coacheeId: string):
     // learner's week list): a week is complete when all its required parts
     // are, not when a training_progress row carries a timestamp.
     supabase.rpc("get_enrollment_training_weeks", { p_enrollment_id: enrollmentId }),
+    // Training quizzes only, filtered by the server: a Final Assessment quiz
+    // (no training week) is read through the Final Assessment, never here.
     supabase
       .from("assignment_submissions")
-      .select("id, score_pct, submitted_at, assignments(title, assignment_type, training_week_id)")
-      .eq("enrollment_id", enrollmentId),
+      .select("id, score_pct, submitted_at, assignments!inner(title, assignment_type, training_week_id)")
+      .eq("enrollment_id", enrollmentId)
+      .eq("assignments.assignment_type", "quiz")
+      .not("assignments.training_week_id", "is", null),
     supabase
       .from("reflection_submissions")
       .select("id, submitted_at, programme_reflections(title, reflection_number)")
@@ -288,7 +292,6 @@ async function fetchDevelopmentJourney(enrollmentId: string, coacheeId: string):
 
   for (const q of quizRes.data ?? []) {
     const assignment = q.assignments as { title: string; assignment_type: string; training_week_id: string | null } | null;
-    if (assignment?.assignment_type !== "quiz") continue;
     events.push({
       id: `quiz-${q.id}`,
       enrollmentId,

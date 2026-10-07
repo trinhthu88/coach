@@ -105,19 +105,24 @@ select lives_ok($$select public.learner_submit_final_assessment_quiz('af300000-0
   '{"af600000-0000-4000-8000-000000000011": "a", "af600000-0000-4000-8000-000000000012": "b"}')$$, '12. L takes the quiz (1 of 2)');
 select results_eq($$select quiz_taken, quiz_score_pct, quiz_passed from public.learner_final_assessment('af300000-0000-4000-8000-000000000001')$$,
   $$values (true, null::numeric, null::boolean)$$, '13. taken, but the score is hidden until release');
+-- The quiz row itself is not the learner's to read (20261007000600): keep its id here.
+reset role;
+insert into ids select 'quiz1', id from public.assignment_submissions
+ where enrollment_id = 'af300000-0000-4000-8000-000000000001' and attempt_no = 1;
+set local role authenticated;
 select throws_ok($$select public.learner_submit_assessment('af400000-0000-4000-8000-000000000001', 'af300000-0000-4000-8000-000000000001',
   (select id from ids where name = 'req'), 'final_assessment', null,
-  (select id from public.assignment_submissions where enrollment_id = 'af300000-0000-4000-8000-000000000001' and attempt_no = 1),
+  (select id from ids where name = 'quiz1'),
   'Transcript.', 'pasted', '[]')$$, '22023', 'Upload one MP3 recording', '14. one MP3 recording is required');
 select throws_ok($$select public.learner_submit_assessment('af400000-0000-4000-8000-000000000001', 'af300000-0000-4000-8000-000000000001',
   (select id from ids where name = 'req'), 'final_assessment', null,
-  (select id from public.assignment_submissions where enrollment_id = 'af300000-0000-4000-8000-000000000001' and attempt_no = 1),
+  (select id from ids where name = 'quiz1'),
   null, 'none',
   '[{"storage_path": "af300000-0000-4000-8000-000000000001/af400000-0000-4000-8000-000000000001/recording.mp3", "file_kind": "recording"}]')$$,
   '22023', 'This Final Assessment needs a transcript', '15. the programme requires a transcript');
 select lives_ok($$select public.learner_submit_assessment('af400000-0000-4000-8000-000000000001', 'af300000-0000-4000-8000-000000000001',
   (select id from ids where name = 'req'), 'final_assessment', null,
-  (select id from public.assignment_submissions where enrollment_id = 'af300000-0000-4000-8000-000000000001' and attempt_no = 1),
+  (select id from ids where name = 'quiz1'),
   'Coach: what would make today useful?', 'pasted',
   '[{"storage_path": "af300000-0000-4000-8000-000000000001/af400000-0000-4000-8000-000000000001/recording.mp3", "file_kind": "recording"}]')$$,
   '16. L submits attempt 1');
@@ -158,8 +163,9 @@ select results_eq($$select role, state, result from views where step = 'resubmit
   '19. Resubmit: Learner and Admin say Resubmission requested, the Sponsor still Under review');
 select results_eq($$select attempt_no, quiz_taken, can_resubmit from public.learner_final_assessment('af300000-0000-4000-8000-000000000001')$$,
   $$values (2, false, true)$$, '20. Resubmit opens attempt 2, with a fresh quiz');
-select is((select completed_units from public.learner_module_progress('af300000-0000-4000-8000-000000000001') where module = 'final_assessment'),
-  0, '21. a resubmission is not a completed Final Assessment');
+-- Decision 4: fulfilment is the submission, not the result.
+select results_eq($$select completed_units, overdue_units from public.learner_module_progress('af300000-0000-4000-8000-000000000001') where module = 'final_assessment'$$,
+  $$values (1, 0)$$, '21. Resubmit: the Final Assessment stays completed, on the date attempt 1 was submitted');
 
 -- ===========================================================================
 -- Attempt 2
@@ -171,19 +177,18 @@ select throws_ok($$select public.learner_submit_final_assessment_quiz('af300000-
   '23. ... once per attempt');
 select throws_ok($$select public.learner_submit_assessment('af400000-0000-4000-8000-000000000002', 'af300000-0000-4000-8000-000000000001',
   (select id from ids where name = 'req'), 'final_assessment', null,
-  (select id from public.assignment_submissions where enrollment_id = 'af300000-0000-4000-8000-000000000001' and attempt_no = 1),
+  (select id from ids where name = 'quiz1'),
   'Transcript.', 'pasted',
   '[{"storage_path": "af300000-0000-4000-8000-000000000001/af400000-0000-4000-8000-000000000002/recording.mp3", "file_kind": "recording"}]')$$,
   '22023', 'Take the quiz for this attempt before submitting', '24. attempt 2 needs attempt 2''s quiz, not attempt 1''s');
 select lives_ok($$select public.learner_submit_assessment('af400000-0000-4000-8000-000000000002', 'af300000-0000-4000-8000-000000000001',
   (select id from ids where name = 'req'), 'final_assessment', null,
-  (select id from public.assignment_submissions where enrollment_id = 'af300000-0000-4000-8000-000000000001' and attempt_no = 2),
+  (select quiz_submission_id from public.learner_final_assessment('af300000-0000-4000-8000-000000000001')),
   'Coach: what would you like to take away?', 'pasted',
   '[{"storage_path": "af300000-0000-4000-8000-000000000001/af400000-0000-4000-8000-000000000002/recording.mp3", "file_kind": "recording"}]')$$,
   '25. L submits attempt 2');
 
-select set_config('request.jwt.claims', json_build_object('sub', 'af000000-0000-4000-8000-000000000003')::text, true);
-select public.admin_assign_assessor(array['af400000-0000-4000-8000-000000000002']::uuid[], 'af000000-0000-4000-8000-000000000002');
+-- Attempt 2 goes straight back to attempt 1's assessor (decision 6).
 select set_config('request.jwt.claims', json_build_object('sub', 'af000000-0000-4000-8000-000000000002')::text, true);
 select throws_ok($$select public.coach_submit_review('af400000-0000-4000-8000-000000000002', 'Again?', 'resubmit')$$,
   '22023', null, '26. attempt 2 is the last: no third attempt');
