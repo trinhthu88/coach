@@ -5734,17 +5734,6 @@ export type Database = {
         }
         Returns: undefined
       }
-      assessment_claim_release_email_internal: {
-        Args: { p_submission_id: string }
-        Returns: {
-          email: string
-          full_name: string
-          kind: string
-          link: string
-          preferred_language: string
-          requirement_ordinal: number
-        }[]
-      }
       assessment_create_triad_submission_internal: {
         Args: {
           p_enrollment_id: string
@@ -5761,6 +5750,10 @@ export type Database = {
         Args: { p_coach_id: string; p_enrollment_id: string }
         Returns: boolean
       }
+      assessment_mark_release_emailed_internal: {
+        Args: { p_submission_id: string }
+        Returns: boolean
+      }
       assessment_object_readable: { Args: { p_name: string }; Returns: boolean }
       assessment_object_registered: {
         Args: { p_name: string }
@@ -5775,6 +5768,18 @@ export type Database = {
           p_submission_id: string
         }
         Returns: undefined
+      }
+      assessment_release_emails_due_internal: {
+        Args: { p_limit?: number }
+        Returns: {
+          email: string
+          full_name: string
+          kind: string
+          link: string
+          preferred_language: string
+          requirement_ordinal: number
+          submission_id: string
+        }[]
       }
       assignment_is_final_assessment_quiz: {
         Args: { p_assignment_id: string }
@@ -5968,7 +5973,9 @@ export type Database = {
           feedback_text: string
           kind: string
           outcome: string
+          pass_mark_pct: number
           quiz_correct: number
+          quiz_passed: boolean
           quiz_score_pct: number
           quiz_total: number
           released_at: string
@@ -6242,6 +6249,22 @@ export type Database = {
           overdue_units: number
           pace_status: string
           required_units: number
+        }[]
+      }
+      canonical_next_session_by_module: {
+        Args: { p_enrollment_id: string }
+        Returns: {
+          counterpart_names: string[]
+          is_practice: boolean
+          module: Database["public"]["Enums"]["programme_module_type"]
+          prep_file_submitted: boolean
+          session_key: string
+          source_id: string
+          source_table: string
+          start_time: string
+          status: string
+          title: string
+          upcoming_count: number
         }[]
       }
       canonical_overdue_items: {
@@ -7845,7 +7868,18 @@ export type Database = {
           isSetofReturn: true
         }
       }
-      request_is_end_user: { Args: never; Returns: boolean }
+      reported_held_sessions_internal: {
+        Args: never
+        Returns: {
+          duration_minutes: number
+          enrollment_id: string
+          held_on: string
+          kind: string
+          learner_id: string
+          provider_id: string
+          session_id: string
+        }[]
+      }
       reporting_enrollments: {
         Args: never
         Returns: {
@@ -7857,6 +7891,7 @@ export type Database = {
           user_id: string
         }[]
       }
+      request_is_end_user: { Args: never; Returns: boolean }
       requirement_integrity_issues: {
         Args: never
         Returns: {
