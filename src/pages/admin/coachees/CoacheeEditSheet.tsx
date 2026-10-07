@@ -54,7 +54,7 @@ export function CoacheeEditSheet({
 
   // Reseed the local edit copy whenever a different row is opened.
   if (row && editing?.id !== row.id) {
-    setEditing({ ...row, selected_coaches: [...row.selected_coaches] });
+    setEditing({ ...row });
   }
   if (!row && editing) {
     setEditing(null);

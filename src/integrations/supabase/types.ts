@@ -5602,7 +5602,6 @@ export type Database = {
           p_organization_id?: string
           p_profile_status: string
           p_programme_id?: string
-          p_selectable_coach_ids?: string[]
         }
         Returns: undefined
       }
@@ -6837,10 +6836,12 @@ export type Database = {
         Args: { p_enrollment_id: string }
         Returns: boolean
       }
-      enrollment_is_ongoing: {
-        Args: { p_enrollment_id: string }
-        Returns: boolean
-      }
+      enrollment_is_ongoing:
+        | { Args: { p_enrollment_id: string }; Returns: boolean }
+        | {
+            Args: { p_as_of: string; p_enrollment_id: string }
+            Returns: boolean
+          }
       enrollment_module_config: {
         Args: {
           p_enrollment_id: string

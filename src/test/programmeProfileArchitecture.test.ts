@@ -429,9 +429,12 @@ describe("programme profile architecture", () => {
       const readers = runtime.filter((f) => /rpc\(\s*"(admin_enrollment_inactivity|canonical_enrollment_inactivity_internal)"/.test(readFileSync(f, "utf8")));
       expect(readers.map(label).sort()).toEqual([
         "src/hooks/admin/useAdminProgrammeEngagement.ts",
-        "supabase/functions/send-programme-reminders/index.ts",
         "supabase/functions/send-weekly-admin-summary/index.ts",
       ]);
+      // Admin Alerts compute it on read (admin_alerts_current); the daily
+      // reminders no longer store a stale_programme_participant alert (Prompt 14).
+      expect(readFileSync(join(process.cwd(), "supabase/functions/send-programme-reminders/index.ts"), "utf8"))
+        .not.toMatch(/alert_type:\s*"stale_programme_participant"|from\("admin_alerts"\)\.insert/);
       // Nobody re-derives last activity or the 7-day window locally.
       const local = /lastActive|last_active_by|stale_participant"|7 \* (DAY_MS|24 \* 60 \* 60 \* 1000)[^;]*(activ|stale)/i;
       expect(runtime.filter((f) => local.test(readFileSync(f, "utf8"))).map(label)).toEqual([]);

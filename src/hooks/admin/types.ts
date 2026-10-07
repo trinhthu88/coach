@@ -10,7 +10,6 @@ export interface CoacheeRow {
   created_at: string;
   booked: number;
   done: number;
-  selected_coaches: { id: string; name: string }[];
 }
 
 export interface CoachOpt {
@@ -36,5 +35,4 @@ export interface CoachListRow {
   coaching_units: CanonicalModuleUnits | null;
   peer_units: CanonicalModuleUnits | null;
   coach_programme_name: string | null;
-  assigned_coaches: { id: string; name: string }[];
 }

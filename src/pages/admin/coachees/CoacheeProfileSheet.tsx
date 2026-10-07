@@ -162,17 +162,6 @@ export function CoacheeProfileSheet({ row, onClose }: CoacheeProfileSheetProps) 
             </div>
           </div>
 
-          {/* Selected coaches */}
-          <div>
-            <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{t("coacheeProfileSheet.selectedCoaches")}</p>
-            <div className="flex flex-wrap gap-1.5">
-              {row.selected_coaches.length === 0 && <span className="text-[11px] italic text-muted-foreground">{t("coacheeProfileSheet.none")}</span>}
-              {row.selected_coaches.map((c) => (
-                <span key={c.id} className="rounded-full border bg-muted/40 px-2 py-0.5 text-[11px]">{c.name}</span>
-              ))}
-            </div>
-          </div>
-
           {/* Sessions */}
           <div>
             <p className="mb-2 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">

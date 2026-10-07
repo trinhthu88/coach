@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -19,7 +19,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "@/hooks/use-toast";
 import {
   Check,
@@ -36,9 +35,9 @@ import { format } from "date-fns";
 import { Link } from "react-router-dom";
 import { useAdminRegistrations } from "@/hooks/admin/useAdminRegistrations";
 import { useAdminRegistrationApprovals } from "@/hooks/admin/useAdminRegistrationApprovals";
-import { useUpdateCoachAssignment } from "@/hooks/admin/useUpdateCoachAssignment";
 import { AdminImportDialog } from "@/components/admin/AdminImportDialog";
-import { CoachListRow, CoachOpt, CoacheeRow, Status } from "@/hooks/admin/types";
+import { CoachReferrals } from "@/pages/admin/registrations/CoachReferrals";
+import { CoachListRow, CoacheeRow, Status } from "@/hooks/admin/types";
 import { formatModuleUnits } from "@/lib/adminCanonicalProgress";
 import { PageHeader } from "@/components/ui/page-header";
 import { useConfirm } from "@/hooks/use-confirm";
@@ -57,7 +56,6 @@ export default function AdminRegistrations() {
     loading,
     coachees,
     coaches,
-    coachOpts,
     reload: load,
   } = useAdminRegistrations();
   const { busyId, setCoacheeStatusValue, setCoachStatusValue } = useAdminRegistrationApprovals(load);
@@ -123,7 +121,6 @@ export default function AdminRegistrations() {
       [t("registrations.export.status")]: t(`registrations.statusLabels.${c.status}`),
       [t("registrations.export.bookedSessions")]: c.booked,
       [t("registrations.export.sessionsDone")]: c.done,
-      [t("registrations.export.selectedCoaches")]: c.selected_coaches.map((s) => s.name).join("; "),
     }));
     const ws = XLSX.utils.json_to_sheet(data);
     const wb = XLSX.utils.book_new();
@@ -161,6 +158,9 @@ export default function AdminRegistrations() {
 
         {/* COACHEES */}
         <TabsContent value="coachees" className="space-y-4 pt-4">
+          {/* A Coach's referrals: who referred them, the suggested programme, and
+              "New coaching engagement" from one (Prompt 14). */}
+          <CoachReferrals onChanged={load} />
           <div className="flex flex-wrap items-center gap-2">
             <div className="relative min-w-[240px] flex-1">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -201,7 +201,6 @@ export default function AdminRegistrations() {
                   <th className="px-4 py-3 text-left">{t("registrations.coacheeTableHeaders.status")}</th>
                   <th className="px-4 py-3 text-right">{t("registrations.coacheeTableHeaders.booked")}</th>
                   <th className="px-4 py-3 text-right">{t("registrations.coacheeTableHeaders.done")}</th>
-                  <th className="px-4 py-3 text-left">{t("registrations.coacheeTableHeaders.selectedCoaches")}</th>
                   <th className="px-4 py-3 text-right">{t("registrations.coacheeTableHeaders.actions")}</th>
                 </tr>
               </thead>
@@ -225,26 +224,6 @@ export default function AdminRegistrations() {
                       </td>
                       <td className="px-4 py-3 text-right">{c.booked}</td>
                       <td className="px-4 py-3 text-right">{c.done}</td>
-                      <td className="px-4 py-3">
-                        {c.selected_coaches.length === 0 ? (
-                          <span className="text-xs italic text-muted-foreground">
-                            {t("registrations.noneAssigned")}
-                          </span>
-                        ) : (
-                          <div className="flex flex-wrap gap-1">
-                            {c.selected_coaches.slice(0, 3).map((s) => (
-                              <Badge key={s.id} variant="outline" className="text-[10px]">
-                                {s.name}
-                              </Badge>
-                            ))}
-                            {c.selected_coaches.length > 3 && (
-                              <Badge variant="outline" className="text-[10px]">
-                                +{c.selected_coaches.length - 3}
-                              </Badge>
-                            )}
-                          </div>
-                        )}
-                      </td>
                       <td className="px-4 py-3">
                         <div className="flex justify-end gap-1.5">
                           {/* One editing surface: the person's enrollment-first admin record. */}
@@ -320,7 +299,6 @@ export default function AdminRegistrations() {
                   <th className="px-4 py-3 text-left">{t("registrations.coachTableHeaders.email")}</th>
                   <th className="px-4 py-3 text-left">{t("registrations.coachTableHeaders.statusGetCoached")}</th>
                   <th className="px-4 py-3 text-right">{t("registrations.coachTableHeaders.coachingUnits")}</th>
-                  <th className="px-4 py-3 text-left">{t("registrations.coachTableHeaders.assignedCoaches")}</th>
                   <th className="px-4 py-3 text-right">{t("registrations.coachTableHeaders.peerUnits")}</th>
                   <th className="px-4 py-3 text-right">{t("registrations.coachTableHeaders.given")}</th>
                   <th className="px-4 py-3 text-right">{t("registrations.coachTableHeaders.actions")}</th>
@@ -348,24 +326,6 @@ export default function AdminRegistrations() {
                       </td>
                       <td className="px-4 py-3 text-right">
                         <span className="font-mono">{formatModuleUnits(c.coaching_units)}</span>
-                      </td>
-                      <td className="px-4 py-3">
-                        {c.assigned_coaches.length === 0 ? (
-                          <span className="text-xs italic text-muted-foreground">{t("registrations.none")}</span>
-                        ) : (
-                          <div className="flex flex-wrap gap-1">
-                            {c.assigned_coaches.slice(0, 3).map((s) => (
-                              <Badge key={s.id} variant="outline" className="text-[10px]">
-                                {s.name}
-                              </Badge>
-                            ))}
-                            {c.assigned_coaches.length > 3 && (
-                              <Badge variant="outline" className="text-[10px]">
-                                +{c.assigned_coaches.length - 3}
-                              </Badge>
-                            )}
-                          </div>
-                        )}
                       </td>
                       <td className="px-4 py-3 text-right">
                         <span className="font-mono">{formatModuleUnits(c.peer_units)}</span>
@@ -438,12 +398,7 @@ export default function AdminRegistrations() {
 
       <EditCoachDialog
         coach={editingCoach}
-        coachOpts={coachOpts}
         onClose={() => setEditingCoach(null)}
-        onSaved={() => {
-          setEditingCoach(null);
-          load();
-        }}
       />
 
       {/* The one admin import path (admin-provision-user): preview first, then create. */}
@@ -459,48 +414,21 @@ export default function AdminRegistrations() {
 }
 
 
+/**
+ * A Coach's own programme as a learner. Who coaches them is their cohort's
+ * Coach pool (Admin -> Cohorts -> Coaching); the retired
+ * coach_as_coachee_allowlist is neither shown nor written here.
+ */
 function EditCoachDialog({
   coach,
-  coachOpts,
   onClose,
-  onSaved,
 }: {
   coach: CoachListRow | null;
-  coachOpts: CoachOpt[];
   onClose: () => void;
-  onSaved: () => void;
 }) {
   const { t } = useTranslation("admin");
-  const [picked, setPicked] = useState<Set<string>>(new Set());
-  const [search, setSearch] = useState("");
-  const { saving, save: saveAssignment } = useUpdateCoachAssignment();
-
-  useEffect(() => {
-    if (coach) {
-      setPicked(new Set(coach.assigned_coaches.map((c) => c.id)));
-      setSearch("");
-    }
-  }, [coach]);
 
   if (!coach) return null;
-
-  const filtered = coachOpts.filter(
-    (c) => c.id !== coach.id && c.name.toLowerCase().includes(search.toLowerCase())
-  );
-
-  const toggle = (id: string) => {
-    setPicked((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
-
-  const save = async () => {
-    const ok = await saveAssignment({ id: coach.id }, picked);
-    if (ok) onSaved();
-  };
 
   return (
     <Dialog open={!!coach} onOpenChange={(o) => !o && onClose()}>
@@ -531,45 +459,10 @@ function EditCoachDialog({
             </div>
           </div>
 
-          <div>
-            <label className="mb-1 block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-              {t("registrations.coachesAssignedForSessions", { count: picked.size })}
-            </label>
-            <Input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder={t("registrations.searchCoachesPlaceholder")}
-              className="mb-2"
-            />
-            <div className="max-h-64 space-y-1 overflow-y-auto rounded-lg border p-2">
-              {filtered.length === 0 ? (
-                <p className="px-2 py-4 text-center text-xs text-muted-foreground">
-                  {t("registrations.noCoaches")}
-                </p>
-              ) : (
-                filtered.map((c) => (
-                  <label
-                    key={c.id}
-                    className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-muted/50"
-                  >
-                    <Checkbox
-                      checked={picked.has(c.id)}
-                      onCheckedChange={() => toggle(c.id)}
-                    />
-                    <span>{c.name}</span>
-                  </label>
-                ))
-              )}
-            </div>
-          </div>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>
-            {t("registrations.cancel")}
-          </Button>
-          <Button onClick={save} disabled={saving}>
-            {saving && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}
-            {t("registrations.save")}
+            {t("registrations.close")}
           </Button>
         </DialogFooter>
       </DialogContent>

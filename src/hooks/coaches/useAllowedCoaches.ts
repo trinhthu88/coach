@@ -5,77 +5,13 @@ import { useAuth } from "@/context/AuthContext";
 import { getFriendlyErrorMessage } from "@/lib/errors";
 
 /**
- * Two distinct booking-eligibility relationships (RULES.md §3) that both
- * happen to resolve "which coaches can this coach book" — kept as two
- * exported hooks in one file rather than unified into a single query, since
- * unifying them would misrepresent the underlying business rules:
+ * The open, self-service Peer practice pool (`coach_profiles.peer_coaching_opt_in`):
+ * any two opted-in coaches may book each other, no admin pairing involved.
  *
- * - Relationship 2 (`useCoachAsCoacheeAllowlist`): an admin-curated pairing
- *   (`coach_as_coachee_allowlist`) — a coach may only book a mentor-coach
- *   explicitly listed for them.
- * - Relationship 3 (`useOptedInPeerCoaches`): an open, self-service pool
- *   (`coach_profiles.peer_coaching_opt_in`) — any two opted-in coaches may
- *   book each other, no admin pairing involved.
- *
- * Both were previously duplicated inline in CoachFindCoach.tsx and
- * CoachPeerCoaching.tsx; extracted here so a future RLS/filter change only
- * needs to happen in one place per relationship.
+ * (The other relationship this file once held, the admin-curated
+ * coach_as_coachee_allowlist, is retired: a Coach's own Coach is their
+ * cohort's Coach pool -- see CoachFindCoach.)
  */
-
-interface AllowedCoachRow {
-  id: string;
-  title: string | null;
-  specialties: string[] | null;
-  rating_avg: number;
-  profiles: { full_name: string; avatar_url: string | null } | null;
-}
-
-export function useCoachAsCoacheeAllowlist() {
-  const { user } = useAuth();
-  const { t } = useTranslation("coaches");
-  const [coaches, setCoaches] = useState<AllowedCoachRow[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const load = useCallback(async () => {
-    if (!user) return;
-    setLoading(true);
-    setError(null);
-    const { data: allowlist, error: allowlistError } = await supabase
-      .from("coach_as_coachee_allowlist")
-      .select("selectable_coach_id")
-      .eq("coach_user_id", user.id);
-    if (allowlistError) {
-      setError(getFriendlyErrorMessage(allowlistError, t));
-      setLoading(false);
-      return;
-    }
-    const ids = (allowlist || []).map((r: { selectable_coach_id: string }) => r.selectable_coach_id);
-    if (ids.length) {
-      const { data, error: coachesError } = await supabase
-        .from("coach_profiles")
-        .select("id, title, specialties, rating_avg, profiles!inner(full_name, avatar_url, status)")
-        .in("id", ids)
-        .eq("approval_status", "active")
-        .eq("profiles.status", "active");
-      if (coachesError) {
-        setError(getFriendlyErrorMessage(coachesError, t));
-        setLoading(false);
-        return;
-      }
-      setCoaches((data as unknown as AllowedCoachRow[]) || []);
-    } else {
-      setCoaches([]);
-    }
-    setLoading(false);
-  }, [user, t]);
-
-  useEffect(() => {
-    load();
-  }, [load]);
-
-  return { coaches, loading, error, reload: load };
-}
 
 interface OptedInPeerCoach {
   id: string;

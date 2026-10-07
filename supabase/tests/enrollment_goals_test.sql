@@ -46,10 +46,12 @@ select set_config('app.session_transition', 'on', true);
 insert into public.sessions(id,coach_id,coachee_id,enrollment_id,topic,start_time,duration_minutes,status) values
   ('a5000000-0000-0000-0000-000000000041','a5000000-0000-0000-0000-000000000002','a5000000-0000-0000-0000-000000000001','a5000000-0000-0000-0000-000000000031','Action session','2026-02-01',60,'completed'),
   ('a5000000-0000-0000-0000-000000000043','a5000000-0000-0000-0000-000000000002','a5000000-0000-0000-0000-000000000001','a5000000-0000-0000-0000-000000000031','Second completed session','2026-02-03',60,'completed');
-select set_config('app.session_transition', 'off', true);
 select set_config('request.jwt.claim.sub','a5000000-0000-0000-0000-000000000003',true);
+-- The other learner's booking is a fixture row too: their cohort has ended, so
+-- the booking checks (enrollment_is_ongoing) would refuse it.
 insert into public.sessions(id,coach_id,coachee_id,enrollment_id,topic,start_time,duration_minutes,status) values
  ('a5000000-0000-0000-0000-000000000042','a5000000-0000-0000-0000-000000000002','a5000000-0000-0000-0000-000000000003','a5000000-0000-0000-0000-000000000032','Other action session','2026-02-02',60,'confirmed');
+select set_config('app.session_transition', 'off', true);
 insert into public.coachee_goals(id,coachee_id,enrollment_id,title) values
  ('a5000000-0000-0000-0000-000000000051','a5000000-0000-0000-0000-000000000001','a5000000-0000-0000-0000-000000000031','Goal one'),
  ('a5000000-0000-0000-0000-000000000052','a5000000-0000-0000-0000-000000000001','a5000000-0000-0000-0000-000000000031','Goal two');

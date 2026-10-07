@@ -7,8 +7,9 @@ import { sendEmail } from "../_shared/send-email.ts";
 import { ProgrammeReminderEmail } from "../_shared/email-templates/programme-reminder.tsx";
 
 // Phase 3 (programme management completion): the daily 09:00 sweep that
-// covers the reminder/alert kinds the task calls for — overdue assignments,
-// missed/upcoming/unscheduled triad sessions, and stale participants.
+// covers the reminder kinds the task calls for — overdue assignments and
+// missed/upcoming/unscheduled triad sessions. (Stale participants are an Admin
+// alert computed on read by admin_alerts_current, never stored from here.)
 // Triggered the same way send-daily-prompt is — an external cron (or
 // pg_cron -> pg_net) POST with the CRON_SECRET shared secret, hence
 // verify_jwt = false.
@@ -82,7 +83,6 @@ Deno.serve(async (req) => {
     let overdueSent = 0;
     let triadReflectionSent = 0;
     let triadUpcomingSent = 0;
-    let staleAlerts = 0;
 
     async function notifyOnce(opts: {
       userId: string;
@@ -277,47 +277,11 @@ Deno.serve(async (req) => {
     }
 
     // ------------------------------------------------------------------
-    // 4. Stale participants — THE canonical "inactive 7+ days" rule
-    //    (canonical_enrollment_inactivity_internal: population, signals and
-    //    window live there; Admin Alerts / Analytics read the same rule).
-    //    One alert per enrollment, never re-raised while one is unresolved.
+    // 4. Stale participants are not stored: admin_alerts_current() computes
+    //    "inactive 7+ days" on read from canonical_enrollment_inactivity_internal
+    //    (20261006140000), and treats stored stale_programme_participant rows
+    //    as superseded. Nothing is inserted here (Prompt 14).
     // ------------------------------------------------------------------
-    const { data: inactivity, error: inactivityErr } = await admin.rpc("canonical_enrollment_inactivity_internal", {});
-    if (inactivityErr) console.error("Inactivity rule failed", inactivityErr);
-    const inactive = ((inactivity || []) as { enrollment_id: string; user_id: string; is_inactive: boolean }[]).filter((r) => r.is_inactive);
-    if (inactive.length > 0) {
-      const { data: openAlerts } = await admin
-        .from("admin_alerts")
-        .select("related_enrollment_id")
-        .eq("alert_type", "stale_programme_participant")
-        .eq("resolved", false)
-        .in("related_enrollment_id", inactive.map((r) => r.enrollment_id));
-      const alreadyAlerted = new Set((openAlerts || []).map((r) => r.related_enrollment_id as string));
-      const toAlert = inactive.filter((r) => !alreadyAlerted.has(r.enrollment_id));
-      if (toAlert.length > 0) {
-        const profiles = await getProfiles([...new Set(toAlert.map((r) => r.user_id))]);
-        const rows = toAlert.map((r) => {
-          const p = profiles.get(r.user_id);
-          const name = p?.full_name || "A participant";
-          const email = p?.email ? ` (${p.email})` : "";
-          return {
-            severity: "warning" as const,
-            alert_type: "stale_programme_participant",
-            title: `${name} — no programme activity in 7+ days`,
-            message: `${name}${email} hasn't completed a training week, quiz, reflection, triad reflection, or daily prompt in over a week.`,
-            related_coachee_id: r.user_id,
-            related_enrollment_id: r.enrollment_id,
-            resolved: false,
-          };
-        });
-        const { error: alertErr } = await admin.from("admin_alerts").insert(rows);
-        if (alertErr) {
-          console.error("Failed to insert stale-participant alerts", alertErr);
-        } else {
-          staleAlerts = rows.length;
-        }
-      }
-    }
 
     // ------------------------------------------------------------------
     // 5. Active triad groups with neither an open nor a completed session.
@@ -362,7 +326,7 @@ Deno.serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ ok: true, overdueSent, triadReflectionSent, triadUpcomingSent, triadUnscheduledSent, staleAlerts }),
+      JSON.stringify({ ok: true, overdueSent, triadReflectionSent, triadUpcomingSent, triadUnscheduledSent }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err) {

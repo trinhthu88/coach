@@ -11,6 +11,8 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 type Option = { id: string; name: string };
+/** Where the engagement starts from, e.g. a Coach's referral (Admin -> Registrations). */
+export type EngagementStart = { learnerId?: string | null; coachId?: string | null; programmeId?: string | null };
 const NONE = "none";
 
 /**
@@ -23,10 +25,13 @@ export function NewCoachingEngagementDialog({
   open,
   onOpenChange,
   onCreated,
+  initial,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onCreated: () => void;
+  /** Preselected learner / Coach / programme; each applies only if it is a valid choice here. */
+  initial?: EngagementStart;
 }) {
   const { t } = useTranslation("admin");
   const [learners, setLearners] = useState<Option[]>([]);
@@ -56,19 +61,31 @@ export function NewCoachingEngagementDialog({
       const learnerIds = new Set((roles.data ?? []).filter((r) => r.role === "coachee").map((r) => r.user_id));
       const approved = new Set((coachProfiles.data ?? []).map((c) => c.id));
       const byName = (a: Option, b: Option) => a.name.localeCompare(b.name);
-      setLearners([...learnerIds].filter((id) => nameOf.has(id)).map((id) => ({ id, name: nameOf.get(id)! })).sort(byName));
-      setCoaches([...approved].filter((id) => nameOf.has(id)).map((id) => ({ id, name: nameOf.get(id)! })).sort(byName));
+      const learnerOptions = [...learnerIds].filter((id) => nameOf.has(id)).map((id) => ({ id, name: nameOf.get(id)! })).sort(byName);
+      const coachOptions = [...approved].filter((id) => nameOf.has(id)).map((id) => ({ id, name: nameOf.get(id)! })).sort(byName);
+      setLearners(learnerOptions);
+      setCoaches(coachOptions);
       // Only programmes whose one enabled module is Coaching can run as an engagement
       // (the server refuses anything else).
       const modulesByProgramme = new Map<string, string[]>();
       for (const m of modules.data ?? []) modulesByProgramme.set(m.programme_id, [...(modulesByProgramme.get(m.programme_id) ?? []), m.module]);
-      setProgrammes((progs.data ?? []).filter((p) => {
+      const programmeOptions = (progs.data ?? []).filter((p) => {
         const mods = modulesByProgramme.get(p.id) ?? [];
         return mods.length === 1 && mods[0] === "coaching";
-      }));
+      });
+      setProgrammes(programmeOptions);
       setOrgs(organisations.data ?? []);
+      // A starting point (e.g. a referral) fills only what is a valid choice
+      // here; a suggested programme that cannot run as an engagement is left
+      // for the Admin to choose.
+      const valid = (id: string | null | undefined, options: Option[]) => (id && options.some((o) => o.id === id) ? id : "");
+      if (initial) {
+        setLearnerId(valid(initial.learnerId, learnerOptions));
+        setCoachId(valid(initial.coachId, coachOptions));
+        setProgrammeId(valid(initial.programmeId, programmeOptions));
+      }
     })();
-  }, [open]);
+  }, [open, initial]);
 
   const reset = () => {
     setLearnerId("");

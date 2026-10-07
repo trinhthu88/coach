@@ -46,11 +46,16 @@ insert into public.coachee_goals(id,coachee_id,enrollment_id,title) values
 -- Every new action carries a goal of its own enrollment and a due date
 -- (validate_enrollment_action, 20260929100000); fixtures below supply both
 -- wherever the assertion is about something else.
+-- Trusted historical fixture rows (the cohort has since ended, so the booking
+-- checks, which now ask enrollment_is_ongoing(), would refuse them): written
+-- as the lifecycle service.
+select set_config('app.session_transition', 'on', true);
 insert into public.sessions(id,coach_id,coachee_id,enrollment_id,topic,start_time,duration_minutes,status,action_items) values
   ('a5000000-0000-4000-8000-000000000041','a5000000-0000-4000-8000-000000000002','a5000000-0000-4000-8000-000000000001','a5000000-0000-4000-8000-000000000031','Action session','2026-02-01',60,'confirmed','[{"text":"Legacy linked action","done":true,"goal_id":"a5000000-0000-4000-8000-000000000051","milestone_id":"a5000000-0000-4000-8000-000000000060","due_date":"2026-03-01"},{"text":"Broken date action","due_date":"not-a-date"}]');
 select set_config('request.jwt.claim.sub','a5000000-0000-4000-8000-000000000003',true);
 insert into public.sessions(id,coach_id,coachee_id,enrollment_id,topic,start_time,duration_minutes,status,action_items) values
   ('a5000000-0000-4000-8000-000000000042','a5000000-0000-4000-8000-000000000002','a5000000-0000-4000-8000-000000000003','a5000000-0000-4000-8000-000000000032','Other action session','2026-02-02',60,'confirmed','[]');
+select set_config('app.session_transition', 'off', true);
 insert into public.coachee_milestones(id,coachee_id,enrollment_id,goal_id,title) values
  ('a5000000-0000-4000-8000-000000000060','a5000000-0000-4000-8000-000000000001','a5000000-0000-4000-8000-000000000031','a5000000-0000-4000-8000-000000000051','Milestone one');
 select throws_ok($$insert into public.enrollment_actions(enrollment_id,owner_user_id,title,source_activity_type,source_activity_id,goal_id,due_date) values('a5000000-0000-4000-8000-000000000031','a5000000-0000-4000-8000-000000000001','Invalid','coaching','a5000000-0000-4000-8000-000000000042','a5000000-0000-4000-8000-000000000051','2026-03-01')$$,'42501','Action source must belong to the action enrollment','reject source from another enrollment');
