@@ -114,6 +114,24 @@ export function useMentoringSessionCore({ sessionId }: UseMentoringSessionCoreOp
     return { error };
   }, [session, load]);
 
+  // The mentee cancels through the canonical lifecycle (decision 7): a reason
+  // inside 24 hours, nothing after the start. The server decides.
+  const cancelSession = useCallback(async (reason?: string) => {
+    if (!session) return { error: null };
+    setSaving(true);
+    const { error } = await supabase.rpc("transition_mentoring_session_status", {
+      p_session_id: session.id,
+      p_status: "cancelled",
+      p_reason: reason,
+    });
+    setSaving(false);
+    if (!error) {
+      toast.success(t("sessionDetail.cancel.done"));
+      load();
+    }
+    return { error };
+  }, [session, load, t]);
+
   return {
     session,
     mentor,
@@ -128,5 +146,6 @@ export function useMentoringSessionCore({ sessionId }: UseMentoringSessionCoreOp
     saveNotes,
     confirmSession,
     completeSession,
+    cancelSession,
   };
 }

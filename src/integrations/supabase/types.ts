@@ -144,7 +144,8 @@ export type Database = {
         Row: {
           assessor_id: string
           assigned_at: string
-          assigned_by: string
+          assigned_by: string | null
+          assignment_source: string
           due_on: string
           ended_at: string | null
           id: string
@@ -153,7 +154,8 @@ export type Database = {
         Insert: {
           assessor_id: string
           assigned_at?: string
-          assigned_by: string
+          assigned_by?: string | null
+          assignment_source?: string
           due_on: string
           ended_at?: string | null
           id?: string
@@ -162,7 +164,8 @@ export type Database = {
         Update: {
           assessor_id?: string
           assigned_at?: string
-          assigned_by?: string
+          assigned_by?: string | null
+          assignment_source?: string
           due_on?: string
           ended_at?: string | null
           id?: string

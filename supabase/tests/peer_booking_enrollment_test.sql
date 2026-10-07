@@ -46,14 +46,17 @@ values ('b1000000-0000-4000-8000-000000000001', 'b1000000-0000-4000-8000-0000000
 
 select set_config('request.jwt.claim.sub','b1000000-0000-4000-8000-000000000001',true);
 select set_config('request.jwt.claim.role','authenticated',true);
-set local role authenticated;
 
 -- History on the other enrollment must not consume the selected entitlement.
-select public.book_peer_session(
-  'b1000000-0000-4000-8000-000000000002',
-  'b1000000-0000-4000-8000-000000000022',
-  'other enrollment history',now(),30,null);
-reset role;
+-- (Written as the history row it is: book_peer_session needs a Peer slot since
+-- 20261007001000; the booking-scope trigger still checks the enrollment.)
+insert into public.peer_sessions
+  (peer_coach_id, peer_coachee_id, enrollment_id, topic, start_time, duration_minutes, status)
+values
+  ('b1000000-0000-4000-8000-000000000002',
+   'b1000000-0000-4000-8000-000000000001',
+   'b1000000-0000-4000-8000-000000000022',
+   'other enrollment history',now(),30,'pending_coach_approval');
 -- Preserve the one-ongoing-enrollment invariant while exercising the
 -- enrollment trigger: history is created while its receiver enrollment is
 -- ongoing, then that historical enrollment is closed before selection.

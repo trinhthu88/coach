@@ -116,6 +116,17 @@
       "listens_actively": "Lắng nghe chủ động",
       "evokes_awareness": "Khơi gợi nhận thức",
       "facilitates_growth": "Thúc đẩy sự phát triển của khách hàng"
+    },
+    "cancel": {
+      "button": "Hủy buổi",
+      "title": "Hủy buổi Mentoring này?",
+      "description": "Buổi sẽ bị hủy và bạn có thể đặt lại đơn vị Mentoring này.",
+      "lateDescription": "Buổi bắt đầu trong vòng 24 giờ, vui lòng cho biết lý do. Buổi sẽ bị hủy và bạn có thể đặt lại đơn vị Mentoring này.",
+      "reasonRequired": "Lý do (bắt buộc trong vòng 24 giờ)",
+      "reasonOptional": "Lý do (không bắt buộc)",
+      "keep": "Giữ buổi",
+      "confirm": "Hủy buổi",
+      "done": "Đã hủy buổi"
     }
   }
 }

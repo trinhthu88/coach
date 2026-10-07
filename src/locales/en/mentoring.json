@@ -116,6 +116,17 @@
       "listens_actively": "Listens Actively",
       "evokes_awareness": "Evokes Awareness",
       "facilitates_growth": "Facilitates Client Growth"
+    },
+    "cancel": {
+      "button": "Cancel session",
+      "title": "Cancel this Mentoring session?",
+      "description": "The session is cancelled and your Mentoring unit can be booked again.",
+      "lateDescription": "It starts within 24 hours, so please say why. The session is cancelled and your Mentoring unit can be booked again.",
+      "reasonRequired": "Reason (required within 24 hours)",
+      "reasonOptional": "Reason (optional)",
+      "keep": "Keep session",
+      "confirm": "Cancel session",
+      "done": "Session cancelled"
     }
   }
 }

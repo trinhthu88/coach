@@ -42,6 +42,10 @@ update public.profiles set status = 'active'::public.user_status, peer_coaching_
 insert into public.coach_profiles (id, approval_status, peer_coaching_opt_in)
 values ('f9a00000-0000-4000-8000-000000000001', 'active', true)
 on conflict (id) do update set approval_status = 'active', peer_coaching_opt_in = true;
+-- Coach K's Peer slot three days out (coach-pool practice is booked into one).
+insert into public.coach_availability (id, coach_id, slot_date, start_time, end_time, slot_type)
+values ('f9a50000-0000-4000-8000-000000000001', 'f9a00000-0000-4000-8000-000000000001',
+        public.programme_today() + 3, '09:00', '11:00', 'peer');
 insert into public.mentor_profiles (coach_user_id, is_active)
 values ('f9a00000-0000-4000-8000-000000000001', true) on conflict do nothing;
 
@@ -182,8 +186,10 @@ select ok(
 -- The booking RPCs still work, and always create a pending request.
 select lives_ok($$
   select public.book_peer_session('f9a00000-0000-4000-8000-000000000001', 'f9a30000-0000-4000-8000-000000000005',
-    'Future peer', now() + interval '3 days', 30, null)
-$$, 'a7. book_peer_session still books a future session');
+    'Future peer', (public.programme_today() + 3 + time '09:30')
+      at time zone public.availability_slot_time_zone('f9a00000-0000-4000-8000-000000000001'),
+    30, 'f9a50000-0000-4000-8000-000000000001')
+$$, 'a7. book_peer_session still books a future session, into the Coach''s Peer slot');
 select set_config('request.jwt.claims', json_build_object('sub', 'f9a00000-0000-4000-8000-000000000002')::text, true);
 select lives_ok($$
   select public.book_coachee_peer_session('f9a00000-0000-4000-8000-000000000003', 'f9a30000-0000-4000-8000-000000000002',

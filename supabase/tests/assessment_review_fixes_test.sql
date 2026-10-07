@@ -218,13 +218,13 @@ select lives_ok($$select public.learner_submit_assessment('f1400000-0000-4000-80
   '6a. L submits attempt 2');
 reset role;
 select results_eq(
-  $$select s.status, a.assessor_id, a.assigned_by, a.due_on
+  $$select s.status, a.assessor_id, a.assigned_by, a.assignment_source, a.due_on
       from public.assessment_submissions s
       join public.assessment_assignments a on a.submission_id = s.id and a.ended_at is null
      where s.id = 'f1400000-0000-4000-8000-000000000002'$$,
   $$values ('with_assessor'::text, 'f1000000-0000-4000-8000-000000000002'::uuid,
-            'f1000000-0000-4000-8000-000000000003'::uuid, public.programme_today() + 7)$$,
-  '6b. attempt 2 is assigned to A automatically (on attempt 1''s Admin), due 7 days later');
+            null::uuid, 'auto_resubmit'::text, public.programme_today() + 7)$$,
+  '6b. attempt 2 is assigned to A automatically -- by nobody, recorded as auto_resubmit -- due 7 days later');
 set local role authenticated;
 select set_config('request.jwt.claims', json_build_object('sub', 'f1000000-0000-4000-8000-000000000002')::text, true);
 select results_eq($$select inbox_tab, attempt_no from public.coach_assessment_inbox() where submission_id = 'f1400000-0000-4000-8000-000000000002'$$,

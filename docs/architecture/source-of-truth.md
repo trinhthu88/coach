@@ -265,7 +265,10 @@ Cancel      Coaching: cancel_coaching_session; Peer: transition_peer_session_sta
                       Coaching rules: the mentee cancels freely until 24 h
                       before, with a reason inside 24 h, never once it has
                       started (a no-show is the Mentor's to mark held);
-                      Mentor and Admin are never blocked (20261007000800)
+                      Mentor and Admin are never blocked (20261007000800).
+                      A late cancel frees the unit, for Coaching and
+                      Mentoring alike; the mentee cancels from the session
+                      page (MentoringCancelButton)
 Admin       admin_reschedule_session (time, duration, topic, link)
             admin_reopen_session (cancelled -> pending_coach_approval,
                                   completed -> confirmed: the unit stops counting)
@@ -283,7 +286,10 @@ mentee's own upload under `{session_id}/`, stamped with `now()`;
 `20261007000700`). A session holds only a slot of its own Coach or Mentor
 (`sync_coaching_slot_reservation`, `sync_mentoring_slot_reservation`), and
 `book_peer_session` takes only the peer Coach's free Peer slot, with the booked
-time inside it -- the Coaching and Mentoring slot rule.
+time inside it -- the Coaching and Mentoring slot rule -- and since
+`20261007001000` requires one. No public table grants TRUNCATE to `anon` or
+`authenticated`, nor will a table a migration creates later
+(`supabase/tests/followups_test.sql` checks the catalog).
 Admins have no bypass (`20261005110000`): an Admin edit is one of the calls
 above, never a row write, and an Admin does not edit a participant's notes.
 The `confirm-session` and `cancel-session` edge functions call
@@ -380,7 +386,7 @@ One pipeline for Triad submissions and the Final Assessment: learner submits →
 | Who may assess in a cohort | `cohort_assessors` (written by `admin_set_cohort_assessor`) | `admin_cohort_assessors`, `admin_assign_assessor` |
 | What was submitted, and its status | `assessment_submissions` (written by `learner_submit_assessment` for the Final Assessment only, by `learner_triad_submit_reflection` for a Triad, then only by the step functions) | `learner_assessment_status`, `admin_assessment_queue`, `coach_assessment_inbox` |
 | Uploaded media, transcripts, feedback PDFs | `assessment_files` + bucket `assessment-files` (private; MP3 / PDF / txt / docx, 50 MB; paths `{enrollment}/{submission}/…`) | storage policies via `assessment_object_readable` / `_writable` / `_registered`; an object not yet registered in `assessment_files` is readable only by its uploader (`storage.objects.owner_id`), never by the learner whose path it is (`20261007000600`) |
-| Who is assessing now | the one open `assessment_assignments` row (due 7 days after assignment); never the learner, nor their own coach (`assessment_is_learners_coach_internal`: the learner themself, a Coaching session in the enrollment, any `cohort_coach_assignments` coach of the cohort); attempt 2 after Resubmit goes automatically to attempt 1's assessor while still in the pool, else waits for Admin (`20261007000600`) | `coach_assessment_inbox`, `admin_assessment_queue` |
+| Who is assessing now | the one open `assessment_assignments` row (due 7 days after assignment); never the learner, nor their own coach (`assessment_is_learners_coach_internal`: the learner themself, a Coaching session in the enrollment, any `cohort_coach_assignments` coach of the cohort); attempt 2 after Resubmit goes automatically to attempt 1's assessor while still in the pool, else waits for Admin (`20261007000600`); `assignment_source` says which (`admin` with `assigned_by`, or `auto_resubmit` with `assigned_by` NULL, `20261007001000`) | `coach_assessment_inbox`, `admin_assessment_queue` |
 | Each version of the feedback | `assessment_reviews` (`coach_submit_review`; a Final Assessment review needs a result, Pass / Not pass / Resubmit, never NULL) | Admin queue; the learner only via release |
 | Admin's decision | `assessment_validations` (`admin_validate_review`; return needs a reason; approve releases + notifies in one transaction) | Admin queue; the returned assessor sees the reason |
 | Feedback the learner sees | the latest approved review of a released submission | `learner_assessment_feedback` (`canonical_assessment_feedback_internal`); `learner_mark_feedback_viewed` |
