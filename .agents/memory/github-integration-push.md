@@ -32,3 +32,9 @@ When local history advances or contains an unrelated descendant, target the requ
 **Why:** A local commit can inherit unpushed work from another change stream, so publishing the branch tip would silently include unrelated files or require a force update.
 
 **How to apply:** Compare the requested change's parent and tree with the remote ref first. Upload only the intended path delta from that remote tree, update the ref without force, and verify the remote commit's changed-file list.
+
+The GitHub App proxy can rate-limit concurrent Git Database blob writes with HTTP 429 even when GitHub's core API quota remains available.
+
+**Why:** The connector proxy applies a burst limit separate from GitHub's reported request quota.
+
+**How to apply:** Upload Git objects serially or in small batches with backoff on 429 responses; do not create the branch ref until every tree and commit SHA matches the local history.
