@@ -29,8 +29,9 @@ BEGIN
   -- 20261005130000) judges new bookings, not seeded history. Local to this
   -- statement's transaction.
   PERFORM set_config('app.session_transition','on',true);
-  INSERT INTO public.organizations(id,name) VALUES(org,'Clariva Erickson Demo Organisation')
-    ON CONFLICT(id) DO UPDATE SET name=excluded.name;
+  -- A demo organisation: out of every Admin rollup (20261007000800).
+  INSERT INTO public.organizations(id,name,is_demo) VALUES(org,'Clariva Erickson Demo Organisation',true)
+    ON CONFLICT(id) DO UPDATE SET name=excluded.name, is_demo=true;
   INSERT INTO public.programmes(id,name,description,duration_months,is_active,coachee_session_limit)
   VALUES
     (pa,'Executive Coaching Accelerator','Coaching-only demonstration',3,true,6),

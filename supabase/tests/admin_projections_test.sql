@@ -2,7 +2,9 @@
 --
 --   a. Admin's completion rate is summed like Sponsor's: completed units over
 --      required units across enrollments -- not a mean of per-enrollment
---      percentages, which weighs a 1-unit programme like a 12-unit one.
+--      percentages, which weighs a 1-unit programme like a 12-unit one. Since
+--      20261007000800 the server chooses the population (reporting_enrollments),
+--      so the check is what these two enrollments add to it.
 --   b. A Mentor is a Coach in an active cohort_mentors row: that, not a
 --      learner's programme module, opens the mentoring workspace to them.
 begin;
@@ -39,6 +41,10 @@ update public.cohort_requirement_dates
  where cohort_id in ('fa920000-0000-4000-8000-000000000001', 'fa920000-0000-4000-8000-000000000002');
 insert into public.cohort_coach_assignments (cohort_id, coach_id) values
   ('fa920000-0000-4000-8000-000000000001', 'fa900000-0000-4000-8000-000000000001');
+-- The reporting population before A and B exist.
+select set_config('request.jwt.claims', json_build_object('sub', 'fa900000-0000-4000-8000-000000000004')::text, true);
+create temporary table base_rate as select * from public.admin_canonical_completion_rate();
+grant select on base_rate to authenticated;
 insert into public.programme_enrollments (id, programme_id, user_id, cohort_id, status, start_date, end_date) values
   ('fa930000-0000-4000-8000-000000000002', 'fa910000-0000-4000-8000-000000000001', 'fa900000-0000-4000-8000-000000000002',
    'fa920000-0000-4000-8000-000000000001', 'active', public.programme_today() - 30, public.programme_today() + 200),
@@ -54,12 +60,12 @@ select set_config('app.session_transition', '', true);
 set local role authenticated;
 select set_config('request.jwt.claims', json_build_object('sub', 'fa900000-0000-4000-8000-000000000004')::text, true);
 select results_eq(
-  $$select enrollment_count, required_units, completed_units, full_completion_pct
-      from public.admin_canonical_completion_rate(array['fa930000-0000-4000-8000-000000000002', 'fa930000-0000-4000-8000-000000000003']::uuid[])$$,
-  $$values (2, 4, 1, 25.0::numeric)$$,
-  'a1. 1 of 4 required units: 25% (the mean of 100% and 0% would say 50%)');
+  $$select r.enrollment_count - b.enrollment_count, r.required_units - b.required_units, r.completed_units - b.completed_units
+      from public.admin_canonical_completion_rate() r, base_rate b$$,
+  $$values (2, 4, 1)$$,
+  'a1. A and B add 2 enrollments, 4 required units and 1 completed: units are summed (alone they are 25%, the mean of 100% and 0% would say 50%)');
 select set_config('request.jwt.claims', json_build_object('sub', 'fa900000-0000-4000-8000-000000000002')::text, true);
-select throws_ok($$select * from public.admin_canonical_completion_rate(array['fa930000-0000-4000-8000-000000000002']::uuid[])$$,
+select throws_ok($$select * from public.admin_canonical_completion_rate()$$,
   '42501', null, 'a2. only an Admin reads it');
 
 -- b. Mentor

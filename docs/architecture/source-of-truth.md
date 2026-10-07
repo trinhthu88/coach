@@ -261,6 +261,11 @@ Complete    Coaching: complete_coaching_session          -- Coach or Admin
             Peer: transition_peer_session_status
             Triads: learner_triad_complete_session
 Cancel      Coaching: cancel_coaching_session; Peer: transition_peer_session_status
+            Mentoring: transition_mentoring_session_status -- decision 7, the
+                      Coaching rules: the mentee cancels freely until 24 h
+                      before, with a reason inside 24 h, never once it has
+                      started (a no-show is the Mentor's to mark held);
+                      Mentor and Admin are never blocked (20261007000800)
 Admin       admin_reschedule_session (time, duration, topic, link)
             admin_reopen_session (cancelled -> pending_coach_approval,
                                   completed -> confirmed: the unit stops counting)
@@ -486,6 +491,29 @@ superseding the one-deadline-per-module lock of `20260926400000`).
 - Integrity: `cohort_module_schedule_violation` (Training included), `requirement_integrity_issues()` / `admin_requirement_integrity_issues()` (count mismatch, missing/duplicate ordinal, unmapped or unselected week, Training `required_units` ≠ selected weeks, requirement outside the cohort's programmes, ongoing enrollment without an organisation).
 - Pinned by `supabase/tests/deadline_contract_test.sql` and `supabase/tests/requirement_calendar_contract_test.sql`.
 - Verify any environment read-only with `scripts/requirement-calendar-verification.sql`.
+
+## Reporting population (`20261007000800`, decision 9e)
+
+`organizations.is_demo` (Admin-written; the demo seeds' organisations are
+marked) takes a demonstration organisation out of reporting.
+`reporting_enrollments()` is the one predicate: every enrollment except a demo
+organisation's, which only that organisation's own Sponsor still sees (the
+live demo's Demo Sponsor). It is read by `sponsor_visible_enrollments` (and so
+every `sponsor_*` function), `admin_alerts_current`, `admin_goal_setup_overdue`,
+`admin_enrollment_inactivity`, `admin_enrollment_satisfaction`,
+`triad_reflection_rate_internal` (Admin Analytics) and the weekly admin email
+(`send-weekly-admin-summary`). `admin_canonical_completion_rate(p_as_of,
+p_programme_id)` chooses its population on the server; the browser sends no
+enrollment ids. Admin Analytics' other platform counts (sessions, hours) and the
+Admin dashboard's head counts are still computed in the browser from table
+reads and include demo rows.
+
+Every progress rollup (`canonical_enrollment_progress` and its learner, Admin
+and Sponsor wrappers, the Sponsor cohort and organisation rollups) carries
+`final_assessment_required_units / completed / due / booked` (cohorts also
+`final_assessment_completed_leaders`), so the module columns add up to
+`required_units` / `completed_units` and the Sponsor module cards to the total
+(decision 9). The Sponsor PDF reports "Programme units completed X / Y".
 
 ## Demo data
 As of 2026-09-23 there is no demo dataset. `supabase/seed-demo.sql` only ensures the Admin (`trang.tt@erickson.vn`) exists; an existing account is left untouched. The previous dataset (Organisations A/B, sponsors, coaches, the Cohort A–D learners such as Linh Nguyen and Ana Silva, and the Training content in `scripts/seed-training-content.sql`) was removed: it dated everything relative to the day it ran, so databases seeded on different days disagreed, and several learners contradicted the fulfilment rules of `20260930100000`. It remains in git history (up to commit `4ae79b0`).

@@ -17,6 +17,7 @@ const CARD = "#fffdf9";
 const LINE = "#e6e0d6";
 const GREEN = "#17663f";
 const PLUM = "#7a5aa8";
+const AMBER = "#a8541c";
 const TEAL = "#2c8fa8";
 
 type SortKey = "name" | "status" | "coaching" | "training" | "peer" | "mentoring" | "triads";
@@ -118,6 +119,10 @@ export default function SponsorCohortDetail() {
               <ModuleCard label={t("cohortDetail.modules.peer")} color={TEAL} completed={kpis?.peer_completed_units} due={kpis?.peer_due_units} required={kpis?.peer_required_units} completedLeaders={kpis?.peer_completed_leaders} leaderCount={kpis?.enrollment_count} t={t} />
               <ModuleCard label={t("cohortDetail.modules.mentoring")} color={GREEN} completed={kpis?.mentoring_completed_units} due={kpis?.mentoring_due_units} required={kpis?.mentoring_required_units} completedLeaders={kpis?.mentoring_completed_leaders} leaderCount={kpis?.enrollment_count} t={t} />
               <ModuleCard label={t("cohortDetail.modules.triads")} color={PLUM} completed={kpis?.triad_completed_units} due={kpis?.triad_due_units} required={kpis?.triad_required_units} completedLeaders={kpis?.triad_completed_leaders} leaderCount={kpis?.enrollment_count} t={t} />
+              {/* Decision 9: with the Final Assessment the cards add up to the cohort's programme units. */}
+              {(kpis?.final_assessment_required_units ?? 0) > 0 && (
+                <ModuleCard label={t("cohortDetail.modules.final_assessment")} color={AMBER} completed={kpis?.final_assessment_completed_units} due={kpis?.final_assessment_due_units} required={kpis?.final_assessment_required_units} completedLeaders={kpis?.final_assessment_completed_leaders} leaderCount={kpis?.enrollment_count} t={t} />
+              )}
             </div>
 
             <AttentionSection kpis={kpis} counts={filterCounts} filter={filter} onFilter={setFilter} t={t} />
@@ -413,6 +418,9 @@ function ProgrammeDetails({ kpis, t }: { kpis: SponsorCohortSummary | null; t: (
        [t("cohortDetail.modules.peer"), moduleDetail(kpis?.peer_completed_units, kpis?.peer_due_units, kpis?.peer_required_units)],
        [t("cohortDetail.modules.mentoring"), moduleDetail(kpis?.mentoring_completed_units, kpis?.mentoring_due_units, kpis?.mentoring_required_units)],
        [t("cohortDetail.modules.triads"), moduleDetail(kpis?.triad_completed_units, kpis?.triad_due_units, kpis?.triad_required_units)],
+       ...((kpis?.final_assessment_required_units ?? 0) > 0
+         ? [[t("cohortDetail.modules.final_assessment"), moduleDetail(kpis?.final_assessment_completed_units, kpis?.final_assessment_due_units, kpis?.final_assessment_required_units)]]
+         : []),
     ]},
     { title: t("cohortDetail.details.programme"), rows: [
       [t("cohortDetail.details.requiredUnitsCount"), value(kpis?.required_units)],

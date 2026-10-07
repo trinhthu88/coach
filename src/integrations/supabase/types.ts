@@ -2725,6 +2725,7 @@ export type Database = {
           hq_country: string | null
           id: string
           industry: string | null
+          is_demo: boolean
           locale: string | null
           logo_url: string | null
           name: string
@@ -2748,6 +2749,7 @@ export type Database = {
           hq_country?: string | null
           id?: string
           industry?: string | null
+          is_demo?: boolean
           locale?: string | null
           logo_url?: string | null
           name: string
@@ -2771,6 +2773,7 @@ export type Database = {
           hq_country?: string | null
           id?: string
           industry?: string | null
+          is_demo?: boolean
           locale?: string | null
           logo_url?: string | null
           name?: string
@@ -4963,7 +4966,7 @@ export type Database = {
         Returns: number
       }
       admin_canonical_completion_rate: {
-        Args: { p_as_of?: string; p_enrollment_ids: string[] }
+        Args: { p_as_of?: string; p_programme_id?: string }
         Returns: {
           completed_units: number
           enrollment_count: number
@@ -4993,6 +4996,10 @@ export type Database = {
           enrollment_id: string
           enrollment_start_date: string
           enrollment_status: Database["public"]["Enums"]["enrollment_status"]
+          final_assessment_booked_units: number
+          final_assessment_completed_units: number
+          final_assessment_due_units: number
+          final_assessment_required_units: number
           full_completion_pct: number
           learner_display_name: string
           mentoring_booked_units: number
@@ -6028,6 +6035,10 @@ export type Database = {
           enrollment_id: string
           enrollment_start_date: string
           enrollment_status: Database["public"]["Enums"]["enrollment_status"]
+          final_assessment_booked_units: number
+          final_assessment_completed_units: number
+          final_assessment_due_units: number
+          final_assessment_required_units: number
           full_completion_pct: number
           learner_display_name: string
           mentoring_booked_units: number
@@ -7146,6 +7157,10 @@ export type Database = {
           enrollment_id: string
           enrollment_start_date: string
           enrollment_status: Database["public"]["Enums"]["enrollment_status"]
+          final_assessment_booked_units: number
+          final_assessment_completed_units: number
+          final_assessment_due_units: number
+          final_assessment_required_units: number
           full_completion_pct: number
           learner_display_name: string
           mentoring_booked_units: number
@@ -7728,6 +7743,17 @@ export type Database = {
         }
       }
       request_is_end_user: { Args: never; Returns: boolean }
+      reporting_enrollments: {
+        Args: never
+        Returns: {
+          cohort_id: string
+          enrollment_id: string
+          organization_id: string
+          programme_id: string
+          status: Database["public"]["Enums"]["enrollment_status"]
+          user_id: string
+        }[]
+      }
       requirement_integrity_issues: {
         Args: never
         Returns: {
@@ -7845,6 +7871,11 @@ export type Database = {
           due_adherence_pct: number
           due_units: number
           enrollment_count: number
+          final_assessment_booked_units: number
+          final_assessment_completed_leaders: number
+          final_assessment_completed_units: number
+          final_assessment_due_units: number
+          final_assessment_required_units: number
           full_completion_pct: number
           health_signal: string
           mentoring_booked_units: number
@@ -7910,6 +7941,11 @@ export type Database = {
           due_adherence_pct: number
           due_units: number
           enrollment_count: number
+          final_assessment_booked_units: number
+          final_assessment_completed_leaders: number
+          final_assessment_completed_units: number
+          final_assessment_due_units: number
+          final_assessment_required_units: number
           full_completion_pct: number
           health_signal: string
           mentoring_booked_units: number
@@ -7976,6 +8012,10 @@ export type Database = {
           enrollment_id: string
           enrollment_start_date: string
           enrollment_status: Database["public"]["Enums"]["enrollment_status"]
+          final_assessment_booked_units: number
+          final_assessment_completed_units: number
+          final_assessment_due_units: number
+          final_assessment_required_units: number
           full_completion_pct: number
           goal_count: number
           goal_progress_pct: number
@@ -8031,6 +8071,10 @@ export type Database = {
           enrollment_id: string
           enrollment_start_date: string
           enrollment_status: Database["public"]["Enums"]["enrollment_status"]
+          final_assessment_booked_units: number
+          final_assessment_completed_units: number
+          final_assessment_due_units: number
+          final_assessment_required_units: number
           full_completion_pct: number
           learner_display_name: string
           mentoring_booked_units: number
@@ -8086,6 +8130,10 @@ export type Database = {
           enrollment_id: string
           enrollment_start_date: string
           enrollment_status: Database["public"]["Enums"]["enrollment_status"]
+          final_assessment_booked_units: number
+          final_assessment_completed_units: number
+          final_assessment_due_units: number
+          final_assessment_required_units: number
           full_completion_pct: number
           learner_display_name: string
           mentoring_booked_units: number
@@ -8151,6 +8199,10 @@ export type Database = {
           due_adherence_pct: number
           due_units: number
           enrollment_count: number
+          final_assessment_booked_units: number
+          final_assessment_completed_units: number
+          final_assessment_due_units: number
+          final_assessment_required_units: number
           full_completion_pct: number
           health_signal: string
           mentoring_booked_units: number

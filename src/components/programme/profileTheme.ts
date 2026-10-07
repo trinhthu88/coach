@@ -15,6 +15,7 @@ export const PROFILE_COLORS = {
   TEAL: "#2c8fa8",
   GREEN: "#17663f",
   AMBER: "#a8541c",
+  PLUM: "#7a5aa8",
   RED: "#a8341c",
   MUTED: "#6a6560",
   FAINT: "#9a938a",

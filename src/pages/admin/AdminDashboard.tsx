@@ -33,11 +33,6 @@ interface DashboardCoachProfileRow {
   approval_status: string;
 }
 
-interface DashboardEnrollmentRow {
-  id: string;
-  status: string;
-}
-
 interface DashboardStats {
   coachees: number;
   /** Active learners whose account was created this calendar month (real count, never an estimate). */
@@ -90,7 +85,6 @@ async function fetchAdminDashboardData(): Promise<DashboardQueryData> {
     { data: cps },
     { data: sessions },
     { data: peerSessions },
-    { data: enrollments },
     { data: alertRows },
     { count: newCoachApplications },
     { count: newCoacheeApplications },
@@ -100,7 +94,6 @@ async function fetchAdminDashboardData(): Promise<DashboardQueryData> {
     supabase.from("coach_profiles").select("id, approval_status"),
     supabase.from("sessions").select("id, coach_id, start_time, status, meeting_url"),
     supabase.from("peer_sessions").select("id, start_time, status"),
-    supabase.from("programme_enrollments").select("id, status"),
     supabase.from("admin_alerts").select("*").eq("resolved", false).order("created_at", { ascending: false }).limit(6),
     supabase.from("access_requests").select("id", { count: "exact", head: true }).eq("status", "pending").eq("role", "coach"),
     supabase.from("access_requests").select("id", { count: "exact", head: true }).eq("status", "pending").eq("role", "executive"),
@@ -121,8 +114,7 @@ async function fetchAdminDashboardData(): Promise<DashboardQueryData> {
   ).length;
 
   // Completion comes from the canonical engine Learner and Sponsor use.
-  const enrollmentIds = (enrollments || []).map((e: DashboardEnrollmentRow) => e.id);
-  const avgProgress = await fetchAdminCompletionRate(enrollmentIds);
+  const avgProgress = await fetchAdminCompletionRate();
 
   const stats: DashboardStats = {
     coachees: Array.from(coacheeIds).filter((id) => profById.get(id)?.status === "active").length,

@@ -52,18 +52,24 @@ Deno.serve(async (req) => {
     const weekOf = programmeToday(-7, now);
 
     // ------------------------------------------------------------------
+    // THE reporting population (reporting_enrollments, 20261007000800): every
+    // enrollment except a demo organisation's. Every number below is over it.
+    // ------------------------------------------------------------------
+    const { data: reportedRows, error: reportedError } = await admin.rpc("reporting_enrollments");
+    if (reportedError) throw reportedError;
+    const reported = (reportedRows || []) as { enrollment_id: string; user_id: string; programme_id: string; status: string }[];
+    const reportedEnrollmentIds = new Set(reported.map((r) => r.enrollment_id));
+
+    // ------------------------------------------------------------------
     // Per-programme engagement
     // ------------------------------------------------------------------
     const { data: programmes } = await admin.from("programmes").select("id, name");
     const programmeStats: ProgrammeStatRow[] = [];
 
     for (const programme of programmes || []) {
-      const { data: enrollments } = await admin
-        .from("programme_enrollments")
-        .select("user_id")
-        .eq("programme_id", programme.id)
-        .eq("status", "active");
-      const enrolledIds = [...new Set((enrollments || []).map((e) => e.user_id as string))];
+      const enrolledIds = [
+        ...new Set(reported.filter((r) => r.programme_id === programme.id && r.status === "active").map((r) => r.user_id)),
+      ];
       if (enrolledIds.length === 0) continue;
 
       const { data: weeks } = await admin.from("training_weeks").select("id").eq("programme_id", programme.id);
@@ -158,7 +164,9 @@ Deno.serve(async (req) => {
     // reminders and Admin Alerts / Analytics read.
     // ------------------------------------------------------------------
     const { data: inactivity } = await admin.rpc("canonical_enrollment_inactivity_internal", {});
-    const inactiveRows = ((inactivity || []) as { user_id: string; is_inactive: boolean }[]).filter((r) => r.is_inactive);
+    const inactiveRows = ((inactivity || []) as { enrollment_id: string; user_id: string; is_inactive: boolean }[]).filter(
+      (r) => r.is_inactive && reportedEnrollmentIds.has(r.enrollment_id),
+    );
     const staleIds = [...new Set(inactiveRows.map((r) => r.user_id))];
     let redFlagNames: string[] = [];
     if (staleIds.length > 0) {
@@ -172,15 +180,18 @@ Deno.serve(async (req) => {
     // required/NOT NULL there, so no extra null filter is needed).
     // ------------------------------------------------------------------
     const [{ data: thisWeekScores }, { data: lastWeekScores }] = await Promise.all([
-      admin.from("reflection_submissions").select("confidence_score").gte("submitted_at", weekAgoISO),
+      admin.from("reflection_submissions").select("confidence_score, enrollment_id").gte("submitted_at", weekAgoISO),
       admin
         .from("reflection_submissions")
-        .select("confidence_score")
+        .select("confidence_score, enrollment_id")
         .gte("submitted_at", twoWeeksAgoISO)
         .lt("submitted_at", weekAgoISO),
     ]);
-    const avg = (rows: { confidence_score: number | null }[] | null) => {
-      const scores = (rows || []).map((r) => r.confidence_score as number).filter((n) => n != null);
+    const avg = (rows: { confidence_score: number | null; enrollment_id: string | null }[] | null) => {
+      const scores = (rows || [])
+        .filter((r) => r.enrollment_id != null && reportedEnrollmentIds.has(r.enrollment_id))
+        .map((r) => r.confidence_score as number)
+        .filter((n) => n != null);
       return scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : null;
     };
     const confidenceThisWeek = avg(thisWeekScores);
@@ -193,11 +204,14 @@ Deno.serve(async (req) => {
     // ------------------------------------------------------------------
     const { data: recentSubmissions } = await admin
       .from("reflection_submissions")
-      .select("id")
+      .select("id, enrollment_id")
       .gte("submitted_at", weekAgoISO)
       .order("submitted_at", { ascending: false })
-      .limit(50);
-    const recentSubmissionIds = (recentSubmissions || []).map((s) => s.id as string);
+      .limit(200);
+    const recentSubmissionIds = (recentSubmissions || [])
+      .filter((s) => s.enrollment_id != null && reportedEnrollmentIds.has(s.enrollment_id as string))
+      .slice(0, 50)
+      .map((s) => s.id as string);
     let topQuotes: string[] = [];
     if (recentSubmissionIds.length > 0) {
       const { data: recentAnswers } = await admin

@@ -10,7 +10,7 @@ import { derivePendingDeliverables } from "@/lib/pendingReflections";
 import { deliverableKey, outstandingItems, type DeliverableKey, type DeliverableModule } from "@/lib/postSessionDeliverables";
 import type { DevelopmentSessionType } from "./developmentSessionTypes";
 
-type WorkspaceModule = Exclude<ProgrammeModuleKey, "training">;
+type WorkspaceModule = Exclude<ProgrammeModuleKey, "training" | "final_assessment">;
 
 const SESSION_TYPE_BY_MODULE: Record<WorkspaceModule, DevelopmentSessionType> = {
   coaching: "coaching",

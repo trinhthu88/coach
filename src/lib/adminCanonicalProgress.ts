@@ -22,11 +22,12 @@ export async function fetchAdminCanonicalProgress(enrollmentIds: string[]): Prom
 /**
  * Admin's completion rate across enrollments, summed like Sponsor's: completed
  * units over required units (admin_canonical_completion_rate, 20261006200000).
- * Never a mean of per-enrollment percentages.
+ * Never a mean of per-enrollment percentages. The population is the server's
+ * reporting population (reporting_enrollments, 20261007000800: no demo
+ * organisation), never a list sent from the browser.
  */
-export async function fetchAdminCompletionRate(enrollmentIds: string[]): Promise<number | null> {
-  if (enrollmentIds.length === 0) return null;
-  const { data, error } = await supabase.rpc("admin_canonical_completion_rate", { p_enrollment_ids: enrollmentIds });
+export async function fetchAdminCompletionRate(): Promise<number | null> {
+  const { data, error } = await supabase.rpc("admin_canonical_completion_rate");
   if (error) throw error;
   // null = nothing required yet: never shown as 0%.
   return canonicalCompletionPct(data?.[0]?.full_completion_pct);

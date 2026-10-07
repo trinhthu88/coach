@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate } from "react-router-dom";
 import { differenceInCalendarDays } from "date-fns";
-import { Users, CheckCircle2, AlertTriangle, CalendarCheck, ShieldCheck, Loader2, ArrowRight, Building2, Clock, ChevronDown, MessageCircle, type LucideIcon, Info, FileDown, Layers } from "lucide-react";
+import { Users, CheckCircle2, AlertTriangle, CalendarCheck, ShieldCheck, Loader2, ArrowRight, Building2, Clock, ChevronDown, MessageCircle, type LucideIcon, FileDown, Layers } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -110,26 +110,6 @@ export default function SponsorDashboard() {
   const alerts = useMemo(() => {
     const list: { key: string; icon: LucideIcon; tone: "warning" | "info"; message: string; to?: string }[] = [];
 
-    const byCohort = new Map<string, { used: number; entitled: number }>();
-    roster.forEach((r) => {
-      const key = r.cohort_label || "";
-      if (!key) return;
-      const agg = byCohort.get(key) || { used: 0, entitled: 0 };
-      agg.used += r.completed_units;
-      agg.entitled += r.required_units;
-      byCohort.set(key, agg);
-    });
-    byCohort.forEach((agg, cohortName) => {
-      if (agg.entitled > 0 && agg.used / agg.entitled >= 0.9) {
-        list.push({
-          key: `session-threshold-${cohortName}`,
-          icon: Info,
-          tone: "info",
-          message: t("dashboard.alerts.sessionThreshold", { name: cohortName }),
-        });
-      }
-    });
-
     if (contractDaysRemaining != null && contractDaysRemaining < 60) {
       list.push({
         key: "contract-expiry",
@@ -140,7 +120,7 @@ export default function SponsorDashboard() {
     }
 
     return list;
-  }, [roster, contractDaysRemaining, t]);
+  }, [contractDaysRemaining, t]);
 
 
   const contactAdmin = async () => {

@@ -47,7 +47,6 @@
       "label": "Email notifications",
       "weeklyDigest": "Weekly digest",
       "atRiskAlerts": "At-risk leader alerts",
-      "sessionMilestones": "Session milestone alerts (50% / 90% usage)",
       "monthlyAutoReport": "Monthly auto-report email",
       "save": "Save preferences",
       "saved": "Preferences saved"
@@ -129,8 +128,6 @@
       "label": "Smart alerts",
       "empty": "No alerts right now — everything looks on track.",
       "view": "View",
-      "atRiskInactive": "{{name}} has not logged in for {{count}} days",
-      "sessionThreshold": "Cohort {{name}} has used 90% of sessions — consider renewal",
       "contractExpiry": "Contract ends in {{count}} days — renewal conversation recommended"
     },
     "coachUtilisation": {

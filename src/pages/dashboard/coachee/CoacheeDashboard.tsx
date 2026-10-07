@@ -26,6 +26,7 @@ const MODULE_PATH: Record<ProgrammeModuleKey, string> = {
   peer: "/coachee/peer-practice",
   mentoring: "/mentoring",
   triads: "/triads",
+  final_assessment: "/final-assessment",
 };
 
 /**

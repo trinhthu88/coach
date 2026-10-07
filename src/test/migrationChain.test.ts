@@ -535,9 +535,12 @@ describe("sponsor visibility is decided by the enrollment organisation only", ()
     }
     // Only the rule itself (and organisation-owned report requests, the demo
     // tooling, and get_sponsor_org) may read sponsor_profiles; every other
-    // live function reaches sponsor scope through the rule.
+    // live function reaches sponsor scope through the rule. The reporting
+    // population is part of the rule: it keeps a demo organisation for its
+    // own Sponsor only (reporting_enrollments, 20261007000800).
     const allowed = new Set([
       "sponsor_visible_enrollments",
+      "reporting_enrollments",
       "sponsor_submit_report_request",
       "sponsor_list_report_requests",
       "get_sponsor_org",

@@ -332,7 +332,8 @@ WITH repo(version, name) AS (VALUES
   ('20261007000400', 'final_assessment_auto_transcription'),
   ('20261007000500', 'triad_satisfaction_view'),
   ('20261007000600', 'assessment_review_fixes'),
-  ('20261007000700', 'session_write_gaps')
+  ('20261007000700', 'session_write_gaps'),
+  ('20261007000800', 'missing_decisions')
 -- END REPO MANIFEST
 ),
 

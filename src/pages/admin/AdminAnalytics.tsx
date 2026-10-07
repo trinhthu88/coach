@@ -189,7 +189,7 @@ export default function AdminAnalytics() {
       const enrollmentIds = (enr || []).map((e: AnalyticsEnrollmentRow) => e.id);
       const [progressRows, progressAvg] = await Promise.all([
         fetchAdminCanonicalProgress(enrollmentIds),
-        fetchAdminCompletionRate(enrollmentIds),
+        fetchAdminCompletionRate(),
       ]);
       const activeCoachees = coacheeIds.filter(id => profById.get(id)?.status === "active").length;
       const enrolled = new Set((enr || []).map((e: AnalyticsEnrollmentRow) => e.user_id)).size;

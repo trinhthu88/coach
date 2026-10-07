@@ -152,4 +152,21 @@ describe("programmeModuleRows", () => {
       "triads 1/2",
     ]);
   });
+
+  it("adds the Final Assessment when the programme has one, so the rows add up to the total (decision 9)", () => {
+    const facts = {
+      coaching_completed_units: 4, coaching_required_units: 4, coaching_due_units: 4,
+      training_completed_units: 5, training_required_units: 6, training_due_units: 6,
+      peer_completed_units: 0, peer_required_units: 0, peer_due_units: 0,
+      mentoring_completed_units: 0, mentoring_required_units: 0, mentoring_due_units: 0,
+      triad_completed_units: 0, triad_required_units: 0, triad_due_units: 0,
+      final_assessment_completed_units: 1, final_assessment_required_units: 1, final_assessment_due_units: 1,
+      required_units: 11, completed_units: 10,
+    } as ProgrammeProgressFacts;
+    const rows = programmeModuleRows(facts);
+    expect(rows.at(-1)).toEqual({ key: "final_assessment", completed: 1, required: 1, due: 1 });
+    expect(rows.reduce((n, r) => n + (r.required ?? 0), 0)).toBe(facts.required_units);
+    expect(rows.reduce((n, r) => n + (r.completed ?? 0), 0)).toBe(facts.completed_units);
+    expect(programmeModuleRows({ ...facts, final_assessment_required_units: 0 }).map((r) => r.key)).not.toContain("final_assessment");
+  });
 });
