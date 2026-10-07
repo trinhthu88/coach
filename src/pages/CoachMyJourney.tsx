@@ -291,6 +291,7 @@ export default function CoachMyJourney() {
                   onDeleteMilestone={goalsApi.deleteMilestone}
                   defaultOpen={i === 0}
                   rating={ratingRows.find((r) => r.goalId === g.id)}
+                  progressPct={goalProgress(g.id)}
                   onRatingChange={(patch) => saveRating(g.id, patch)}
                   showCompletionMarks
                 />
@@ -355,6 +356,7 @@ export default function CoachMyJourney() {
                     showLinkedActions
                     defaultOpen={i === 0}
                     rating={ratingRows.find((r) => r.goalId === g.id)}
+                    progressPct={goalProgress(g.id)}
                     onRatingChange={(patch) => saveRating(g.id, patch)}
                     showCompletionMarks
                   />

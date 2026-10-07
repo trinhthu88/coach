@@ -21,6 +21,7 @@ describe("GoalAccordion — Start and Target are the learner's; only Current is 
           defaultOpen
           rating={{ goalId: "g1", title: "Hold my first round of one-to-ones", start: 20, current: null, target: 70, progress: null }}
           onRatingChange={vi.fn()}
+          progressPct={null}
         />
       </MemoryRouter>
     );

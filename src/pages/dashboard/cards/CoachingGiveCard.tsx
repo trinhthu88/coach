@@ -2,31 +2,31 @@ import { useTranslation } from "react-i18next";
 import { Users, Clock, CheckCircle2 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useProgrammeModules } from "@/hooks/useProgrammeModules";
-import { useCoachDashboardData } from "@/hooks/dashboard/useCoachDashboardData";
+import { useQuery } from "@tanstack/react-query";
+import { fetchCoachNextSessions, pickModule } from "@/lib/nextSessions";
 import { NextSessionHero, HeroMetricRow, HeroFooterLink, HeroSkeleton } from "./NextSessionHero";
 
 /** "My clients" hero — active client count, next session, pending approvals,
- * sessions delivered. Data comes from the same hook CoachDashboardView used. */
+ * sessions delivered: the Coach's Coaching row of coach_next_session_by_module
+ * (20261007001100), rendered. */
 export function CoachingGiveCard() {
   const { t } = useTranslation("dashboard");
   const { user } = useAuth();
   const { hasDirection, loading: modulesLoading } = useProgrammeModules();
   const enabled = hasDirection("coaching", "give");
-  const { sessions, profilesById, loading } = useCoachDashboardData(user?.id ?? "");
+  const { data: rows, isLoading: loading } = useQuery({
+    queryKey: ["coach-next-sessions", user?.id],
+    queryFn: fetchCoachNextSessions,
+    enabled: !!user?.id,
+    staleTime: 30_000,
+  });
 
   if (!modulesLoading && !enabled) return null;
   if (modulesLoading || loading) return <HeroSkeleton />;
 
-  const now = new Date();
-  const upcoming = sessions
-    .filter((s) => s.status === "confirmed" && new Date(s.start_time) >= now)
-    .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
-  const nextSession = upcoming[0];
-  const pending = sessions.filter((s) => s.status === "pending_coach_approval");
-  const completed = sessions.filter((s) => s.status === "completed");
-  const activeClients = new Set(
-    sessions.filter((s) => ["confirmed", "completed"].includes(s.status)).map((s) => s.coachee_id)
-  ).size;
+  const coaching = pickModule(rows ?? [], "coaching");
+  const nextSession = coaching?.source_id && coaching.start_time ? coaching : null;
+  const pendingCount = coaching?.pending_count ?? 0;
 
   return (
     <div data-onboarding="dashboard-next-session">
@@ -34,35 +34,35 @@ export function CoachingGiveCard() {
         icon={Users}
         eyebrowLabel={t("cards.coachingGive.title")}
         badge={
-          pending.length > 0 ? (
+          pendingCount > 0 ? (
             <span className="rounded-full bg-warning/20 px-2.5 py-1 text-[10px] font-bold text-warning">
-              {t("cards.coachingGive.pendingBadge", { count: pending.length })}
+              {t("cards.coachingGive.pendingBadge", { count: pendingCount })}
             </span>
           ) : undefined
         }
         nextSession={
           nextSession
             ? {
-                topic: nextSession.topic,
-                startTime: nextSession.start_time,
-                counterpartName: profilesById[nextSession.coachee_id]?.full_name || t("cards.coachingGive.defaultClient"),
+                topic: nextSession.title ?? "",
+                startTime: nextSession.start_time as string,
+                counterpartName: nextSession.learner_name || t("cards.coachingGive.defaultClient"),
               }
             : null
         }
         ctaLabel={t("coachee.nextSession.joinAndPrepare")}
-        ctaHref={nextSession ? `/sessions/${nextSession.id}` : "/coach/clients"}
+        ctaHref={nextSession ? `/sessions/${nextSession.source_id}` : "/coach/clients"}
         emptyTitle={t("coach.nextSession.noneTitle")}
         emptyBody={t("cards.coachingGive.noUpcoming")}
       >
         <div data-onboarding="dashboard-booking-requests">
-          <HeroMetricRow label={t("cards.coachingGive.activeClients")} value={activeClients} />
-          <HeroMetricRow label={t("cards.coachingGive.sessionsDelivered")} value={completed.length} />
+          <HeroMetricRow label={t("cards.coachingGive.activeClients")} value={coaching?.learner_count ?? 0} />
+          <HeroMetricRow label={t("cards.coachingGive.sessionsDelivered")} value={coaching?.delivered_count ?? 0} />
           <HeroMetricRow
             label={t("cards.coachingGive.pendingApprovals")}
             value={
-              pending.length > 0 ? (
+              pendingCount > 0 ? (
                 <span className="inline-flex items-center gap-1 text-warning">
-                  <Clock className="h-3.5 w-3.5" /> {pending.length}
+                  <Clock className="h-3.5 w-3.5" /> {pendingCount}
                 </span>
               ) : (
                 <span className="inline-flex items-center gap-1 text-success">

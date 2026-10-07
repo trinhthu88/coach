@@ -25,6 +25,10 @@ describe("coaching engagements replace coach invites", () => {
     expect(read("src/pages/CoachClients.tsx")).toMatch(/ReferClientDialog/);
     expect(read("src/pages/coach/ReferClientDialog.tsx")).toMatch(/rpc\("coach_refer_client"/);
     expect(read("src/pages/admin/cohorts/NewCoachingEngagementDialog.tsx")).toMatch(/rpc\("admin_create_coaching_engagement"/);
-    expect(read("src/hooks/coach/useCoachClients.ts")).toMatch(/rpc\("coach_engagement_enrollments"\)/);
+    // The client list is coach_client_summary (20261007001100), which lists
+    // engagement clients before their first session.
+    expect(read("src/hooks/coach/useCoachClients.ts")).toMatch(/rpc\("coach_client_summary"\)/);
+    expect(read("supabase/migrations/20261007001100_browser_numbers.sql"))
+      .toMatch(/coach_client_summary\(\)[\s\S]*c\.kind = 'engagement'/);
   });
 });

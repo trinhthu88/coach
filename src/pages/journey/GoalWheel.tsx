@@ -19,7 +19,7 @@ export interface GoalRatingRow {
   start: number | null;
   current: number | null;
   target: number | null;
-  /** Canonical Start→Target progress — see goalProgressPct in useJourneyDerived. */
+  /** Canonical Start→Target progress (learner_canonical_goal_progress), as the server returns it. */
   progress: number | null;
 }
 

@@ -38,81 +38,33 @@ async function fetchTimeline(userId: string, enrollmentId: string, hasTriads: bo
   const weeks = (weeksData || []) as RawWeek[];
   if (weeks.length === 0) return [];
 
-  const weekIds = weeks.map((w) => w.id);
-  const weekNumbers = weeks.map((w) => w.week_number);
-  const programmeId = await getProgrammeIdForEnrollment(enrollmentId);
-
-  const [{ data: assignments }, { data: prompts }, { data: reflections }, triadGroups, triadCanonical] = await Promise.all([
-    supabase
-      .from("assignments")
-      .select("id, training_week_id, assignment_type")
-      .eq("is_visible", true)
-      .eq("assignment_type", "quiz")
-      .in("training_week_id", weekIds),
-    supabase.from("daily_prompts").select("id, training_week_id").eq("is_visible", true).in("training_week_id", weekIds),
-    // Reflections are a separate system keyed by appears_at_week, not an
-    // assignment_type any more — RLS already scopes this to reflections for
-    // programmes the user is enrolled in whose week has unlocked.
-    supabase
-      .from("programme_reflections")
-      .select("id, appears_at_week")
-      .eq("programme_id", programmeId)
-      .in("appears_at_week", weekNumbers),
+  // Per-week counts are the server's: learner_training_week_items (the same
+  // rows the Training page renders) and the quiz score from
+  // learner_training_summary (20261007001100). Nothing is counted here.
+  const [{ data: items, error: itemsError }, { data: summaryRows, error: summaryError }, triadGroups, triadCanonical] = await Promise.all([
+    supabase.rpc("learner_training_week_items", { p_enrollment_id: enrollmentId }),
+    supabase.rpc("learner_training_summary", { p_enrollment_id: enrollmentId }),
     // The learner's cohort Triad groups and canonical Triad status. A week
     // shows a Triad state only when a cohort Triad deadline is linked to it.
     hasTriads ? fetchMyTriads(enrollmentId) : Promise.resolve([] as TriadGroupEntry[]),
     hasTriads ? fetchMyTriadStatus(enrollmentId) : Promise.resolve(null as TriadStatusView | null),
   ]);
-
-  const assignmentIds = (assignments || []).map((a) => a.id as string);
-  const promptIds = (prompts || []).map((p) => p.id as string);
-  const reflectionIds = (reflections || []).map((r) => r.id as string);
-
-  const [{ data: submissions }, { data: responses }, { data: reflectionSubs }] = await Promise.all([
-    assignmentIds.length
-      ? supabase
-          .from("assignment_submissions")
-          .select("assignment_id, score_pct")
-          .eq("user_id", userId)
-          .eq("enrollment_id", enrollmentId)
-          .in("assignment_id", assignmentIds)
-      : Promise.resolve({ data: [] as { assignment_id: string; score_pct: number | null }[] }),
-    promptIds.length
-      ? supabase
-          .from("daily_prompt_responses")
-          .select("daily_prompt_id, responded_at")
-          .eq("user_id", userId)
-          .eq("enrollment_id", enrollmentId)
-          .in("daily_prompt_id", promptIds)
-      : Promise.resolve({ data: [] as { daily_prompt_id: string; responded_at: string | null }[] }),
-    reflectionIds.length
-      ? supabase
-          .from("reflection_submissions")
-          .select("reflection_id")
-          .eq("user_id", userId)
-          .eq("enrollment_id", enrollmentId)
-          .in("reflection_id", reflectionIds)
-      : Promise.resolve({ data: [] as { reflection_id: string }[] }),
-  ]);
-
-  const submissionByAssignment = new Map((submissions || []).map((s) => [s.assignment_id, s]));
-  const respondedPromptIds = new Set((responses || []).filter((r) => r.responded_at).map((r) => r.daily_prompt_id));
-  const submittedReflectionIds = new Set((reflectionSubs || []).map((r) => r.reflection_id));
+  if (itemsError) throw itemsError;
+  if (summaryError) throw summaryError;
+  const itemOf = (weekId: string, type: string) =>
+    (items ?? []).find((i) => i.training_week_id === weekId && i.item_type === type) ?? null;
+  const scoreByWeek = new Map(
+    ((summaryRows?.[0]?.quiz_scores as { week_number: number; score_pct: number }[] | null) ?? []).map((q) => [q.week_number, Number(q.score_pct)]),
+  );
 
   let currentAssigned = false;
 
   return weeks
     .sort((a, b) => a.week_number - b.week_number)
     .map((w): TimelineWeek => {
-      const quizAssignments = (assignments || []).filter((a) => a.training_week_id === w.id);
-      const quizSubmitted = quizAssignments.filter((a) => submissionByAssignment.has(a.id));
-      const firstQuizScore = quizSubmitted.length > 0 ? submissionByAssignment.get(quizSubmitted[0].id)?.score_pct ?? null : null;
-
-      const weekReflections = (reflections || []).filter((r) => r.appears_at_week === w.week_number);
-      const reflectionSubmittedCount = weekReflections.filter((r) => submittedReflectionIds.has(r.id)).length;
-
-      const weekPrompts = (prompts || []).filter((p) => p.training_week_id === w.id);
-      const promptsDone = weekPrompts.filter((p) => respondedPromptIds.has(p.id)).length;
+      const quiz = itemOf(w.id, "quizzes");
+      const reflection = itemOf(w.id, "reflections");
+      const prompts = itemOf(w.id, "daily_prompts");
 
       // A week's Triad deadline is met when the canonical completed sessions
       // reach that cumulative milestone (the same rule Admin and the Triads
@@ -146,9 +98,9 @@ async function fetchTimeline(userId: string, enrollmentId: string, hasTriads: bo
         locked: w.locked,
         viewedAt: w.viewed_at,
         completedAt: w.completed_at,
-        quiz: { total: quizAssignments.length, submitted: quizSubmitted.length, scorePct: firstQuizScore },
-        reflection: { total: weekReflections.length, submitted: reflectionSubmittedCount },
-        promptStreak: { total: weekPrompts.length, done: promptsDone },
+        quiz: { total: quiz?.required_units ?? 0, submitted: quiz?.completed_units ?? 0, scorePct: scoreByWeek.get(w.week_number) ?? null },
+        reflection: { total: reflection?.required_units ?? 0, submitted: reflection?.completed_units ?? 0 },
+        promptStreak: { total: prompts?.required_units ?? 0, done: prompts?.completed_units ?? 0 },
         triadStatus,
         status,
       };
@@ -179,13 +131,3 @@ export function useProgrammeTimeline(userId: string | undefined) {
   return { weeks: data ?? [], loading: isLoading };
 }
 
-async function getProgrammeIdForEnrollment(enrollmentId: string): Promise<string> {
-  const { data, error } = await supabase
-    .from("programme_enrollments")
-    .select("programme_id")
-    .eq("id", enrollmentId)
-    .maybeSingle();
-  if (error) throw error;
-  if (!data?.programme_id) throw new Error("Selected enrollment has no programme");
-  return data.programme_id;
-}

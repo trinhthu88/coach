@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { format, isBefore } from "date-fns";
+import { format } from "date-fns";
+import { slotTodayKey } from "@/lib/slotTime";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -285,7 +286,8 @@ function ActionGroup({
       </p>
       <div className="divide-y">
         {items.map((a) => {
-          const overdue = !a.item.done && a.item.due_date && isBefore(new Date(a.item.due_date), new Date());
+          // Overdue = due before programme_today() (Vietnam), as the server counts it.
+          const overdue = !a.item.done && !!a.item.due_date && a.item.due_date < slotTodayKey();
           const lbl = labelFor(a.item.milestone_id);
           return (
             <div key={`${a.sessionId}-${a.idx}`} className="flex items-start gap-2 py-1.5">

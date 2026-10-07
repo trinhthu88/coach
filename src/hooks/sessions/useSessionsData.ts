@@ -112,6 +112,22 @@ export type PeerParticipationIndex = Map<string, string | null>;
  *   triad                              -> the viewer's own group membership enrollment
  *   anything the viewer delivers       -> null (no enrollment of theirs)
  */
+/**
+ * The hub lists a viewer's own (learner-side) session only if its enrollment's
+ * learner_session_history holds it. Rows with no viewer enrollment (sessions
+ * the viewer delivers) and rows of an enrollment whose history could not be
+ * read are kept.
+ */
+export function listedByHistory<T extends { id: string; viewer_enrollment_id: string | null }>(
+  rows: T[],
+  historyByEnrollment: Map<string, Set<string>>,
+): T[] {
+  return rows.filter((row) => {
+    const history = row.viewer_enrollment_id ? historyByEnrollment.get(row.viewer_enrollment_id) : undefined;
+    return !history || history.has(row.id);
+  });
+}
+
 export function viewerEnrollmentFor(
   row: { kind: SessionKind; id: string; enrollment_id: string | null; viewer_is_coach?: boolean },
   participations: PeerParticipationIndex,
@@ -320,6 +336,9 @@ async function fetchSessionsData(userId: string, role: AppRole): Promise<{ rows:
   // still render unlabelled rather than the whole list disappearing.
   const requirementBySession: Record<string, CoachingRequirementContext> = {};
   const nextSessions: NextSessionByModule[] = [];
+  // Which sessions belong to each of the viewer's own enrollments: exactly
+  // learner_session_history's rows (enrollment-scoped, canonical attribution).
+  const historyByEnrollment = new Map<string, Set<string>>();
   const ownEnrollmentIds = Array.from(
     new Set(allRows.map((row) => row.viewer_enrollment_id).filter((id): id is string => Boolean(id))),
   );
@@ -330,12 +349,14 @@ async function fetchSessionsData(userId: string, role: AppRole): Promise<{ rows:
           supabase.rpc("learner_session_history", { p_enrollment_id: enrollmentId }),
           supabase.rpc("learner_next_session_by_module", { p_enrollment_id: enrollmentId }),
         ]);
+        if (!history.error) historyByEnrollment.set(enrollmentId, new Set((history.data ?? []).map((row) => row.source_id)));
         for (const row of history.data ?? []) {
           if (row.requirement_unit_number != null) {
             requirementBySession[row.source_id] = { ordinal: row.requirement_unit_number, dueOn: row.requirement_due_on };
           }
         }
-        for (const row of next.data ?? []) {
+        // Programme modules only: coach-pool practice (is_practice) earns no unit.
+        for (const row of (next.data ?? []).filter((r) => !r.is_practice)) {
           nextSessions.push({ enrollmentId, module: row.module, nextSessionAt: row.next_session_at });
         }
       } catch (error) {
@@ -364,7 +385,14 @@ async function fetchSessionsData(userId: string, role: AppRole): Promise<{ rows:
     );
   }
 
-  const rowsWithContext = attachEnrollmentContext(allRows, enrollmentContexts).map((row) => {
+  // The list of the viewer's own (learner-side) sessions is learner_session_history's:
+  // a row attributed to one of their enrollments appears only if that
+  // enrollment's history holds it. Sessions the viewer delivers (Coach,
+  // Mentor) carry no viewer enrollment and are listed as before. If a history
+  // read failed, that enrollment's rows still render rather than vanish.
+  const listedRows = listedByHistory(allRows, historyByEnrollment);
+
+  const rowsWithContext = attachEnrollmentContext(listedRows, enrollmentContexts).map((row) => {
     const req = row.kind === "triad" ? undefined : requirementBySession[row.id];
     return {
       ...row,

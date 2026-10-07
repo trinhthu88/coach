@@ -8,8 +8,10 @@ export interface CoacheeRow {
   email: string;
   status: Status;
   created_at: string;
-  booked: number;
-  done: number;
+  /** Coaching units of the learner's current enrollment (canonical); null without one. */
+  coaching_units: CanonicalModuleUnits | null;
+  /** Coaching units booked (live sessions holding a requirement), canonical; null without one. */
+  coaching_booked_units: number | null;
 }
 
 export interface CoachOpt {
@@ -25,6 +27,7 @@ export interface CoachListRow {
   status: Status;
   created_at: string;
   approval_status: string;
+  /** Held Coaching sessions this Coach delivered (admin_coach_delivery_summary). */
   sessions_completed: number;
   coachees_count: number;
   rating_avg: number | null;

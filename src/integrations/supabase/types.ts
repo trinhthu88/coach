@@ -4923,6 +4923,7 @@ export type Database = {
           subject_name: string
         }[]
       }
+      admin_analytics_summary: { Args: never; Returns: Json }
       admin_assert_cohort_schedule: {
         Args: { p_cohort_id: string }
         Returns: undefined
@@ -5042,6 +5043,14 @@ export type Database = {
         }[]
       }
       admin_close_peer_dyad: { Args: { p_dyad_id: string }; Returns: undefined }
+      admin_coach_delivery_summary: {
+        Args: never
+        Returns: {
+          coach_id: string
+          delivered_sessions: number
+          learners_served: number
+        }[]
+      }
       admin_cohort_assessors: {
         Args: { p_cohort_id: string }
         Returns: {
@@ -5195,6 +5204,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      admin_dashboard_summary: { Args: { p_as_of?: string }; Returns: Json }
       admin_enrollment_actions: {
         Args: { p_enrollment_id: string }
         Returns: {
@@ -5488,6 +5498,26 @@ export type Database = {
           organization_id: string
           organization_name: string
           total_leaders: number
+        }[]
+      }
+      admin_programme_training_engagement: {
+        Args: { p_programme_id: string }
+        Returns: {
+          completed_count: number
+          enrolled_count: number
+          is_total: boolean
+          prompt_pct: number
+          prompt_responded_count: number
+          quiz_avg_score: number
+          quiz_completed_count: number
+          quiz_pct: number
+          reflection_completed_count: number
+          reflection_pct: number
+          skill_card_completed_count: number
+          skill_card_pct: number
+          title: string
+          training_week_id: string
+          week_number: number
         }[]
       }
       admin_programme_triad_reflection_rate: {
@@ -6486,6 +6516,32 @@ export type Database = {
           required_units: number
         }[]
       }
+      coach_client_summary: {
+        Args: never
+        Returns: {
+          action_items_done: number
+          action_items_total: number
+          avatar_url: string
+          cancelled_sessions: number
+          client_id: string
+          completed_sessions: number
+          completion_pct: number
+          email: string
+          enrollment_id: string
+          first_session_at: string
+          full_name: string
+          goals: Json
+          last_session_at: string
+          milestones_done: number
+          milestones_total: number
+          next_session_at: string
+          overdue_actions: number
+          pace_status: string
+          progress_available: boolean
+          total_sessions: number
+          upcoming_sessions: number
+        }[]
+      }
       coach_coaching_requirement_fulfilment: {
         Args: { p_enrollment_id: string }
         Returns: {
@@ -6509,6 +6565,24 @@ export type Database = {
       coach_has_client: {
         Args: { _coach_id: string; _coachee_id: string }
         Returns: boolean
+      }
+      coach_next_session_by_module: {
+        Args: never
+        Returns: {
+          delivered_count: number
+          enrollment_id: string
+          is_practice: boolean
+          learner_count: number
+          learner_name: string
+          module: Database["public"]["Enums"]["programme_module_type"]
+          pending_count: number
+          source_id: string
+          source_table: string
+          start_time: string
+          status: string
+          title: string
+          upcoming_count: number
+        }[]
       }
       coach_refer_client: {
         Args: {
@@ -7332,9 +7406,17 @@ export type Database = {
       learner_next_session_by_module: {
         Args: { p_enrollment_id: string }
         Returns: {
+          counterpart_names: string[]
+          is_practice: boolean
           module: Database["public"]["Enums"]["programme_module_type"]
           next_session_at: string
+          prep_file_submitted: boolean
           session_key: string
+          source_id: string
+          source_table: string
+          status: string
+          title: string
+          upcoming_count: number
         }[]
       }
       learner_reflection_feed: {
@@ -7448,6 +7530,14 @@ export type Database = {
           p_training_week_id?: string
         }
         Returns: boolean
+      }
+      learner_training_summary: {
+        Args: { p_enrollment_id: string }
+        Returns: {
+          quiz_avg: number
+          quiz_scores: Json
+          reflection_streak: number
+        }[]
       }
       learner_training_week_items: {
         Args: { p_as_of?: string; p_enrollment_id: string }

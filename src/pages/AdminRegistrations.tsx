@@ -119,8 +119,8 @@ export default function AdminRegistrations() {
       [t("registrations.export.email")]: c.email,
       [t("registrations.export.registered")]: format(new Date(c.created_at), "yyyy-MM-dd"),
       [t("registrations.export.status")]: t(`registrations.statusLabels.${c.status}`),
-      [t("registrations.export.bookedSessions")]: c.booked,
-      [t("registrations.export.sessionsDone")]: c.done,
+      [t("registrations.export.bookedSessions")]: c.coaching_booked_units ?? "",
+      [t("registrations.export.sessionsDone")]: c.coaching_units ? formatModuleUnits(c.coaching_units) : "",
     }));
     const ws = XLSX.utils.json_to_sheet(data);
     const wb = XLSX.utils.book_new();
@@ -222,8 +222,9 @@ export default function AdminRegistrations() {
                       <td className="px-4 py-3">
                         <Badge variant={STATUS_TONE[c.status]}>{t(`registrations.statusLabels.${c.status}`)}</Badge>
                       </td>
-                      <td className="px-4 py-3 text-right">{c.booked}</td>
-                      <td className="px-4 py-3 text-right">{c.done}</td>
+                      {/* Canonical Coaching units of the current enrollment, never raw session rows. */}
+                      <td className="px-4 py-3 text-right">{c.coaching_booked_units ?? "—"}</td>
+                      <td className="px-4 py-3 text-right font-mono">{formatModuleUnits(c.coaching_units)}</td>
                       <td className="px-4 py-3">
                         <div className="flex justify-end gap-1.5">
                           {/* One editing surface: the person's enrollment-first admin record. */}

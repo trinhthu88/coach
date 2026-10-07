@@ -778,7 +778,8 @@
       "flaggedLabel": "Đã gắn cờ",
       "flagged": "Đã tạo cảnh báo",
       "alreadyFlagged": "Đã gắn cờ và chưa xử lý"
-    }
+    },
+    "practiceSessions": "Thực hành Peer"
   },
   "sessions": {
     "sessionUpdated": "Đã cập nhật session",
@@ -977,8 +978,8 @@
       "email": "Email",
       "registered": "Đã đăng ký",
       "status": "Trạng thái",
-      "bookedSessions": "Session đã đặt",
-      "sessionsDone": "Session đã xong",
+      "bookedSessions": "Đơn vị Coaching đã đặt",
+      "sessionsDone": "Đơn vị Coaching hoàn thành",
       "monthlyLimit": "Giới hạn hàng tháng",
       "coacheesSheetName": "Học viên",
       "exportButton": "Xuất"

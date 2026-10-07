@@ -521,6 +521,18 @@ and Sponsor wrappers, the Sponsor cohort and organisation rollups) carries
 `required_units` / `completed_units` and the Sponsor module cards to the total
 (decision 9). The Sponsor PDF reports "Programme units completed X / Y".
 
+## Numbers computed in SQL, rendered by the app (`20261007001100`, Prompt 15)
+
+| Number | One construction | Rendered by |
+|---|---|---|
+| Held sessions and hours (Admin) | `reported_held_sessions_internal` over `reporting_enrollments()`: Coaching and Mentoring held, Peer in canonical units (`canonical_peer_requirement_fulfilment`), coach-pool practice apart | `admin_dashboard_summary` (this month, 8 months, upcoming sessions without a link), `admin_analytics_summary` (totals, minutes, at risk = `sponsor_needs_attention`, satisfaction, Coaches, practice and competency feedback), `admin_coach_delivery_summary` (Registrations) |
+| Training engagement per week | `canonical_training_week_fulfilment` of the programme's ongoing reported enrollments | `admin_programme_training_engagement` (Admin Analytics; its total row in the weekly admin email) |
+| A Coach's clients | `coach_client_summary`: current enrollment chosen on the server, canonical progress, sessions with this Coach, the next one, actions overdue as of `programme_today()` | `useCoachClients`, `useClientDetail`, `ClientDetailDialog` |
+| The next session | `canonical_next_session_by_module(enrollment)` over `canonical_session_history` (live, still ahead; practice apart) | `learner_next_session_by_module` (Coaching, Mentoring, Peer, Triads cards, Sessions hub), `coach_next_session_by_module` (the Coach's Give cards) |
+| Goal progress; quiz average and prompt streak | `learner_canonical_goal_progress`; `learner_training_summary` (programme time) | MyGoalCard, GoalAccordion; `useProgrammeProgress`, `ProgrammeTimeline` (with `learner_training_week_items`) |
+
+The Sessions hub lists a viewer's own sessions as their enrollments' `learner_session_history` holds them. Admin Dashboard's attention panel reads `admin_alerts_current()`. `src/test/browserFactReads.test.ts` fails on a raw read of `sessions`, `peer_sessions`, `mentoring_sessions`, `assignment_submissions` or `training_progress` in Admin, Coach, dashboard or Sponsor code unless allow-listed with a reason (rows shown or acted on, never counted).
+
 ## Demo data
 As of 2026-09-23 there is no demo dataset. `supabase/seed-demo.sql` only ensures the Admin (`trang.tt@erickson.vn`) exists; an existing account is left untouched. The previous dataset (Organisations A/B, sponsors, coaches, the Cohort A–D learners such as Linh Nguyen and Ana Silva, and the Training content in `scripts/seed-training-content.sql`) was removed: it dated everything relative to the day it ran, so databases seeded on different days disagreed, and several learners contradicted the fulfilment rules of `20260930100000`. It remains in git history (up to commit `4ae79b0`).
 

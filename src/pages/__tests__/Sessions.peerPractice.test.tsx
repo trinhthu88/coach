@@ -45,7 +45,12 @@ vi.mock("@/integrations/supabase/client", () => ({
     rpc: async (name: string) => ({
       data:
         name === "learner_session_history"
-          ? [{ source_id: "dyad1", requirement_unit_number: 1, requirement_due_on: "2026-11-20" }]
+          ? [
+              // The enrollment's history holds both: the dyad session (Peer 1)
+              // and the practice session, which holds no requirement.
+              { source_id: "dyad1", requirement_unit_number: 1, requirement_due_on: "2026-11-20" },
+              { source_id: "practice1", requirement_unit_number: null, requirement_due_on: null },
+            ]
           : name === "learner_next_session_by_module"
             ? [{ module: "peer_coaching", next_session_at: "2026-11-10T03:00:00Z", session_key: "k" }]
             : null,

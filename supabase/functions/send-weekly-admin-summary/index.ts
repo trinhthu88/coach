@@ -19,10 +19,6 @@ import { WeeklyAdminSummaryEmail, type ProgrammeStatRow } from "../_shared/email
 const SITE_URL = "https://clariva.club";
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-function ratio(numerator: number, denominator: number): number | null {
-  return denominator > 0 ? (numerator / denominator) * 100 : null;
-}
-
 Deno.serve(async (req) => {
   const corsHeaders = buildCorsHeaders(req, {
     "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-cron-secret",
@@ -67,51 +63,20 @@ Deno.serve(async (req) => {
     const programmeStats: ProgrammeStatRow[] = [];
 
     for (const programme of programmes || []) {
-      const enrolledIds = [
-        ...new Set(reported.filter((r) => r.programme_id === programme.id && r.status === "active").map((r) => r.user_id)),
-      ];
-      if (enrolledIds.length === 0) continue;
-
-      const { data: weeks } = await admin.from("training_weeks").select("id").eq("programme_id", programme.id);
-      const weekIds = (weeks || []).map((w) => w.id as string);
-
-      let quizCompletionPct: number | null = null;
-      let reflectionCompletionPct: number | null = null;
-      if (weekIds.length > 0) {
-        const { data: assignments } = await admin
-          .from("assignments")
-          .select("id, assignment_type")
-          .eq("is_visible", true)
-          .eq("assignment_type", "quiz")
-          .in("training_week_id", weekIds);
-        const quizAssignmentIds = (assignments || []).map((a) => a.id as string);
-
-        if (quizAssignmentIds.length > 0) {
-          const { count } = await admin
-            .from("assignment_submissions")
-            .select("id", { count: "exact", head: true })
-            .in("assignment_id", quizAssignmentIds)
-            .in("user_id", enrolledIds);
-          quizCompletionPct = ratio(count || 0, quizAssignmentIds.length * enrolledIds.length);
-        }
-
-        // Reflections moved to programme_reflections/reflection_submissions —
-        // no longer an assignment_type.
-        const { data: reflections } = await admin
-          .from("programme_reflections")
-          .select("id")
-          .eq("programme_id", programme.id)
-          .eq("is_visible", true);
-        const reflectionIds = (reflections || []).map((r) => r.id as string);
-        if (reflectionIds.length > 0) {
-          const { count } = await admin
-            .from("reflection_submissions")
-            .select("id", { count: "exact", head: true })
-            .in("reflection_id", reflectionIds)
-            .in("user_id", enrolledIds);
-          reflectionCompletionPct = ratio(count || 0, reflectionIds.length * enrolledIds.length);
-        }
-      }
+      // Training engagement is THE calculation Admin Analytics renders
+      // (admin_programme_training_engagement over canonical_training_week_fulfilment,
+      // 20261007001100): its total row, over the programme's ongoing reported learners.
+      const { data: engagement, error: engagementError } = await admin.rpc("admin_programme_training_engagement", {
+        p_programme_id: programme.id,
+      });
+      if (engagementError) throw engagementError;
+      const total = ((engagement || []) as {
+        is_total: boolean; enrolled_count: number; quiz_pct: number | null; reflection_pct: number | null; prompt_pct: number | null;
+      }[]).find((r) => r.is_total);
+      if (!total || total.enrolled_count === 0) continue;
+      const quizCompletionPct = total.quiz_pct;
+      const reflectionCompletionPct = total.reflection_pct;
+      const promptResponseRatePct = total.prompt_pct;
 
       // Triad reflection rate — THE canonical calculation
       // (triad_reflection_rate_internal, also read by Admin Analytics) for
@@ -124,33 +89,9 @@ Deno.serve(async (req) => {
       const triadTotal = ((triadRate || []) as { is_total: boolean; rate_pct: number | null }[]).find((r) => r.is_total);
       const triadReflectionPct: number | null = triadTotal?.rate_pct ?? null;
 
-      let promptResponseRatePct: number | null = null;
-      if (weekIds.length > 0) {
-        const { data: prompts } = await admin.from("daily_prompts").select("id").in("training_week_id", weekIds);
-        const promptIds = (prompts || []).map((p) => p.id as string);
-        if (promptIds.length > 0) {
-          const [{ count: opened }, { count: responded }] = await Promise.all([
-            admin
-              .from("daily_prompt_responses")
-              .select("id", { count: "exact", head: true })
-              .in("daily_prompt_id", promptIds)
-              .in("user_id", enrolledIds)
-              .gte("created_at", weekAgoISO),
-            admin
-              .from("daily_prompt_responses")
-              .select("id", { count: "exact", head: true })
-              .in("daily_prompt_id", promptIds)
-              .in("user_id", enrolledIds)
-              .not("responded_at", "is", null)
-              .gte("created_at", weekAgoISO),
-          ]);
-          promptResponseRatePct = ratio(responded || 0, opened || 0);
-        }
-      }
-
       programmeStats.push({
         programmeName: programme.name as string,
-        enrolledCount: enrolledIds.length,
+        enrolledCount: total.enrolled_count,
         quizCompletionPct,
         reflectionCompletionPct,
         triadReflectionPct,

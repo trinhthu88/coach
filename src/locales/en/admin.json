@@ -719,7 +719,7 @@
     "titleEmphasis": "analytics",
     "subtitle": "Performance, satisfaction and competency insights.",
     "coachingSessions": "Coaching sessions",
-    "peerSessions": "Peer sessions",
+    "peerSessions": "Peer units",
     "totalHours": "Total hours",
     "avgRating": "Avg rating",
     "tabs": {
@@ -785,7 +785,8 @@
       "flaggedLabel": "Flagged",
       "flagged": "Alert created",
       "alreadyFlagged": "Already flagged and unresolved"
-    }
+    },
+    "practiceSessions": "Peer practice"
   },
   "sessions": {
     "sessionUpdated": "Session updated",
@@ -987,8 +988,8 @@
       "email": "Email",
       "registered": "Registered",
       "status": "Status",
-      "bookedSessions": "Booked sessions",
-      "sessionsDone": "Sessions done",
+      "bookedSessions": "Coaching units booked",
+      "sessionsDone": "Coaching units completed",
       "monthlyLimit": "Monthly limit",
       "coacheesSheetName": "Coachees",
       "exportButton": "Export"

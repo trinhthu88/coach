@@ -335,7 +335,8 @@ WITH repo(version, name) AS (VALUES
   ('20261007000700', 'session_write_gaps'),
   ('20261007000800', 'missing_decisions'),
   ('20261007000900', 'leftovers'),
-  ('20261007001000', 'followups')
+  ('20261007001000', 'followups'),
+  ('20261007001100', 'browser_numbers')
 -- END REPO MANIFEST
 ),
 

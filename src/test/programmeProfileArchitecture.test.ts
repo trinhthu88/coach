@@ -280,8 +280,12 @@ describe("programme profile architecture", () => {
   });
 
   it("every Coach '% complete' is the canonical number — never a milestone, session or position ratio", () => {
-    expect(read("hooks/coach/useCoachClients.ts")).toMatch(/rpc\("coach_canonical_enrollment_progress"/);
+    // One server summary per client (coach_client_summary, 20261007001100):
+    // the canonical engine's numbers, rendered.
+    expect(read("hooks/coach/useCoachClients.ts")).toMatch(/rpc\("coach_client_summary"\)/);
     expect(read("hooks/coach/useCoachClients.ts")).toMatch(/canonicalCompletionPct\(/);
+    expect(readFileSync(join(process.cwd(), "supabase/migrations/20261007001100_browser_numbers.sql"), "utf8"))
+      .toMatch(/FUNCTION public\.coach_client_summary\(\)[\s\S]*canonical_enrollment_progress\(cu\.enrollment_id/);
     // Status is the canonical pace_status too -- no coach-side heuristic.
     const coachClients = read("hooks/coach/useCoachClients.ts");
     expect(coachClients).toMatch(/pace_status/);
