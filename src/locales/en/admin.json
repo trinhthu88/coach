@@ -791,6 +791,8 @@
   "sessions": {
     "sessionUpdated": "Session updated",
     "saveFailed": "Save failed",
+    "calendarConflict": "The coach's Google Calendar is busy at the chosen time. The session was not confirmed.",
+    "calendarSyncFailed": "Session details were saved, but Google Calendar could not be updated.",
     "eyebrow": "Admin",
     "titleAll": "All",
     "titleEmphasis": "sessions",

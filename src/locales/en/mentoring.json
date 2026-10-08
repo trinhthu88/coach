@@ -45,6 +45,7 @@
       "time": "Select time ({{timezone}})"
     },
     "pickDatePrompt": "Pick a date above to see times.",
+    "checkingCalendar": "Checking the mentor's calendar…",
     "noWindowAvailable": "No {{duration}}-minute window available on this day.",
     "slotAriaLabel": "Book {{date}} at {{time}}",
     "topicLabel": "What would you like to focus on?",
@@ -56,6 +57,8 @@
     "toast": {
       "slotTaken": "That time was just booked by someone else. Please pick another slot.",
       "notEligible": "You're not able to book this mentor right now — your access may have changed. Please refresh and try again.",
+      "calendarCheckFailed": "We couldn't check the mentor's calendar. Please retry before booking.",
+      "calendarConflict": "That time is no longer available. Please choose another slot.",
       "success": "Mentoring session requested. Awaiting mentor confirmation."
     }
   },
@@ -80,6 +83,9 @@
     "joinLockedPrepFile": "Join opens once the preparation file is submitted",
     "confirmSession": "Confirm session",
     "sessionConfirmed": "Session confirmed. Zoom meeting is ready.",
+    "calendarConflict": "The mentor's Google Calendar is busy at this time. The session was not confirmed.",
+    "calendarSyncFailed": "The session was confirmed, but its Google Calendar event could not be added.",
+    "calendarRemovalFailed": "The session was cancelled, but its Google Calendar event may still be there.",
     "markComplete": "Mark complete",
     "markedComplete": "Marked complete",
     "prepFileRequiredToComplete": "Upload a preparation file before marking this session complete.",

@@ -35,6 +35,7 @@ import {
 import { cn } from "@/lib/utils";
 import { PageHeader } from "@/components/ui/page-header";
 import { getFriendlyErrorMessage } from "@/lib/errors";
+import { CoachGoogleCalendarCard } from "@/components/CoachGoogleCalendarCard";
 
 type SlotType = "coaching" | "peer" | "mentoring";
 
@@ -222,6 +223,8 @@ export default function CoachAvailability() {
       />
 
       <BulkAvailabilityDialog open={bulkOpen} onOpenChange={setBulkOpen} onCreated={load} />
+
+      <CoachGoogleCalendarCard />
 
       {/* Peer coaching opt-in */}
       <Card className="flex flex-wrap items-center justify-between gap-4 p-5">

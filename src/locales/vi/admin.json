@@ -784,6 +784,8 @@
   "sessions": {
     "sessionUpdated": "Đã cập nhật session",
     "saveFailed": "Lưu không thành công",
+    "calendarConflict": "Lịch Google Calendar của coach đang bận vào thời gian đã chọn. Session chưa được xác nhận.",
+    "calendarSyncFailed": "Đã lưu session nhưng không thể cập nhật Google Calendar.",
     "eyebrow": "Quản trị",
     "titleAll": "Tất cả",
     "titleEmphasis": "session",

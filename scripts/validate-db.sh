@@ -142,6 +142,16 @@ for migration_version in \
 done
 printf 'Migration replay verified: %s/%s repository migrations applied\n' \
   "$applied_migrations" "$expected_migrations"
+# Publish the schema-derived type artifact immediately after the clean replay.
+# Later SQL test failures must not replace it with a test log or hide it.
+if [[ "${GITHUB_ACTIONS:-}" == true ]]; then
+  printf '%s\n' '==> Capturing generated database types before database tests'
+  if ! supabase_cli gen types typescript --local --schema public > "$types_output" 2>"$types_check_output"; then
+    show_output "$types_check_output"
+    exit 1
+  fi
+  cp "$types_output" "${RUNNER_TEMP}/clariva-generated-types.ts"
+fi
 if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
   {
     printf 'migration_count=%s\n' "$applied_migrations"
@@ -221,7 +231,6 @@ if ! supabase_cli test db --local supabase/tests >"$database_test_output" 2>&1; 
       failure_line="${failure_line//$'\n'/'%0A'}"
       printf '::error title=Database validation::%s\n' "$failure_line"
     done < <(grep -E '(^| )(not ok|ERROR|Error|error|failed|Failed|have:|want:)( |:|$)' "$database_test_output" | head -150 || true)
-    cp "$database_test_output" "${RUNNER_TEMP}/clariva-generated-types.ts"
   fi
   exit 1
 fi

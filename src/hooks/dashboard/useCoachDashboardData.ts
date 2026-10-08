@@ -109,13 +109,21 @@ export function useCoachDashboardData(userId: string): UseCoachDashboardDataResu
 
   const approveMutation = useMutation({
     mutationFn: async (s: CoachSession) => {
-      const { error } = await supabase.functions.invoke("confirm-session", {
+      const { data, error } = await supabase.functions.invoke("confirm-session", {
         body: { session_id: s.id, is_peer: false },
       });
       if (error) throw error;
+      return data as { calendar_conflict?: boolean; calendar_sync?: string } | null;
     },
-    onSuccess: () => {
-      toast.success(t("coach.bookingRequests.toast.confirmed"));
+    onSuccess: (result) => {
+      if (result?.calendar_conflict) {
+        toast.error(t("coach.bookingRequests.toast.calendarConflict"));
+      } else {
+        toast.success(t("coach.bookingRequests.toast.confirmed"));
+        if (result?.calendar_sync === "failed") {
+          toast.warning(t("coach.bookingRequests.toast.calendarSyncFailed"));
+        }
+      }
       queryClient.invalidateQueries({ queryKey });
     },
     onError: (error) => toast.error(getFriendlyErrorMessage(error, t)),
@@ -123,13 +131,17 @@ export function useCoachDashboardData(userId: string): UseCoachDashboardDataResu
 
   const declineMutation = useMutation({
     mutationFn: async (s: CoachSession) => {
-      const { error } = await supabase.functions.invoke("cancel-session", {
+      const { data, error } = await supabase.functions.invoke("cancel-session", {
         body: { session_id: s.id, is_peer: false },
       });
       if (error) throw error;
+      return data as { calendar_sync?: string } | null;
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
       toast.success(t("coach.bookingRequests.toast.declined"));
+      if (result?.calendar_sync === "failed") {
+        toast.warning(t("coach.bookingRequests.toast.calendarRemovalFailed"));
+      }
       queryClient.invalidateQueries({ queryKey });
     },
     onError: (error) => toast.error(getFriendlyErrorMessage(error, t)),

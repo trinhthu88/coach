@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { slotInstant, slotTodayKey } from "../slotTime";
+import { slotDayBounds, slotInstant, slotTodayKey } from "../slotTime";
 
 /**
  * One "today" (decision 2): the programme runs in Asia/Ho_Chi_Minh whatever
@@ -15,5 +15,12 @@ describe("slot time is Vietnam time", () => {
     expect(slotTodayKey(new Date("2026-10-14T23:30:00Z"))).toBe("2026-10-15");
     expect(slotTodayKey(new Date("2026-10-14T16:59:00Z"))).toBe("2026-10-14");
     expect(slotTodayKey(new Date("2026-10-14T17:00:00Z"))).toBe("2026-10-15");
+  });
+
+  it("returns the UTC bounds of a Vietnam calendar day", () => {
+    expect(slotDayBounds("2026-10-15")).toEqual({
+      start: "2026-10-14T17:00:00.000Z",
+      end: "2026-10-15T17:00:00.000Z",
+    });
   });
 });

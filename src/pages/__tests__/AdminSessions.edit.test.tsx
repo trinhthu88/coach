@@ -2,8 +2,8 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 
-// The Admin edit dialog changes a session only through lifecycle RPCs
-// (20261005110000_admin_session_edits): never a table write.
+// The Admin edit dialog changes a session through the Admin-checked lifecycle
+// endpoint (which calls the audited lifecycle RPC), never a table write.
 const sessionRow = {
   id: "sess1",
   topic: "Leadership focus",
@@ -73,13 +73,19 @@ describe("Admin session edit dialog", () => {
       { target: { value: "Coach asked to retitle" } });
     fireEvent.click(screen.getByRole("button", { name: i18n.t("admin:sessions.save") }));
 
-    await waitFor(() => expect(rpc).toHaveBeenCalledWith("admin_reschedule_session", expect.objectContaining({
-      p_kind: "coaching",
-      p_session_id: "sess1",
-      p_topic: "Leadership, part two",
-      p_reason: "Coach asked to retitle",
-      p_duration_minutes: 60,
-    })));
+    await waitFor(() => expect(invoke).toHaveBeenCalledWith("admin-session-edit", {
+      body: {
+        function_name: "admin_reschedule_session",
+        args: expect.objectContaining({
+          p_kind: "coaching",
+          p_session_id: "sess1",
+          p_topic: "Leadership, part two",
+          p_reason: "Coach asked to retitle",
+          p_duration_minutes: 60,
+        }),
+      },
+    }));
+    expect(rpc).not.toHaveBeenCalled();
     expect(update).not.toHaveBeenCalled();
   });
 
@@ -90,7 +96,8 @@ describe("Admin session edit dialog", () => {
     await waitFor(() => expect(toast).toHaveBeenCalledWith(expect.objectContaining({
       description: i18n.t("admin:sessions.errors.reasonRequired"),
     })));
-    expect(rpc).not.toHaveBeenCalledWith("admin_reschedule_session", expect.anything());
+    expect(invoke).not.toHaveBeenCalledWith("admin-session-edit", expect.anything());
+    expect(rpc).not.toHaveBeenCalled();
     expect(update).not.toHaveBeenCalled();
   });
 

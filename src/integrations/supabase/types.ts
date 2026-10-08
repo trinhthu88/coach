@@ -2409,6 +2409,63 @@ export type Database = {
           },
         ]
       }
+      google_calendar_connections: {
+        Row: {
+          coach_id: string
+          connected_at: string
+          consecutive_error_count: number
+          google_email: string
+          needs_reconnect: boolean
+          refresh_token_ciphertext: string
+          updated_at: string
+        }
+        Insert: {
+          coach_id: string
+          connected_at?: string
+          consecutive_error_count?: number
+          google_email: string
+          needs_reconnect?: boolean
+          refresh_token_ciphertext: string
+          updated_at?: string
+        }
+        Update: {
+          coach_id?: string
+          connected_at?: string
+          consecutive_error_count?: number
+          google_email?: string
+          needs_reconnect?: boolean
+          refresh_token_ciphertext?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      google_calendar_oauth_states: {
+        Row: {
+          coach_id: string
+          code_verifier: string | null
+          created_at: string
+          expires_at: string
+          return_origin: string
+          state_hash: string
+        }
+        Insert: {
+          coach_id: string
+          code_verifier?: string | null
+          created_at?: string
+          expires_at: string
+          return_origin: string
+          state_hash: string
+        }
+        Update: {
+          coach_id?: string
+          code_verifier?: string | null
+          created_at?: string
+          expires_at?: string
+          return_origin?: string
+          state_hash?: string
+        }
+        Relationships: []
+      }
       mentor_profiles: {
         Row: {
           bio: string | null
@@ -7867,6 +7924,13 @@ export type Database = {
           isOneToOne: false
           isSetofReturn: true
         }
+      }
+      record_google_calendar_failure: {
+        Args: { p_coach_id: string }
+        Returns: {
+          consecutive_error_count: number
+          needs_reconnect: boolean
+        }[]
       }
       reported_held_sessions_internal: {
         Args: never

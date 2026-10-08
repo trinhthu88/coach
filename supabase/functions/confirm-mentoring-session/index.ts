@@ -4,6 +4,8 @@ import { renderAsync } from "npm:@react-email/components@0.0.22";
 import { buildCorsHeaders } from "../_shared/cors.ts";
 import { sendEmail } from "../_shared/send-email.ts";
 import { SessionConfirmedEmail } from "../_shared/email-templates/session-confirmed.tsx";
+import { getGoogleBusyIntervals, syncGoogleCalendarEvent } from "../_shared/googleCalendar.ts";
+import { tryGoogleCalendarCheck } from "../_shared/googleCalendarPolicy.ts";
 
 // Mirrors supabase/functions/confirm-session/index.ts exactly, but hardcoded
 // to mentoring_sessions/mentor_id/mentee_id — no is_peer-style branching
@@ -148,10 +150,63 @@ Deno.serve(async (req) => {
     }
 
     if (row.status === "confirmed" && row.meeting_url) {
+      let calendarSync: "not_connected" | "synced" | "failed" = "not_connected";
+      try {
+        const result = await syncGoogleCalendarEvent(admin, {
+          coachId: row.mentor_id,
+          source: "mentoring",
+          sessionId: session_id,
+          topic: row.topic,
+          startTime: row.start_time,
+          durationMinutes: row.duration_minutes || 45,
+          meetingUrl: row.meeting_url,
+        });
+        if (result.connected && result.synced) calendarSync = "synced";
+      } catch (error) {
+        calendarSync = "failed";
+        console.error("Confirmed mentoring session Google Calendar sync failed", error instanceof Error ? error.message : "unknown error");
+      }
       return new Response(
-        JSON.stringify({ ok: true, meeting_url: row.meeting_url, already_confirmed: true }),
+        JSON.stringify({
+          ok: true,
+          meeting_url: row.meeting_url,
+          already_confirmed: true,
+          calendar_sync: calendarSync,
+        }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
+    }
+
+    const calendarWindowStart = new Date(row.start_time);
+    const sessionEnd = new Date(
+      calendarWindowStart.getTime() + (Number(row.duration_minutes) || 45) * 60_000,
+    );
+    // Calendar availability is advisory. Do not let an API/token outage stop
+    // a confirmation, and let an Admin override a real Google busy interval.
+    const calendarAvailability = isAdmin
+      ? null
+      : await tryGoogleCalendarCheck(
+          () => getGoogleBusyIntervals(
+            admin,
+            row.mentor_id,
+            calendarWindowStart.toISOString(),
+            sessionEnd.toISOString(),
+          ),
+          (error) => console.error(
+            "Could not check Google Calendar before mentoring confirmation",
+            error instanceof Error ? error.message : "unknown error",
+          ),
+        );
+    if (
+      calendarAvailability?.connected &&
+      calendarAvailability.busy.some((interval) =>
+        new Date(interval.start).getTime() < sessionEnd.getTime() &&
+        new Date(interval.end).getTime() > calendarWindowStart.getTime()
+      )
+    ) {
+      return new Response(JSON.stringify({ ok: false, calendar_conflict: true }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     let meetingUrl = row.meeting_url as string | null;
@@ -194,6 +249,23 @@ Deno.serve(async (req) => {
       p_meeting_url: meetingUrl,
     });
     if (linkErr) throw linkErr;
+
+    let calendarSync: "not_connected" | "synced" | "failed" = "not_connected";
+    try {
+      const result = await syncGoogleCalendarEvent(admin, {
+        coachId: row.mentor_id,
+        source: "mentoring",
+        sessionId: session_id,
+        topic: row.topic,
+        startTime: row.start_time,
+        durationMinutes: row.duration_minutes || 45,
+        meetingUrl,
+      });
+      if (result.connected && result.synced) calendarSync = "synced";
+    } catch (error) {
+      calendarSync = "failed";
+      console.error("Confirmed mentoring session Google Calendar sync failed", error instanceof Error ? error.message : "unknown error");
+    }
 
     // The slot is reserved by sync_mentoring_slot_reservation() from the moment
     // the request was created, so there is nothing to mark booked here.
@@ -242,7 +314,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    return new Response(JSON.stringify({ ok: true, meeting_url: meetingUrl }), {
+    return new Response(JSON.stringify({ ok: true, meeting_url: meetingUrl, calendar_sync: calendarSync }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {

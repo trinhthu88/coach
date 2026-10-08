@@ -48,6 +48,7 @@
       "time": "Select time ({{timezone}})"
     },
     "pickDatePrompt": "Pick a date above to see times.",
+    "checkingCalendar": "Checking the coach's calendar…",
     "noWindowAvailable": "No {{duration}}-minute window available on this day.",
     "slotAriaLabel": "Book {{date}} at {{time}}",
     "topicLabel": "Coaching topic",
@@ -61,7 +62,10 @@
       "notEligible": "You're not able to book this session right now — your access to this coach or your session limit may have changed. Please refresh and try again.",
       "successPeer": "Peer session requested. Awaiting peer coach confirmation.",
       "successCoaching": "Session requested. Awaiting coach confirmation.",
-      "noRequirement": "No Coaching requirement is available to book."
+      "noRequirement": "No Coaching requirement is available to book.",
+      "calendarCheckFailed": "We couldn't check the coach's Google Calendar. You can still book, but confirm the time with the coach.",
+      "calendarConflict": "That time is no longer available. Please choose another slot.",
+      "calendarRemovalFailed": "The old session may still appear in the coach's Google Calendar."
     },
     "requirement": {
       "label": "Coaching Session {{ordinal}}",
@@ -179,6 +183,9 @@
       "actionItemsSaved": "Action items saved",
       "meetingLinkSaved": "Meeting link saved",
       "sessionConfirmed": "Session confirmed. Zoom meeting is ready.",
+      "calendarConflict": "The coach's Google Calendar is busy at this time. The session was not confirmed.",
+      "calendarSyncFailed": "The session was confirmed, but its Google Calendar event could not be added.",
+      "calendarRemovalFailed": "The session was cancelled, but its Google Calendar event may still be there.",
       "sessionCancelled": "Session cancelled",
       "markedComplete": "Marked complete",
       "fileTypeError": "Only PDF, JPG, MP3 or MP4 files are allowed",

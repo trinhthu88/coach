@@ -89,12 +89,17 @@ export function useMentoringSessionCore({ sessionId }: UseMentoringSessionCoreOp
   const confirmSession = useCallback(async () => {
     if (!session) return { error: null };
     setSaving(true);
-    const { error } = await supabase.functions.invoke("confirm-mentoring-session", {
+    const { data, error } = await supabase.functions.invoke("confirm-mentoring-session", {
       body: { session_id: session.id },
     });
     setSaving(false);
     if (error) return { error };
+    if (data?.calendar_conflict) {
+      toast.error(t("sessionDetail.calendarConflict"));
+      return { error: null };
+    }
     toast.success(t("sessionDetail.sessionConfirmed"));
+    if (data?.calendar_sync === "failed") toast.warning(t("sessionDetail.calendarSyncFailed"));
     load();
     return { error: null };
   }, [session, load, t]);
@@ -119,14 +124,15 @@ export function useMentoringSessionCore({ sessionId }: UseMentoringSessionCoreOp
   const cancelSession = useCallback(async (reason?: string) => {
     if (!session) return { error: null };
     setSaving(true);
-    const { error } = await supabase.rpc("transition_mentoring_session_status", {
-      p_session_id: session.id,
-      p_status: "cancelled",
-      p_reason: reason,
+    const { data, error } = await supabase.functions.invoke("cancel-session", {
+      body: { session_id: session.id, is_mentoring: true, reason },
     });
     setSaving(false);
     if (!error) {
       toast.success(t("sessionDetail.cancel.done"));
+      if (data?.calendar_sync === "failed") {
+        toast.warning(t("sessionDetail.calendarRemovalFailed"));
+      }
       load();
     }
     return { error };

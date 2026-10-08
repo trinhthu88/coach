@@ -193,7 +193,10 @@
       "decline": "Từ chối",
       "toast": {
         "confirmed": "Đã xác nhận session. Cuộc họp Zoom đã sẵn sàng.",
-        "declined": "Đã từ chối yêu cầu"
+        "declined": "Đã từ chối yêu cầu",
+        "calendarConflict": "Lịch Google Calendar của coach đang bận vào khung giờ này. Yêu cầu chưa được xác nhận.",
+        "calendarSyncFailed": "Session đã được xác nhận nhưng không thể thêm sự kiện vào Google Calendar.",
+        "calendarRemovalFailed": "Đã từ chối yêu cầu nhưng sự kiện có thể vẫn còn trong Google Calendar."
       }
     },
     "upcomingSessions": {
@@ -308,6 +311,35 @@
     }
   },
   "availability": {
+    "googleCalendar": {
+      "title": "Đồng bộ Google Calendar",
+      "description": "Kết nối lịch để ẩn khung giờ bận và thêm các session Clariva đã xác nhận.",
+      "privacy": "Clariva chỉ đọc khung giờ bận, không đọc chi tiết sự kiện. Ngắt kết nối không xóa các sự kiện đã thêm.",
+      "loading": "Đang tải trạng thái kết nối Google Calendar…",
+      "statusFailed": "Không thể tải trạng thái kết nối Google Calendar.",
+      "retry": "Thử lại",
+      "connectedStatus": "Đã kết nối",
+      "needsReconnectStatus": "Cần kết nối lại",
+      "disconnectedStatus": "Chưa kết nối",
+      "connectedAs": "Đã kết nối với {{email}}",
+      "reconnectDescription": "Quyền truy cập Google Calendar cần được gia hạn. Hãy kết nối lại để khôi phục kiểm tra lịch và đồng bộ session.",
+      "notConfigured": "Quản trị viên cần thiết lập Google Calendar trước khi coach có thể kết nối.",
+      "connect": "Kết nối Google Calendar",
+      "reconnect": "Kết nối lại Google Calendar",
+      "disconnect": "Ngắt kết nối",
+      "disconnectTitle": "Ngắt kết nối Google Calendar?",
+      "disconnectDescription": "Clariva sẽ thu hồi và xóa quyền truy cập đã lưu. Các sự kiện Clariva hiện có sẽ vẫn còn trong Google Calendar.",
+      "keepConnected": "Giữ kết nối",
+      "connectedToast": "Đã kết nối Google Calendar.",
+      "deniedToast": "Chưa cấp quyền truy cập Google Calendar.",
+      "connectFailed": "Không thể kết nối Google Calendar. Vui lòng thử lại.",
+      "disconnectedToast": "Đã ngắt kết nối Google Calendar.",
+      "disconnectFailed": "Không thể ngắt kết nối Google Calendar. Vui lòng thử lại.",
+      "sync": "Đồng bộ session sắp tới",
+      "syncDone": "Đã cập nhật Google Calendar: thêm hoặc làm mới {{synced}} session; xóa {{removed}} session đã hủy.",
+      "syncPartial": "Đồng bộ Google Calendar chưa hoàn tất: cập nhật {{synced}}, xóa {{removed}}, lỗi {{failed}}.",
+      "syncFailed": "Không thể đồng bộ session với Google Calendar. Vui lòng thử lại."
+    },
     "toast": {
       "loadFailedTitle": "Tải không thành công",
       "updateFailedTitle": "Cập nhật không thành công",

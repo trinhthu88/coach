@@ -5,6 +5,8 @@ import { buildCorsHeaders } from "../_shared/cors.ts";
 import { sendEmail } from "../_shared/send-email.ts";
 import { SessionConfirmedEmail } from "../_shared/email-templates/session-confirmed.tsx";
 import { decideTransition, httpStatusForRpcError, transitionRpc } from "../_shared/sessionTransitionRules.ts";
+import { getGoogleBusyIntervals, syncGoogleCalendarEvent } from "../_shared/googleCalendar.ts";
+import { tryGoogleCalendarCheck } from "../_shared/googleCalendarPolicy.ts";
 
 function formatWhen(startTimeISO: string, durationMinutes: number): string {
   const start = new Date(startTimeISO);
@@ -64,6 +66,30 @@ async function createZoomMeeting(opts: {
     throw new Error(`Zoom meeting creation failed: ${res.status} ${await res.text()}`);
   }
   return res.json();
+}
+
+async function syncCalendarForSession(
+  admin: ReturnType<typeof createClient>,
+  row: Record<string, unknown>,
+  coachId: string,
+  isPeer: boolean,
+  sessionId: string,
+): Promise<"not_connected" | "synced" | "failed"> {
+  try {
+    const result = await syncGoogleCalendarEvent(admin, {
+      coachId,
+      source: isPeer ? "peer" : "coaching",
+      sessionId,
+      topic: typeof row.topic === "string" ? row.topic : null,
+      startTime: String(row.start_time),
+      durationMinutes: Number(row.duration_minutes) || 45,
+      meetingUrl: typeof row.meeting_url === "string" ? row.meeting_url : null,
+    });
+    return result.connected && result.synced ? "synced" : "not_connected";
+  } catch (error) {
+    console.error("Confirmed session Google Calendar sync failed", error instanceof Error ? error.message : "unknown error");
+    return "failed";
+  }
 }
 
 Deno.serve(async (req) => {
@@ -148,10 +174,52 @@ Deno.serve(async (req) => {
       });
     }
     if (decision.kind === "already_confirmed") {
+      const calendarSync = await syncCalendarForSession(admin, row, row[coachField] as string, !!is_peer, session_id);
       return new Response(
-        JSON.stringify({ ok: true, meeting_url: row.meeting_url, already_confirmed: true }),
+        JSON.stringify({
+          ok: true,
+          meeting_url: row.meeting_url,
+          already_confirmed: true,
+          calendar_sync: calendarSync,
+        }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
+    }
+
+    // Recheck the coach's live Google busy intervals immediately before
+    // confirmation. The learner booking check is only a snapshot and may have
+    // gone stale while the request was pending.
+    const calendarWindowStart = new Date(row.start_time as string);
+    const sessionEnd = new Date(
+      calendarWindowStart.getTime() + (Number(row.duration_minutes) || 45) * 60_000,
+    );
+    // Calendar availability is advisory: a provider outage, revoked token, or
+    // invalid API response must not prevent a valid database confirmation.
+    // Admins can confirm despite a real Google busy interval as well.
+    const calendarAvailability = isAdmin
+      ? null
+      : await tryGoogleCalendarCheck(
+          () => getGoogleBusyIntervals(
+            admin,
+            row[coachField] as string,
+            calendarWindowStart.toISOString(),
+            sessionEnd.toISOString(),
+          ),
+          (error) => console.error(
+            "Could not check Google Calendar before confirmation",
+            error instanceof Error ? error.message : "unknown error",
+          ),
+        );
+    if (
+      calendarAvailability?.connected &&
+      calendarAvailability.busy.some((interval) =>
+        new Date(interval.start).getTime() < sessionEnd.getTime() &&
+        new Date(interval.end).getTime() > calendarWindowStart.getTime()
+      )
+    ) {
+      return new Response(JSON.stringify({ ok: false, calendar_conflict: true }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     let meetingUrl = row.meeting_url as string | null;
@@ -181,6 +249,15 @@ Deno.serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    const rowForCalendar = { ...row, meeting_url: meetingUrl } as Record<string, unknown>;
+    const calendarSync = await syncCalendarForSession(
+      admin,
+      rowForCalendar,
+      row[coachField] as string,
+      !!is_peer,
+      session_id,
+    );
 
     // Coaching slots are reserved the moment the learner requests them, by
     // sync_coaching_slot_reservation() on `sessions` -- not here. Re-reserving
@@ -237,7 +314,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    return new Response(JSON.stringify({ ok: true, meeting_url: meetingUrl }), {
+    return new Response(JSON.stringify({ ok: true, meeting_url: meetingUrl, calendar_sync: calendarSync }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {
