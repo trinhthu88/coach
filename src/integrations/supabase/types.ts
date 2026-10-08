@@ -800,7 +800,6 @@ export type Database = {
           nationality: string | null
           peer_coaching_opt_in: boolean
           rating_avg: number
-          sessions_completed: number
           specialties: string[] | null
           title: string | null
           updated_at: string
@@ -821,7 +820,6 @@ export type Database = {
           nationality?: string | null
           peer_coaching_opt_in?: boolean
           rating_avg?: number
-          sessions_completed?: number
           specialties?: string[] | null
           title?: string | null
           updated_at?: string
@@ -842,7 +840,6 @@ export type Database = {
           nationality?: string | null
           peer_coaching_opt_in?: boolean
           rating_avg?: number
-          sessions_completed?: number
           specialties?: string[] | null
           title?: string | null
           updated_at?: string
@@ -5268,6 +5265,14 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      admin_current_enrollments: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          user_id: string
+          enrollment_id: string
+          latest_enrollment_id: string
+        }[]
+      }
       admin_dashboard_summary: { Args: { p_as_of?: string }; Returns: Json }
       admin_enrollment_actions: {
         Args: { p_enrollment_id: string }
@@ -6671,6 +6676,13 @@ export type Database = {
           upcoming_count: number
         }[]
       }
+      coach_public_delivered_sessions: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          coach_id: string
+          delivered_sessions: number
+        }[]
+      }
       coach_refer_client: {
         Args: {
           p_email: string
@@ -7390,6 +7402,12 @@ export type Database = {
           session_id: string
         }[]
       }
+      learner_current_enrollment: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          enrollment_id: string
+        }[]
+      }
       learner_enrollment_context: {
         Args: { p_enrollment_id: string }
         Returns: {
@@ -7969,10 +7987,6 @@ export type Database = {
       }
       reschedule_coaching_session: {
         Args: { p_new_slot_id: string; p_reason?: string; p_session_id: string }
-        Returns: string
-      }
-      resolve_current_enrollment: {
-        Args: { p_user_id: string }
         Returns: string
       }
       save_enrollment_activity_actions: {

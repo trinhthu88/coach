@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Calendar, Check, Loader2, MapPin, Star } from "lucide-react";
 import { HeroPanel } from "@/components/ui/page-header";
+import { useCoachDeliveredSessions } from "@/hooks/coaches/useCoachDeliveredSessions";
 
 interface CoachDetail {
   id: string;
@@ -18,7 +19,6 @@ interface CoachDetail {
   diplomas_certifications: string[] | null;
   is_featured: boolean;
   rating_avg: number;
-  sessions_completed: number;
   profiles: {
     full_name: string;
     avatar_url: string | null;
@@ -33,6 +33,8 @@ export default function CoachDetail() {
   const { t } = useTranslation("coaches");
   const [coach, setCoach] = useState<CoachDetail | null>(null);
   const [loading, setLoading] = useState(true);
+  // Held Coaching from the server (coach_public_delivered_sessions), never a profile column.
+  const { deliveredSessions } = useCoachDeliveredSessions(coachId);
 
   useEffect(() => {
     if (!coachId) return;
@@ -126,7 +128,7 @@ export default function CoachDetail() {
               </span>
             }
           />
-          <Stat label={t("detail.stats.sessions")} value={coach.sessions_completed.toString()} />
+          <Stat label={t("detail.stats.sessions")} value={deliveredSessions == null ? "—" : String(deliveredSessions)} />
           <Stat
             label={t("detail.stats.experience")}
             value={t("detail.stats.experienceValue", { years: coach.years_experience ?? 0 })}

@@ -28,7 +28,7 @@ export interface CoachListRow {
   created_at: string;
   approval_status: string;
   /** Held Coaching sessions this Coach delivered (admin_coach_delivery_summary). */
-  sessions_completed: number;
+  delivered_sessions: number;
   coachees_count: number;
   rating_avg: number | null;
   country_based: string | null;

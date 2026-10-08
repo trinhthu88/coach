@@ -40,6 +40,7 @@ import {
 } from "@/hooks/coaching/useCanonicalCoaching";
 import { BookingGoalGate } from "@/components/goals/BookingGoalGate";
 import { useBookingGoalGate } from "@/components/goals/useBookingGoalGate";
+import { useCoachDeliveredSessions } from "@/hooks/coaches/useCoachDeliveredSessions";
 
 interface CoachDetail {
   id: string;
@@ -49,7 +50,6 @@ interface CoachDetail {
   country_based: string | null;
   nationality: string | null;
   rating_avg: number;
-  sessions_completed: number;
   diplomas_certifications: string[] | null;
   profiles: {
     full_name: string;
@@ -79,6 +79,7 @@ export default function BookSession() {
   const navigate = useNavigate();
 
   const [coach, setCoach] = useState<CoachDetail | null>(null);
+  const { deliveredSessions } = useCoachDeliveredSessions(coachId);
   const [slots, setSlots] = useState<Slot[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
@@ -177,7 +178,7 @@ export default function BookSession() {
           supabase
             .from("coach_profiles")
             .select(
-               "id, title, specialties, years_experience, country_based, nationality, rating_avg, sessions_completed, diplomas_certifications, peer_coaching_opt_in, approval_status, profiles!inner(full_name, avatar_url, bio, status)"
+               "id, title, specialties, years_experience, country_based, nationality, rating_avg, diplomas_certifications, peer_coaching_opt_in, approval_status, profiles!inner(full_name, avatar_url, bio, status)"
             )
             .eq("id", coachId)
             .eq("approval_status", "active")
@@ -537,7 +538,7 @@ export default function BookSession() {
               }
             />
             <MiniStat label={t("bookSession.coachSummary.experienceLabel")} value={t("bookSession.coachSummary.experienceValue", { years: coach.years_experience ?? 0 })} />
-            <MiniStat label={t("bookSession.coachSummary.sessionsLabel")} value={String(coach.sessions_completed)} />
+            <MiniStat label={t("bookSession.coachSummary.sessionsLabel")} value={deliveredSessions == null ? "—" : String(deliveredSessions)} />
           </div>
           {coach.country_based && (
             <p className="inline-flex items-center gap-2 text-sm text-muted-foreground">

@@ -15,9 +15,9 @@ select has_function(
 );
 select has_function(
   'public',
-  'resolve_current_enrollment',
-  array['uuid'],
-  'Admin surfaces have one deterministic current enrollment resolver'
+  'admin_current_enrollments',
+  array[]::text[],
+  'Admin surfaces read the one current-enrollment rule (enrollment_is_ongoing; resolve_current_enrollment retired in 20261008200000)'
 );
 select has_function(
   'public',

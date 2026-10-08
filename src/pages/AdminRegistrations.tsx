@@ -332,7 +332,7 @@ export default function AdminRegistrations() {
                         <span className="font-mono">{formatModuleUnits(c.peer_units)}</span>
                       </td>
                       <td className="px-4 py-3 text-right text-xs text-muted-foreground">
-                        {c.sessions_completed} · {c.coachees_count} · ★ {c.rating_avg == null ? "—" : c.rating_avg.toFixed(1)}
+                        {c.delivered_sessions} · {c.coachees_count} · ★ {c.rating_avg == null ? "—" : c.rating_avg.toFixed(1)}
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex justify-end gap-1.5">

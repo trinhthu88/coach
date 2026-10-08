@@ -22,7 +22,6 @@ export interface OngoingEnrollmentConflict {
 export type EnrollmentSelectionResult =
   | { kind: "selected"; enrollment: Enrollment }
   | { kind: "missing" }
-  | { kind: "ambiguous"; enrollments: Enrollment[] }
   | { kind: "invalid"; enrollmentId: string };
 
 export interface CreateProgrammeEnrollmentInput {
@@ -63,28 +62,31 @@ export function enrollmentQueryKey(resource: string, enrollmentId: string | unde
   return [resource, enrollmentId ?? null] as const;
 }
 
-export function resolveSelectedEnrollment(enrollments: Enrollment[], selectedEnrollmentId?: string | null): Enrollment | null {
-  const result = resolveSelectedEnrollmentResult(enrollments, selectedEnrollmentId);
+export function resolveSelectedEnrollment(
+  enrollments: Enrollment[],
+  selectedEnrollmentId?: string | null,
+  currentEnrollmentId?: string | null
+): Enrollment | null {
+  const result = resolveSelectedEnrollmentResult(enrollments, selectedEnrollmentId, currentEnrollmentId);
   return result.kind === "selected" ? result.enrollment : null;
 }
 
 /**
- * Resolve ownership without guessing. In particular, two ongoing enrollments
- * are an ambiguity, not a reason to use whichever row the database returned
- * first.
+ * Resolve ownership without guessing. An explicitly selected enrollment is
+ * used as is; otherwise only the server's current enrollment
+ * (learner_current_enrollment: enrollment_is_ongoing -- active AND inside its
+ * dates) is chosen. Status alone never makes an enrollment current: a paused
+ * or past-end enrollment is not.
  */
 export function resolveSelectedEnrollmentResult(
   enrollments: Enrollment[],
-  selectedEnrollmentId?: string | null
+  selectedEnrollmentId?: string | null,
+  currentEnrollmentId?: string | null
 ): EnrollmentSelectionResult {
-  if (selectedEnrollmentId) {
-    const enrollment = enrollments.find((candidate) => candidate.id === selectedEnrollmentId);
-    return enrollment ? { kind: "selected", enrollment } : { kind: "invalid", enrollmentId: selectedEnrollmentId };
-  }
-  const ongoing = enrollments.filter((enrollment) => isOngoingEnrollment(enrollment.status));
-  if (ongoing.length === 1) return { kind: "selected", enrollment: ongoing[0] };
-  if (ongoing.length > 1) return { kind: "ambiguous", enrollments: ongoing };
-  return { kind: "missing" };
+  const id = selectedEnrollmentId || currentEnrollmentId;
+  if (!id) return { kind: "missing" };
+  const enrollment = enrollments.find((candidate) => candidate.id === id);
+  return enrollment ? { kind: "selected", enrollment } : { kind: "invalid", enrollmentId: id };
 }
 
 export function parseOngoingEnrollmentConflict(error: unknown): OngoingEnrollmentConflict | null {
@@ -158,10 +160,23 @@ export async function getEnrollmentHistory(userId: string): Promise<Enrollment[]
   return data ?? [];
 }
 
-export async function getOngoingEnrollment(userId: string): Promise<Enrollment | null> {
-  const history = await getEnrollmentHistory(userId);
-  const ongoing = history.filter((enrollment) => isOngoingEnrollment(enrollment.status));
-  // An account can have historical rows, but ownership must never be guessed
-  // when more than one ongoing row exists.
-  return ongoing.length === 1 ? ongoing[0] : null;
+/** The signed-in learner's current enrollment, as the server decides it (enrollment_is_ongoing). */
+export async function getCurrentEnrollmentId(): Promise<string | null> {
+  const { data, error } = await supabase.rpc("learner_current_enrollment");
+  if (error) throw error;
+  return data?.[0]?.enrollment_id ?? null;
+}
+
+/** Admin: every learner's current enrollment (the learner's own answer) and latest record. */
+export async function fetchAdminCurrentEnrollments(): Promise<
+  Map<string, { currentEnrollmentId: string | null; latestEnrollmentId: string | null }>
+> {
+  const { data, error } = await supabase.rpc("admin_current_enrollments");
+  if (error) throw error;
+  return new Map(
+    (data ?? []).map((row) => [
+      row.user_id,
+      { currentEnrollmentId: row.enrollment_id ?? null, latestEnrollmentId: row.latest_enrollment_id ?? null },
+    ])
+  );
 }

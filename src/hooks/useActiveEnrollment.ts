@@ -13,9 +13,10 @@ export type ActiveEnrollmentContext =
  * signed-in learner's enrollment here -- never by searching the latest cohort,
  * programme membership or user_id on its own:
  *
- *   authenticated user -> the ONE ongoing enrollment (useEnrollmentContext;
- *   historical enrollments are never chosen implicitly; two ongoing ones are
- *   an explicit error).
+ *   authenticated user -> the server's current enrollment
+ *   (learner_current_enrollment, on enrollment_is_ongoing: active AND inside
+ *   its dates; a paused or past-end enrollment is not current; historical
+ *   enrollments are never chosen implicitly).
  *
  * A resolution failure is returned as `error`, never as an empty enrollment,
  * so a page can say what went wrong instead of rendering empty states.
@@ -30,7 +31,7 @@ export function useActiveEnrollment() {
     enrollment: resolver.selectedEnrollment ?? null,
     /** Every enrollment of this learner (active and historical), newest first. */
     ownEnrollmentIds: (resolver.history ?? []).map((e) => e.id),
-    /** "selected" | "missing" (no ongoing enrollment) | "ambiguous" | "invalid" */
+    /** "selected" | "missing" (no ongoing enrollment: none, paused or past its end) | "invalid" */
     selectionState: resolver.selectionState,
     loading: resolver.loading,
     error: resolver.loadError?.message ?? resolver.selectionError ?? null,

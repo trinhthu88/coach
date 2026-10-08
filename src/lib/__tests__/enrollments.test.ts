@@ -128,13 +128,15 @@ describe("explicit enrollment context", () => {
     );
   });
 
-  it("does not guess when multiple ongoing enrollments exist", () => {
-    const second = { ...activeEnrollment, id: "enrollment-active-2", programme_id: "programme-other" };
-    expect(resolveSelectedEnrollment([activeEnrollment, second])).toBeNull();
-    expect(resolveSelectedEnrollmentResult([activeEnrollment, second])).toMatchObject({
-      kind: "ambiguous",
-      enrollments: [activeEnrollment, second],
+  it("chooses no enrollment implicitly unless the server names the current one (learner_current_enrollment)", () => {
+    // Status alone never makes an enrollment current: an active row past its
+    // end, or a paused row, is not current when the server says so (audit H4).
+    expect(resolveSelectedEnrollmentResult([activeEnrollment, completedEnrollment], null, null)).toEqual({ kind: "missing" });
+    expect(resolveSelectedEnrollmentResult([activeEnrollment, completedEnrollment], null, activeEnrollment.id)).toEqual({
+      kind: "selected",
+      enrollment: activeEnrollment,
     });
+    expect(resolveSelectedEnrollment([activeEnrollment], null, null)).toBeNull();
   });
 
   it("reports an invalid explicit enrollment instead of falling back", () => {

@@ -19,7 +19,7 @@ import {
 import { AddPersonDialog } from "@/components/admin/AddPersonDialog";
 import { AdminImportDialog } from "@/components/admin/AdminImportDialog";
 import { getFriendlyErrorMessage } from "@/lib/errors";
-import { resolveCurrentEnrollment } from "@/lib/enrollmentResolver";
+import { fetchAdminCurrentEnrollments } from "@/lib/enrollments";
 import { transitionAdminEnrollment } from "@/lib/enrollmentTransition";
 import {
   canonicalModuleUnits,
@@ -102,6 +102,7 @@ export default function AdminCoaches() {
       { data: cohortsData },
       { data: progsData },
       { data: enrolls },
+      currentByUser,
     ] = await Promise.all([
       supabase.from("user_roles").select("user_id, role"),
       supabase.from("profiles").select("id, full_name, email, status, created_at"),
@@ -111,6 +112,7 @@ export default function AdminCoaches() {
       supabase.from("cohorts").select("id, name, organization_id, programme_id"),
       supabase.from("programmes").select("id, name, duration_months"),
       supabase.from("programme_enrollments").select("id, user_id, programme_id, cohort_id, start_date, status, programmes(name)").in("status", ["active", "at_risk", "paused"]),
+      fetchAdminCurrentEnrollments(),
     ]);
 
     const coachIds = (roles || []).filter(r => r.role === "coach").map(r => r.user_id);
@@ -142,15 +144,14 @@ export default function AdminCoaches() {
     });
 
 
+    // Each person's enrollment as the server resolves it
+    // (admin_current_enrollments): the current one -- the learner's own
+    // answer, enrollment_is_ongoing -- else their latest record, shown with
+    // its own status (a paused learner stays findable). Never chosen here.
     const enrollByUser = new Map<string, NonNullable<typeof enrolls>[number]>();
     for (const userId of coachIds) {
-      const enrollmentId = resolveCurrentEnrollment(
-        (enrolls || []).filter((e) => e.user_id === userId).map((e) => ({
-          id: e.id,
-          status: e.status,
-          start_date: e.start_date,
-        })),
-      );
+      const resolved = currentByUser.get(userId);
+      const enrollmentId = resolved?.currentEnrollmentId ?? resolved?.latestEnrollmentId ?? null;
       const enrollment = (enrolls || []).find((e) => e.id === enrollmentId);
       if (enrollment) enrollByUser.set(userId, enrollment);
     }
