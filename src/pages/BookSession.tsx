@@ -6,6 +6,8 @@ import { SESSION_DURATIONS as DURATIONS, formatSlotTime as fmtTime, toDateKey as
 import { SLOT_TIME_ZONE, slotDayBounds, slotInstant, slotTodayKey } from "@/lib/slotTime";
 import { useAuth } from "@/context/AuthContext";
 import { useEnrollmentContext } from "@/hooks/useEnrollmentContext";
+import { ProgrammeReadOnlyBanner } from "@/components/programme/ProgrammeReadOnlyBanner";
+import { canActOn } from "@/lib/enrollments";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -74,7 +76,8 @@ export default function BookSession() {
   const location = useLocation();
   const rescheduleTopic = (location.state as { topic?: string } | null)?.topic;
   const { user } = useAuth();
-  const { selectedEnrollment, selectionError } = useEnrollmentContext(user?.id, searchParams.get("enrollmentId"));
+  const enrollmentContext = useEnrollmentContext(user?.id, searchParams.get("enrollmentId"));
+  const { selectedEnrollment, selectionError } = enrollmentContext;
   const enrollmentId = selectedEnrollment?.id;
   const navigate = useNavigate();
 
@@ -424,6 +427,18 @@ export default function BookSession() {
     return (
       <div className="flex items-center justify-center py-24 text-muted-foreground">
         <Loader2 className="h-6 w-6 animate-spin text-primary" />
+      </div>
+    );
+  }
+  // An ended or paused programme: no slots, only why (learner_display_enrollment).
+  // The booking functions refuse it anyway.
+  if (!canActOn(enrollmentContext.isCurrent)) {
+    return (
+      <div className="space-y-4" data-testid="booking-read-only">
+        <ProgrammeReadOnlyBanner isCurrent={enrollmentContext.isCurrent} displayState={enrollmentContext.displayState} />
+        <Button asChild variant="outline">
+          <Link to="/sessions">{t("bookSession.backToSessions")}</Link>
+        </Button>
       </div>
     );
   }

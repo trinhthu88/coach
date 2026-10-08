@@ -6,9 +6,10 @@ import type { Enrollment } from "@/lib/enrollments";
 
 const state = vi.hoisted(() => ({
   history: [] as Enrollment[],
-  // What learner_current_enrollment() answers: the server's ongoing rule
-  // (enrollment_is_ongoing), never the client's reading of status.
-  current: null as string | null,
+  // What learner_display_enrollment() answers: the enrollment the pages show,
+  // whether it is current (enrollment_is_ongoing) and its display state --
+  // never the client's reading of status or dates.
+  display: null as { enrollmentId: string; isCurrent: boolean; displayState: string } | null,
   fail: null as Error | null,
 }));
 
@@ -22,9 +23,9 @@ vi.mock("@/lib/enrollments", async () => {
       if (state.fail) throw state.fail;
       return state.history;
     },
-    getCurrentEnrollmentId: async () => {
+    getDisplayEnrollment: async () => {
       if (state.fail) throw state.fail;
-      return state.current;
+      return state.display;
     },
   };
 });
@@ -42,14 +43,14 @@ function wrapper() {
 
 beforeEach(() => {
   state.history = [];
-  state.current = null;
+  state.display = null;
   state.fail = null;
 });
 
 describe("useActiveEnrollment — THE learner enrollment context", () => {
   it("resolves the one ongoing enrollment, never a historical one (Linh: Cohort B active, Cohort A completed)", async () => {
     state.history = [enrollment("cohort-b", "active", "2026-05-25"), enrollment("cohort-a", "completed", "2026-01-06")];
-    state.current = "cohort-b";
+    state.display = { enrollmentId: "cohort-b", isCurrent: true, displayState: "current" };
     const { result } = renderHook(() => useActiveEnrollment(), { wrapper: wrapper() });
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.enrollmentId).toBe("cohort-b");
@@ -65,22 +66,36 @@ describe("useActiveEnrollment — THE learner enrollment context", () => {
     expect(result.current.selectionState).toBe("missing");
   });
 
-  it("a PAUSED enrollment is not current: the server refuses its bookings, so no page shows it as live (audit H4)", async () => {
+  it("a PAUSED enrollment is shown read-only: not current, display state paused (PR #20 review)", async () => {
     state.history = [enrollment("paused", "paused", "2026-09-01")];
-    state.current = null;
+    state.display = { enrollmentId: "paused", isCurrent: false, displayState: "paused" };
     const { result } = renderHook(() => useActiveEnrollment(), { wrapper: wrapper() });
     await waitFor(() => expect(result.current.loading).toBe(false));
-    expect(result.current.enrollmentId).toBeNull();
-    expect(result.current.selectionState).toBe("missing");
+    expect(result.current.enrollmentId).toBe("paused");
+    expect(result.current.isCurrent).toBe(false);
+    expect(result.current.displayState).toBe("paused");
+    expect(result.current.currentEnrollmentId).toBeNull();
   });
 
-  it("an ACTIVE enrollment past its end date is not current either: status alone never decides (audit H4)", async () => {
+  it("an ACTIVE enrollment past its end date is shown read-only as ended: status alone never decides", async () => {
     state.history = [{ ...enrollment("ended", "active", "2026-01-06"), end_date: "2026-06-30" }];
-    state.current = null;
+    state.display = { enrollmentId: "ended", isCurrent: false, displayState: "ended" };
     const { result } = renderHook(() => useActiveEnrollment(), { wrapper: wrapper() });
     await waitFor(() => expect(result.current.loading).toBe(false));
-    expect(result.current.enrollmentId).toBeNull();
-    expect(result.current.selectionState).toBe("missing");
+    expect(result.current.enrollmentId).toBe("ended");
+    expect(result.current.isCurrent).toBe(false);
+    expect(result.current.displayState).toBe("ended");
+    expect(result.current.currentEnrollmentId).toBeNull();
+  });
+
+  it("a current enrollment is current, and is also the one actions use", async () => {
+    state.history = [enrollment("now", "active", "2026-09-01")];
+    state.display = { enrollmentId: "now", isCurrent: true, displayState: "current" };
+    const { result } = renderHook(() => useActiveEnrollment(), { wrapper: wrapper() });
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current.isCurrent).toBe(true);
+    expect(result.current.displayState).toBe("current");
+    expect(result.current.currentEnrollmentId).toBe("now");
   });
 
   it("a failed enrollment read surfaces as an error instead of 'no programme'", async () => {
@@ -92,11 +107,11 @@ describe("useActiveEnrollment — THE learner enrollment context", () => {
 
   it("when the fixture's active enrollment changes, the context follows it", async () => {
     state.history = [enrollment("cohort-b", "active", "2026-05-25"), enrollment("cohort-a", "completed", "2026-01-06")];
-    state.current = "cohort-b";
+    state.display = { enrollmentId: "cohort-b", isCurrent: true, displayState: "current" };
     const { result } = renderHook(() => useActiveEnrollment(), { wrapper: wrapper() });
     await waitFor(() => expect(result.current.enrollmentId).toBe("cohort-b"));
 
-    state.current = "cohort-c";
+    state.display = { enrollmentId: "cohort-c", isCurrent: true, displayState: "current" };
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     state.history = [enrollment("cohort-c", "active", "2026-09-01"), enrollment("cohort-b", "completed", "2026-05-25")];
     const next = renderHook(() => useActiveEnrollment(), {

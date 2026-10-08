@@ -178,5 +178,19 @@
     "markAllRead": "Đánh dấu tất cả đã đọc",
     "empty": "Bạn đã xem hết thông báo.",
     "openMenu": "Mở thông báo"
+  },
+  "programmeReadOnly": {
+    "ended": {
+      "title": "Chương trình của bạn đã kết thúc",
+      "body": "Bạn vẫn có thể xem lại hành trình, mục tiêu, các session và phản hồi của mình. Việc đặt lịch, nộp bài và lên lịch đã đóng."
+    },
+    "paused": {
+      "title": "Chương trình của bạn đang tạm dừng",
+      "body": "Bạn vẫn có thể xem lại hành trình, mục tiêu, các session và phản hồi của mình. Việc đặt lịch, nộp bài và lên lịch sẽ mở lại khi chương trình tiếp tục."
+    },
+    "upcoming": {
+      "title": "Chương trình của bạn chưa bắt đầu",
+      "body": "Bạn có thể xem trước ngay bây giờ. Việc đặt lịch, nộp bài và lên lịch sẽ mở vào ngày chương trình bắt đầu."
+    }
   }
 }

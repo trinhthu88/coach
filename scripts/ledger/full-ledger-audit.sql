@@ -341,7 +341,8 @@ WITH repo(version, name) AS (VALUES
   ('20261007001300', 'coaching_no_show'),
   ('20261008110000', 'google_calendar_connections'),
   ('20261008120000', 'google_calendar_resilience'),
-  ('20261008200000', 'audit_high_findings')
+  ('20261008200000', 'audit_high_findings'),
+  ('20261008210000', 'learner_display_enrollment')
 -- END REPO MANIFEST
 ),
 

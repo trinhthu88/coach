@@ -84,6 +84,9 @@ export function useJourneyProgramme(coacheeId: string | undefined, initialEnroll
     programme: data?.programme ?? null,
     coaching: data?.coaching ?? null,
     loading: enrollmentContext.loading || (!!enrollmentId && isLoading),
+    /** learner_display_enrollment: false when the shown enrollment is read-only. */
+    isCurrent: enrollmentContext.isCurrent,
+    displayState: enrollmentContext.displayState,
     error,
     refresh: () => queryClient.invalidateQueries({ queryKey }),
   };

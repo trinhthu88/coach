@@ -11,6 +11,8 @@ import { formatProfileDate } from "@/lib/programmeProfile";
 import { sessionStatusTone } from "@/lib/moduleSessions";
 import { sessionDetailPath } from "@/lib/sessionPaths";
 import { ModuleCard, ModuleEyebrow, ModulePageHeader } from "@/components/programme/module/ModulePage";
+import { ProgrammeReadOnlyBanner } from "@/components/programme/ProgrammeReadOnlyBanner";
+import { canActOn } from "@/lib/enrollments";
 import { ModuleWorkspaceSections } from "@/components/programme/module/ModuleWorkspaceSections";
 import { deliverableKey, type DeliverableKey } from "@/lib/postSessionDeliverables";
 import { ProfileLoadError } from "@/components/programme/primitives";
@@ -72,6 +74,9 @@ export default function TriadsPage() {
         }
       />
 
+      {/* Ended or paused: groups, sessions and feedback stay readable; no scheduling. */}
+      <ProgrammeReadOnlyBanner isCurrent={ws.isCurrent} displayState={ws.displayState} />
+
       <TriadProgressCard status={status} loading={statusLoading} error={statusError} />
 
       {/* Shared module structure: progress & next requirement, post-session
@@ -93,7 +98,7 @@ export default function TriadsPage() {
           </div>
         </ModuleCard>
       ) : (
-        (status?.schedule ?? []).map((m) => <TriadRequirementSection key={m.requirementId} milestone={m} entry={groupFor(m.requirementId)} feedback={feedbackFor(m.requirementId)} />)
+        (status?.schedule ?? []).map((m) => <TriadRequirementSection key={m.requirementId} milestone={m} entry={groupFor(m.requirementId)} feedback={feedbackFor(m.requirementId)} canAct={canActOn(ws.isCurrent)} />)
       )}
 
       <ModuleCard testId="triad-history">
@@ -137,10 +142,13 @@ function TriadRequirementSection({
   milestone,
   entry,
   feedback,
+  canAct,
 }: {
   milestone: TriadMilestoneView;
   entry: TriadGroupEntry | null;
   feedback: LearnerAssessmentFeedback | null;
+  /** false when the enrollment is shown read-only: no Schedule / Accept / Propose. */
+  canAct: boolean;
 }) {
   const { t } = useTranslation("triads");
   const n = milestone.milestone;
@@ -176,7 +184,7 @@ function TriadRequirementSection({
           </ModuleCard>
         ) : !entry || !entry.isActive ? (
           <PendingAssignmentCard unit={n} />
-        ) : openSession ? (
+        ) : !canAct ? null : openSession ? (
           // Accept / propose another time / mark completed live on the existing card.
           <TriadSessionCard entry={entry} untilDate={milestone.dueOn} />
         ) : (

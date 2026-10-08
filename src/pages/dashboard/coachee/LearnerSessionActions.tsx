@@ -16,7 +16,16 @@ const UPCOMING_LIMIT = 2;
  * stops at the canonical "Next session" line; this is the learner's own
  * calendar, so they get the actionable version.
  */
-export function LearnerSessionActions({ userId, enrollmentId }: { userId: string | undefined; enrollmentId: string | undefined }) {
+export function LearnerSessionActions({
+  userId,
+  enrollmentId,
+  canBook = true,
+}: {
+  userId: string | undefined;
+  enrollmentId: string | undefined;
+  /** false when the shown enrollment is not current (learner_display_enrollment): no Book link. */
+  canBook?: boolean;
+}) {
   const { t } = useTranslation("dashboard");
   const { t: tJourney } = useTranslation("journey");
   const { sessions, loading, error } = useEnrollmentSessions(enrollmentId, userId);
@@ -63,9 +72,11 @@ export function LearnerSessionActions({ userId, enrollmentId }: { userId: string
         </ul>
       )}
       <div className="mt-3 flex flex-wrap gap-2">
-        <Link to="/coaches" className="rounded-full bg-[#062f3e] px-3.5 py-1.5 text-[11px] font-semibold text-white hover:bg-[#0a3f53]">
-          {t("learnerProfile.sessions.book")}
-        </Link>
+        {canBook && (
+          <Link to="/coaches" className="rounded-full bg-[#062f3e] px-3.5 py-1.5 text-[11px] font-semibold text-white hover:bg-[#0a3f53]">
+            {t("learnerProfile.sessions.book")}
+          </Link>
+        )}
         <Link to="/sessions" className="rounded-full border border-[#cfc7bb] px-3.5 py-1.5 text-[11px] font-semibold text-[#062f3e] hover:border-[#8bd3e3]">
           {t("coacheeDashboard.upcomingSessions.viewAll")}
         </Link>

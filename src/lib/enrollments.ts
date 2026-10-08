@@ -160,11 +160,37 @@ export async function getEnrollmentHistory(userId: string): Promise<Enrollment[]
   return data ?? [];
 }
 
-/** The signed-in learner's current enrollment, as the server decides it (enrollment_is_ongoing). */
-export async function getCurrentEnrollmentId(): Promise<string | null> {
-  const { data, error } = await supabase.rpc("learner_current_enrollment");
+/** How the server says the shown enrollment stands: current, or read-only as paused / ended / upcoming. */
+export type EnrollmentDisplayState = "current" | "paused" | "ended" | "upcoming";
+
+export interface DisplayEnrollment {
+  enrollmentId: string;
+  /** enrollment_is_ongoing: the learner can act (book, submit) in it. */
+  isCurrent: boolean;
+  displayState: EnrollmentDisplayState;
+}
+
+/**
+ * Whether a learner page may offer actions (Book, Submit, Schedule, Resubmit):
+ * only when the server says the shown enrollment is current. Unknown (null)
+ * leaves the page as it was; the server refuses any action that is not allowed.
+ */
+export function canActOn(isCurrent: boolean | null | undefined): boolean {
+  return isCurrent !== false;
+}
+
+/**
+ * The enrollment the signed-in learner's pages SHOW (learner_display_enrollment):
+ * the current one, else their latest, flagged read-only. What they may DO is
+ * still learner_current_enrollment's (is_current); the server refuses the rest.
+ */
+export async function getDisplayEnrollment(): Promise<DisplayEnrollment | null> {
+  const { data, error } = await supabase.rpc("learner_display_enrollment");
   if (error) throw error;
-  return data?.[0]?.enrollment_id ?? null;
+  const row = data?.[0];
+  return row
+    ? { enrollmentId: row.enrollment_id, isCurrent: row.is_current, displayState: row.display_state as EnrollmentDisplayState }
+    : null;
 }
 
 /** Admin: every learner's current enrollment (the learner's own answer) and latest record. */

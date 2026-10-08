@@ -7,6 +7,7 @@ import { useJourneyRatings } from "@/hooks/journey/useJourneyRatings";
 import { useJourneySessions } from "@/hooks/journey/useJourneySessions";
 import { useJourneyReflections } from "@/hooks/journey/useJourneyReflections";
 import { useJourneyProgramme } from "@/hooks/journey/useJourneyProgramme";
+import { ProgrammeReadOnlyBanner } from "@/components/programme/ProgrammeReadOnlyBanner";
 import { useFlatActionItems, type FlatAction } from "@/hooks/journey/useFlatActionItems";
 import { useCoachSummaries } from "@/hooks/journey/useCoachSummaries";
 import {
@@ -188,6 +189,9 @@ export default function CoachMyJourney() {
             </Badge>
           }
         />
+
+      {/* The Coach's own learner enrollment, read-only once it ended or is paused. */}
+      <ProgrammeReadOnlyBanner isCurrent={programmeApi.isCurrent} displayState={programmeApi.displayState} />
 
       <ProgrammeTimeline />
 

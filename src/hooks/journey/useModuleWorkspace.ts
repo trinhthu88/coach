@@ -77,6 +77,9 @@ export function useModuleWorkspace(module: WorkspaceModule) {
     enrollmentLoading,
     /** Enrollment resolution failure (surfaced, never shown as an empty module). */
     enrollmentError: active.error,
+    /** learner_display_enrollment: false when the enrollment is shown read-only (no Schedule / Book). */
+    isCurrent: active.isCurrent,
+    displayState: active.displayState,
     progress: canonical.progress,
     progressLoading: enrollmentLoading || canonical.loading,
     progressError: canonical.error,

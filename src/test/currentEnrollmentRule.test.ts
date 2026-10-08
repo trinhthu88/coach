@@ -11,10 +11,27 @@ const read = (path: string) => readFileSync(join(ROOT, path), "utf8");
  * admin_current_enrollments() for Admin. No client picks "current" from status.
  */
 describe("current enrollment comes from the server", () => {
-  it("the learner resolver asks learner_current_enrollment", () => {
-    expect(read("src/lib/enrollments.ts")).toMatch(/rpc\("learner_current_enrollment"\)/);
+  it("the learner resolver asks learner_display_enrollment (shown + is_current), never status", () => {
+    expect(read("src/lib/enrollments.ts")).toMatch(/rpc\("learner_display_enrollment"\)/);
     expect(read("src/lib/enrollments.ts")).not.toMatch(/getOngoingEnrollment/);
-    expect(read("src/hooks/useEnrollmentContext.ts")).toMatch(/getCurrentEnrollmentId\(/);
+    expect(read("src/hooks/useEnrollmentContext.ts")).toMatch(/getDisplayEnrollment\(/);
+  });
+
+  it("every learner page that offers an action shows the read-only banner when not current", () => {
+    for (const file of [
+      "src/pages/dashboard/coachee/CoacheeDashboard.tsx",
+      "src/pages/Dashboard.tsx",
+      "src/pages/CoacheeJourney.tsx",
+      "src/pages/CoachMyJourney.tsx",
+      "src/pages/Sessions.tsx",
+      "src/pages/finalAssessment/FinalAssessmentPage.tsx",
+      "src/pages/triads/TriadsPage.tsx",
+      "src/pages/BookSession.tsx",
+      "src/pages/MentoringBookSession.tsx",
+      "src/pages/CoacheePeerBookSession.tsx",
+    ]) {
+      expect(read(file), file).toMatch(/<ProgrammeReadOnlyBanner\b/);
+    }
   });
 
   it("Admin reads admin_current_enrollments; the status-only resolver is gone", () => {

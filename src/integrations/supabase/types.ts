@@ -5266,11 +5266,11 @@ export type Database = {
         }
       }
       admin_current_enrollments: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
-          user_id: string
           enrollment_id: string
           latest_enrollment_id: string
+          user_id: string
         }[]
       }
       admin_dashboard_summary: { Args: { p_as_of?: string }; Returns: Json }
@@ -5794,6 +5794,10 @@ export type Database = {
           p_session_id: string
           p_start_time: string
         }
+        Returns: undefined
+      }
+      assert_session_within_enrollment_internal: {
+        Args: { p_enrollment_id: string; p_start: string }
         Returns: undefined
       }
       assessment_create_triad_submission_internal: {
@@ -6677,7 +6681,7 @@ export type Database = {
         }[]
       }
       coach_public_delivered_sessions: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           coach_id: string
           delivered_sessions: number
@@ -6933,6 +6937,10 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      current_enrollment_internal: {
+        Args: { p_as_of?: string; p_user_id: string }
+        Returns: string
       }
       daily_prompt_for_enrollment_internal: {
         Args: { p_as_of: string; p_enrollment_id: string }
@@ -7403,9 +7411,17 @@ export type Database = {
         }[]
       }
       learner_current_enrollment: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           enrollment_id: string
+        }[]
+      }
+      learner_display_enrollment: {
+        Args: never
+        Returns: {
+          display_state: string
+          enrollment_id: string
+          is_current: boolean
         }[]
       }
       learner_enrollment_context: {

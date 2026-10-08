@@ -19,6 +19,8 @@ import { toast } from "sonner";
 import { getSessionStatusPillMeta as getStatusMeta } from "@/lib/sessionStatusMeta";
 import { isPeerPracticeKind, useSessionsData } from "@/hooks/sessions/useSessionsData";
 import { useActiveEnrollment } from "@/hooks/useActiveEnrollment";
+import { ProgrammeReadOnlyBanner } from "@/components/programme/ProgrammeReadOnlyBanner";
+import { canActOn } from "@/lib/enrollments";
 import { scopeLearnerSessions } from "@/lib/learnerSessionScope";
 import { sessionRowDetailPath as sessionDetailPath } from "@/lib/sessionPaths";
 import type { SessionRow as SessionRowData, SessionKind } from "@/hooks/sessions/useSessionsData";
@@ -109,7 +111,7 @@ export default function Sessions() {
             : t("list.subtitleCoachee")
         }
         actions={
-          role === "coachee" && (
+          role === "coachee" && canActOn(active.isCurrent) && (
             <Button asChild className="shadow-glow">
               <Link to="/coaches">
                 <Calendar className="mr-1 h-4 w-4" /> {t("list.bookASession")}
@@ -119,6 +121,8 @@ export default function Sessions() {
         }
       />
 
+      {/* An ended or paused programme: the hub stays readable, booking is closed. */}
+      {role === "coachee" && <ProgrammeReadOnlyBanner isCurrent={active.isCurrent} displayState={active.displayState} />}
 
       {/* The next live session of each programme module, from
           learner_next_session_by_module -- never picked from the rows here. */}

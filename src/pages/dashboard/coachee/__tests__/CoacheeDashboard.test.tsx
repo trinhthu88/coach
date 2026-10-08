@@ -26,6 +26,8 @@ const state = vi.hoisted(() => ({
   assessmentFeedback: [] as Array<Record<string, unknown>>,
   reflectionFeedCalls: [] as Array<string | undefined>,
   learnerHookCalls: [] as string[],
+  // learner_display_enrollment: what the pages show, and whether it is current.
+  display: { isCurrent: true, displayState: "current" } as { isCurrent: boolean; displayState: string },
 }));
 
 // The Final Assessment card has its own tests (FinalAssessmentResults.test.tsx).
@@ -38,7 +40,7 @@ vi.mock("@/context/AuthContext", () => ({
   useAuth: () => ({ user: { id: "learner-1" }, profile: { full_name: "Jamie Learner" }, role: "coachee" }),
 }));
 vi.mock("@/hooks/useEnrollmentContext", () => ({
-  useEnrollmentContext: () => ({ selectedEnrollment: { id: "enrollment-seeded-partial" }, loading: false }),
+  useEnrollmentContext: () => ({ selectedEnrollment: { id: "enrollment-seeded-partial" }, loading: false, ...state.display }),
 }));
 vi.mock("@/hooks/useLearnerCanonicalProgress", () => ({
   useLearnerCanonicalProgress: () => {
@@ -458,5 +460,38 @@ describe("My Journey — shared Programme Journey (full variant)", () => {
     expect(within(detail).getByTestId("checkpoint-training-weeks")).toHaveTextContent("Training / Learning · Week 9");
     expect(within(detail).getByText(/everything it needs is available now/)).toBeInTheDocument();
     expect(within(detail).getByRole("link", { name: /Training \/ Learning/ })).toHaveAttribute("href", "/training");
+  });
+});
+
+describe("Learner Dashboard — a programme that is not current is shown read-only (PR #20 review)", () => {
+  beforeEach(async () => {
+    await i18n.changeLanguage("en");
+    state.learnerHookCalls = [];
+    seedPopulated();
+  });
+  afterEach(() => {
+    state.display = { isCurrent: true, displayState: "current" };
+  });
+
+  it("a paused learner still sees their goals, with the paused banner and no Book button", () => {
+    state.display = { isCurrent: false, displayState: "paused" };
+    renderDashboard();
+    expect(within(screen.getByTestId("learner-goal-list")).getByText(PRIVATE_GOAL)).toBeInTheDocument();
+    expect(screen.getByTestId("programme-read-only-banner")).toHaveTextContent("Your programme is paused");
+    expect(screen.queryByRole("link", { name: "Book a session" })).toBeNull();
+  });
+
+  it("a learner whose programme has ended sees the ended banner and no Book button", () => {
+    state.display = { isCurrent: false, displayState: "ended" };
+    renderDashboard();
+    expect(screen.getByTestId("learner-dashboard")).toBeInTheDocument();
+    expect(screen.getByTestId("programme-read-only-banner")).toHaveTextContent("Your programme has ended");
+    expect(screen.queryByRole("link", { name: "Book a session" })).toBeNull();
+  });
+
+  it("a current learner is unchanged: no banner, and the Book button is there", () => {
+    renderDashboard();
+    expect(screen.queryByTestId("programme-read-only-banner")).toBeNull();
+    expect(screen.getByRole("link", { name: "Book a session" })).toHaveAttribute("href", "/coaches");
   });
 });

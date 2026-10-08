@@ -20,6 +20,8 @@ import { LearnerFeedbackDevelopment } from "./LearnerFeedbackDevelopment";
 import { useLearnerAssessmentFeedback } from "@/hooks/assessments/useLearnerAssessmentFeedback";
 import { LearnerAttention } from "./LearnerAttention";
 import { LearnerSessionActions } from "./LearnerSessionActions";
+import { ProgrammeReadOnlyBanner } from "@/components/programme/ProgrammeReadOnlyBanner";
+import { canActOn } from "@/lib/enrollments";
 
 const MODULE_PATH: Record<ProgrammeModuleKey, string> = {
   coaching: "/coaches",
@@ -128,6 +130,8 @@ export function CoacheeDashboard() {
         status={{ tone: STATUS_TONE[status], label: statusLabel }}
       />
 
+      <ProgrammeReadOnlyBanner isCurrent={active.isCurrent} displayState={active.displayState} className="mt-4" />
+
       <h2 className="sr-only">{tSponsor("leaderDrawer.overview")}</h2>
       <ProgrammeMetricCards facts={progress} engagement={engagement.engagement} viewer="learner" />
 
@@ -144,7 +148,7 @@ export function CoacheeDashboard() {
 
       <div className="mt-4 grid items-start gap-4 [grid-template-columns:repeat(auto-fit,minmax(340px,1fr))]">
         <ProgrammeProgressParticipation facts={progress} journey={journey} coachingUtilisation={experience.coachingUtilisation} viewer="learner">
-          <LearnerSessionActions userId={user?.id} enrollmentId={enrollmentId} />
+          <LearnerSessionActions userId={user?.id} enrollmentId={enrollmentId} canBook={canActOn(active.isCurrent)} />
         </ProgrammeProgressParticipation>
         <ProgrammeModuleProgress
           facts={progress}

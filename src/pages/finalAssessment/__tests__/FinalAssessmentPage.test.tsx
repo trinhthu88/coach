@@ -3,13 +3,17 @@ import { MemoryRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { rpc, upload, invoke } = vi.hoisted(() => ({ rpc: vi.fn(), upload: vi.fn(), invoke: vi.fn() }));
+const { rpc, upload, invoke, display } = vi.hoisted(() => ({
+  rpc: vi.fn(), upload: vi.fn(), invoke: vi.fn(),
+  // learner_display_enrollment: shown enrollment and whether it is current.
+  display: { isCurrent: true, displayState: "current" },
+}));
 vi.mock("@/integrations/supabase/client", () => ({ supabase: { rpc, functions: { invoke } } }));
 vi.mock("@/lib/uploadWithProgress", () => ({ uploadWithProgress: upload }));
 // The browser reads the MP3's length at upload; it travels with the submission.
 vi.mock("@/lib/audioDuration", () => ({ measureAudioDuration: () => Promise.resolve(1520.4) }));
 vi.mock("@/hooks/useActiveEnrollment", () => ({
-  useActiveEnrollment: () => ({ enrollmentId: "enr-1", loading: false }),
+  useActiveEnrollment: () => ({ enrollmentId: "enr-1", loading: false, ...display }),
 }));
 vi.mock("@/context/AuthContext", () => ({ useAuth: () => ({ role: "coachee", user: { id: "learner-1" } }) }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
@@ -52,6 +56,8 @@ const mp3 = (name = "session.mp3", size = 30 * 1024 * 1024) => {
 };
 
 beforeEach(() => {
+  display.isCurrent = true;
+  display.displayState = "current";
   state = fa();
   transcription = { attempt_no: 1, cap: 3, remaining: 3, draft_text: null, draft_storage_path: null, draft_at: null };
   rpc.mockReset();
@@ -291,5 +297,38 @@ describe("Final Assessment (learner)", () => {
       expect(screen.getByTestId("final-auto-transcribe-draft")).toBeInTheDocument();
       expect(invoke).not.toHaveBeenCalled();
     });
+  });
+});
+
+describe("Final Assessment after the programme ended (PR #20 review)", () => {
+  it("shows a result released after the end, with the ended banner", async () => {
+    display.isCurrent = false;
+    display.displayState = "ended";
+    state = fa({
+      state: "completed", attempt_no: 1, quiz_taken: true, submission_id: "sub-1", submitted_at: "2026-10-01T03:00:00Z",
+      released_at: "2026-10-10T03:00:00Z", quiz_correct: 2, quiz_total: 2, quiz_score_pct: 100, pass_mark_pct: 70,
+      quiz_passed: true, final_result: "pass",
+    });
+    renderPage();
+    expect(await screen.findByTestId("final-assessment-final-result")).toHaveTextContent("Pass");
+    expect(screen.getByTestId("programme-read-only-banner")).toHaveTextContent("Your programme has ended");
+  });
+
+  it("an ended learner gets no quiz, upload or Submit steps (the server refuses them anyway)", async () => {
+    display.isCurrent = false;
+    display.displayState = "ended";
+    renderPage();
+    expect(await screen.findByTestId("programme-read-only-banner")).toHaveTextContent("Your programme has ended");
+    expect(screen.queryByTestId("final-assessment-steps")).toBeNull();
+    expect(screen.queryByTestId("final-submit")).toBeNull();
+  });
+
+  it("a paused learner with a Resubmit request sees the paused banner and no Resubmit steps", async () => {
+    display.isCurrent = false;
+    display.displayState = "paused";
+    state = fa({ state: "resubmit_requested", attempt_no: 2, can_resubmit: true });
+    renderPage();
+    expect(await screen.findByTestId("programme-read-only-banner")).toHaveTextContent("Your programme is paused");
+    expect(screen.queryByTestId("final-assessment-steps")).toBeNull();
   });
 });
