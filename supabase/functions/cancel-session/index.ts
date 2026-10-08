@@ -2,19 +2,11 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import * as React from "npm:react@18.3.1";
 import { renderAsync } from "npm:@react-email/components@0.0.22";
 import { buildCorsHeaders } from "../_shared/cors.ts";
+import { formatSessionWhen } from "../_shared/programmeTime.ts";
 import { sendEmail } from "../_shared/send-email.ts";
 import { SessionCancelledEmail } from "../_shared/email-templates/session-cancelled.tsx";
 import { decideTransition, httpStatusForRpcError, transitionRpc } from "../_shared/sessionTransitionRules.ts";
 import { deleteGoogleCalendarEvent } from "../_shared/googleCalendar.ts";
-
-function formatWhen(startTimeISO: string, durationMinutes: number): string {
-  const start = new Date(startTimeISO);
-  const dateFmt = new Intl.DateTimeFormat("en-US", {
-    weekday: "short", month: "short", day: "numeric", year: "numeric",
-    hour: "numeric", minute: "2-digit", timeZone: "UTC", timeZoneName: "short",
-  });
-  return `${dateFmt.format(start)} · ${durationMinutes} min`;
-}
 
 Deno.serve(async (req) => {
   const corsHeaders = buildCorsHeaders(req, {
@@ -159,7 +151,7 @@ Deno.serve(async (req) => {
     const byId = new Map((participants ?? []).map((p) => [p.id, p]));
     const coachProfile = byId.get(row[coachField]);
     const coacheeProfile = byId.get(row[coacheeField]);
-    const whenFormatted = formatWhen(row.start_time, row.duration_minutes || 45);
+    const whenFormatted = formatSessionWhen(row.start_time, row.duration_minutes || 45);
 
     for (const [recipient, counterpart] of [
       [coacheeProfile, coachProfile],

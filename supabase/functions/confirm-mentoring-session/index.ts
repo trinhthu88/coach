@@ -2,6 +2,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import * as React from "npm:react@18.3.1";
 import { renderAsync } from "npm:@react-email/components@0.0.22";
 import { buildCorsHeaders } from "../_shared/cors.ts";
+import { formatSessionWhen, PROGRAMME_TIME_ZONE } from "../_shared/programmeTime.ts";
 import { sendEmail } from "../_shared/send-email.ts";
 import { SessionConfirmedEmail } from "../_shared/email-templates/session-confirmed.tsx";
 import { getGoogleBusyIntervals, syncGoogleCalendarEvent } from "../_shared/googleCalendar.ts";
@@ -11,15 +12,6 @@ import { tryGoogleCalendarCheck } from "../_shared/googleCalendarPolicy.ts";
 // to mentoring_sessions/mentor_id/mentee_id — no is_peer-style branching
 // needed since mentoring only has the one table. Reuses SessionConfirmedEmail
 // as-is (its copy is generic enough for any two-party session).
-
-function formatWhen(startTimeISO: string, durationMinutes: number): string {
-  const start = new Date(startTimeISO);
-  const dateFmt = new Intl.DateTimeFormat("en-US", {
-    weekday: "short", month: "short", day: "numeric", year: "numeric",
-    hour: "numeric", minute: "2-digit", timeZone: "UTC", timeZoneName: "short",
-  });
-  return `${dateFmt.format(start)} · ${durationMinutes} min`;
-}
 
 function decodeJwtPayload(token: string): Record<string, unknown> | null {
   const parts = token.split(".");
@@ -67,7 +59,7 @@ async function createZoomMeeting(opts: {
       type: 2,
       start_time: opts.startTimeISO,
       duration: opts.durationMinutes,
-      timezone: "UTC",
+      timezone: PROGRAMME_TIME_ZONE,
       settings: {
         join_before_host: true,
         waiting_room: false,
@@ -277,7 +269,7 @@ Deno.serve(async (req) => {
     const byId = new Map((participants ?? []).map((p) => [p.id, p]));
     const mentorProfile = byId.get(row.mentor_id);
     const menteeProfile = byId.get(row.mentee_id);
-    const whenFormatted = formatWhen(row.start_time, row.duration_minutes || 45);
+    const whenFormatted = formatSessionWhen(row.start_time, row.duration_minutes || 45);
 
     for (const [recipient, counterpart] of [
       [menteeProfile, mentorProfile],

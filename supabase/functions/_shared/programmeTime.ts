@@ -23,3 +23,33 @@ export function programmeToday(offsetDays = 0, now: Date = new Date()): string {
 export function programmeDayStart(dateKey: string): string {
   return `${dateKey}T00:00:00${PROGRAMME_UTC_OFFSET}`;
 }
+
+/**
+ * The instant a Vietnamese wall-clock time happens, as an ISO string. A time
+ * a learner entered in Vietnam (availability, a slot) is never read as UTC.
+ */
+export function programmeInstant(dateKey: string, hour: number, minute = 0): string {
+  const hh = String(hour).padStart(2, "0");
+  const mm = String(minute).padStart(2, "0");
+  return new Date(`${dateKey}T${hh}:${mm}:00${PROGRAMME_UTC_OFFSET}`).toISOString();
+}
+
+const programmeDateTimeFormat = new Intl.DateTimeFormat("en-US", {
+  weekday: "short",
+  month: "short",
+  day: "numeric",
+  year: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
+  timeZone: PROGRAMME_TIME_ZONE,
+});
+
+/** An instant as people in the programme read it: "Thu, Oct 15, 2026, 6:30 AM (Vietnam time)". */
+export function formatProgrammeDateTime(instantISO: string): string {
+  return `${programmeDateTimeFormat.format(new Date(instantISO))} (Vietnam time)`;
+}
+
+/** A session's start and length for an email: "Thu, Oct 15, 2026, 6:30 AM (Vietnam time) · 60 min". */
+export function formatSessionWhen(startTimeISO: string, durationMinutes: number): string {
+  return `${formatProgrammeDateTime(startTimeISO)} · ${durationMinutes} min`;
+}

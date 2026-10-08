@@ -2,6 +2,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import * as React from "npm:react@18.3.1";
 import { renderAsync } from "npm:@react-email/components@0.0.22";
 import { buildCorsHeaders } from "../_shared/cors.ts";
+import { formatSessionWhen } from "../_shared/programmeTime.ts";
 import { sendEmail } from "../_shared/send-email.ts";
 import { MentoringPrepSubmittedEmail } from "../_shared/email-templates/mentoring-prep-submitted.tsx";
 
@@ -10,15 +11,6 @@ import { MentoringPrepSubmittedEmail } from "../_shared/email-templates/mentorin
 // today, so this links to a 7-day signed URL instead of attaching the file —
 // simpler than wiring up Resend attachments for a v1, and avoids emailing
 // a private document as a raw attachment.
-
-function formatWhen(startTimeISO: string, durationMinutes: number): string {
-  const start = new Date(startTimeISO);
-  const dateFmt = new Intl.DateTimeFormat("en-US", {
-    weekday: "short", month: "short", day: "numeric", year: "numeric",
-    hour: "numeric", minute: "2-digit", timeZone: "UTC", timeZoneName: "short",
-  });
-  return `${dateFmt.format(start)} · ${durationMinutes} min`;
-}
 
 function decodeJwtPayload(token: string): Record<string, unknown> | null {
   const parts = token.split(".");
@@ -113,7 +105,7 @@ Deno.serve(async (req) => {
     const byId = new Map((participants ?? []).map((p) => [p.id, p]));
     const mentorProfile = byId.get(row.mentor_id);
     const menteeProfile = byId.get(row.mentee_id);
-    const whenFormatted = formatWhen(row.start_time, row.duration_minutes || 45);
+    const whenFormatted = formatSessionWhen(row.start_time, row.duration_minutes || 45);
 
     for (const [recipient, counterpart] of [
       [mentorProfile, menteeProfile],
