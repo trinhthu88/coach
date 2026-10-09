@@ -306,3 +306,7 @@
 20261007001100_browser_numbers.sql
 20261007001200_assessment_polish.sql
 20261007001300_coaching_no_show.sql
+20261008110000_google_calendar_connections.sql
+20261008120000_google_calendar_resilience.sql
+20261008200000_audit_high_findings.sql
+20261008210000_learner_display_enrollment.sql

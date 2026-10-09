@@ -8,7 +8,8 @@
 --   b. dashboard_summary is gone.
 --   c. The app reads through learner_ / coach_ wrappers that check the owner.
 --   d. Only an Admin or trusted SQL changes coach_profiles.max_coachee_invites,
---      approval_status, rating_avg or sessions_completed; a Coach still edits
+--      approval_status, rating_avg or is_featured (sessions_completed is dropped,
+--      20261008200000); a Coach still edits
 --      the rest of their own profile, and a learner's rating still updates the
 --      Coach's rating_avg (recompute_coach_rating).
 begin;
@@ -138,8 +139,8 @@ select throws_ok($$ select * from public.next_coaching_requirement('f9b30000-000
   '42501', null, 'a learner cannot call next_coaching_requirement');
 select throws_ok($$ select public.programme_required_units('f9b30000-0000-4000-8000-000000000003', 'coaching') $$,
   '42501', null, 'a learner cannot call programme_required_units');
-select throws_ok($$ select public.resolve_current_enrollment('f9b00000-0000-4000-8000-000000000003') $$,
-  '42501', null, 'a learner cannot call resolve_current_enrollment');
+select throws_ok($$ select public.current_enrollment_internal('f9b00000-0000-4000-8000-000000000003') $$,
+  '42501', null, 'a learner cannot call current_enrollment_internal');
 
 select is((select count(*)::int from public.learner_coaching_requirement_fulfilment('f9b30000-0000-4000-8000-000000000002')),
   2, 'learner A reads both Coaching units of their own enrollment');
@@ -180,9 +181,9 @@ select throws_ok($$ update public.coach_profiles set approval_status = 'pending_
 select throws_ok($$ update public.coach_profiles set rating_avg = 4.9
                     where id = 'f9b00000-0000-4000-8000-000000000001' $$,
   '42501', null, 'a Coach cannot set their own rating');
-select throws_ok($$ update public.coach_profiles set sessions_completed = 99
+select throws_ok($$ update public.coach_profiles set is_featured = true
                     where id = 'f9b00000-0000-4000-8000-000000000001' $$,
-  '42501', null, 'a Coach cannot set their own completed sessions');
+  '42501', null, 'a Coach cannot feature themselves');
 
 -- A learner's rating reaches rating_avg through recompute_coach_rating.
 select set_config('request.jwt.claims', json_build_object('sub', 'f9b00000-0000-4000-8000-000000000002')::text, true);

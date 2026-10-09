@@ -26,7 +26,6 @@ interface CoachRow {
   country_based: string | null;
   is_featured: boolean;
   rating_avg: number;
-  sessions_completed: number;
   profiles: {
     full_name: string;
     avatar_url: string | null;
@@ -52,7 +51,7 @@ function coachesQuery() {
   return supabase
     .from("coach_profiles")
     .select(
-       "id, title, specialties, years_experience, country_based, is_featured, rating_avg, sessions_completed, profiles!inner(full_name, avatar_url, bio, status)"
+       "id, title, specialties, years_experience, country_based, is_featured, rating_avg, profiles!inner(full_name, avatar_url, bio, status)"
     )
     .eq("approval_status", "active")
     .eq("profiles.status", "active")

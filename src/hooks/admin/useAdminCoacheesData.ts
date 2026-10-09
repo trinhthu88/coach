@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Row, Status } from "@/pages/admin/coachees/coacheeDisplay";
-import { resolveCurrentEnrollment } from "@/lib/enrollmentResolver";
+import { fetchAdminCurrentEnrollments } from "@/lib/enrollments";
 import { fetchAdminCanonicalProgress } from "@/lib/adminCanonicalProgress";
 import { canonicalCompletionPct } from "@/lib/programmeProfile";
 
@@ -46,6 +46,7 @@ export function useAdminCoacheesData() {
       { data: cohortsData },
       { data: orgsData },
       { data: requests },
+      currentByUser,
     ] = await Promise.all([
       supabase.from("user_roles").select("user_id, role"),
       supabase.from("profiles").select("id, full_name, email, status, created_at, spoken_languages"),
@@ -54,6 +55,7 @@ export function useAdminCoacheesData() {
       supabase.from("cohorts").select("id, name, programme_id, organization_id"),
       supabase.from("organizations").select("id, name").order("name"),
       supabase.from("access_requests").select("id, email, status").eq("status", "approved"),
+      fetchAdminCurrentEnrollments(),
     ]);
 
     const coacheeIds = (roles || []).filter((r) => r.role === "coachee").map((r) => r.user_id);
@@ -65,15 +67,14 @@ export function useAdminCoacheesData() {
       if (p) coachNameById.set(id, p.full_name);
     });
     const enrById = new Map((enrolls || []).map((e) => [e.id, e]));
+    // Each person's enrollment as the server resolves it
+    // (admin_current_enrollments): the current one -- the learner's own
+    // answer, enrollment_is_ongoing -- else their latest record, shown with
+    // its own status (a paused learner stays findable). Never chosen here.
     const enrByUser = new Map<string, NonNullable<typeof enrolls>[number]>();
     for (const userId of coacheeIds) {
-      const enrollmentId = resolveCurrentEnrollment(
-        (enrolls || []).filter((e) => e.user_id === userId).map((e) => ({
-          id: e.id,
-          status: e.status,
-          start_date: e.start_date,
-        })),
-      );
+      const resolved = currentByUser.get(userId);
+      const enrollmentId = resolved?.currentEnrollmentId ?? resolved?.latestEnrollmentId ?? null;
       if (enrollmentId) {
         const enrollment = enrById.get(enrollmentId);
         if (enrollment) enrByUser.set(userId, enrollment);

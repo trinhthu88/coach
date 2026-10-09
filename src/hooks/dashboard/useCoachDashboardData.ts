@@ -23,7 +23,7 @@ interface CoachDashboardData {
   peerSessions: PeerSession[];
   profilesById: Record<string, ProfileLite>;
   peerOptIn: boolean;
-  coachProfile: { rating_avg: number; sessions_completed: number } | null;
+  coachProfile: { rating_avg: number } | null;
 }
 
 type ActingAction = "approve" | "decline";
@@ -58,7 +58,7 @@ async function fetchCoachDashboardData(userId: string): Promise<CoachDashboardDa
       .order("start_time", { ascending: false }),
     supabase
       .from("coach_profiles")
-      .select("rating_avg, sessions_completed, peer_coaching_opt_in")
+      .select("rating_avg, peer_coaching_opt_in")
       .eq("id", userId)
       .maybeSingle(),
   ]);
@@ -89,7 +89,7 @@ async function fetchCoachDashboardData(userId: string): Promise<CoachDashboardDa
     peerSessions: peerList,
     profilesById,
     peerOptIn: !!cp?.peer_coaching_opt_in,
-    coachProfile: cp ? { rating_avg: cp.rating_avg, sessions_completed: cp.sessions_completed } : null,
+    coachProfile: cp ? { rating_avg: cp.rating_avg } : null,
   };
 }
 

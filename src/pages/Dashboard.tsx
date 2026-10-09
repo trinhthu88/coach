@@ -14,10 +14,14 @@ import { MyGoalCard } from "./dashboard/cards/MyGoalCard";
 import { MyFeedbackCard } from "./dashboard/cards/MyFeedbackCard";
 import { RecentDevelopmentCard } from "./dashboard/cards/RecentDevelopmentCard";
 import { CoacheeDashboard } from "./dashboard/coachee/CoacheeDashboard";
+import { ProgrammeReadOnlyBanner } from "@/components/programme/ProgrammeReadOnlyBanner";
+import { useActiveEnrollment } from "@/hooks/useActiveEnrollment";
 
 export default function Dashboard() {
   const { t } = useTranslation("dashboard");
   const { profile, role } = useAuth();
+  // A Coach enrolled as a learner: their own programme's standing (server).
+  const ownEnrollment = useActiveEnrollment();
   const firstName = (profile?.full_name || "there").split(" ")[0];
 
   // Admins and sponsors each have one dedicated console — /dashboard is
@@ -58,6 +62,8 @@ export default function Dashboard() {
           {t(`coachee.greeting.${greetingKey}`)}, <em>{firstName}</em>.
         </h1>
       </header>
+
+      <ProgrammeReadOnlyBanner isCurrent={ownEnrollment.isCurrent} displayState={ownEnrollment.displayState} />
 
       {/* flex, not grid: either hero can independently render nothing (module
           not enabled that direction), and a lone survivor should stretch to

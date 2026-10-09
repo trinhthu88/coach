@@ -179,5 +179,19 @@
     "markAllRead": "Mark all as read",
     "empty": "You're all caught up.",
     "openMenu": "Open notifications"
+  },
+  "programmeReadOnly": {
+    "ended": {
+      "title": "Your programme has ended",
+      "body": "You can still read your journey, goals, sessions and feedback. Booking, submitting and scheduling are closed."
+    },
+    "paused": {
+      "title": "Your programme is paused",
+      "body": "You can still read your journey, goals, sessions and feedback. Booking, submitting and scheduling resume when your programme does."
+    },
+    "upcoming": {
+      "title": "Your programme has not started yet",
+      "body": "You can look around now. Booking, submitting and scheduling open on your programme's start date."
+    }
   }
 }

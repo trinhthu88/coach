@@ -2,20 +2,12 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import * as React from "npm:react@18.3.1";
 import { renderAsync } from "npm:@react-email/components@0.0.22";
 import { buildCorsHeaders } from "../_shared/cors.ts";
+import { formatSessionWhen, PROGRAMME_TIME_ZONE } from "../_shared/programmeTime.ts";
 import { sendEmail } from "../_shared/send-email.ts";
 import { SessionConfirmedEmail } from "../_shared/email-templates/session-confirmed.tsx";
 import { decideTransition, httpStatusForRpcError, transitionRpc } from "../_shared/sessionTransitionRules.ts";
 import { getGoogleBusyIntervals, syncGoogleCalendarEvent } from "../_shared/googleCalendar.ts";
 import { tryGoogleCalendarCheck } from "../_shared/googleCalendarPolicy.ts";
-
-function formatWhen(startTimeISO: string, durationMinutes: number): string {
-  const start = new Date(startTimeISO);
-  const dateFmt = new Intl.DateTimeFormat("en-US", {
-    weekday: "short", month: "short", day: "numeric", year: "numeric",
-    hour: "numeric", minute: "2-digit", timeZone: "UTC", timeZoneName: "short",
-  });
-  return `${dateFmt.format(start)} · ${durationMinutes} min`;
-}
 
 async function getZoomAccessToken(): Promise<string> {
   const accountId = Deno.env.get("ZOOM_ACCOUNT_ID")!;
@@ -51,7 +43,7 @@ async function createZoomMeeting(opts: {
       type: 2, // scheduled meeting
       start_time: opts.startTimeISO,
       duration: opts.durationMinutes,
-      timezone: "UTC",
+      timezone: PROGRAMME_TIME_ZONE,
       settings: {
         join_before_host: true,
         waiting_room: false,
@@ -277,7 +269,7 @@ Deno.serve(async (req) => {
     const byId = new Map((participants ?? []).map((p) => [p.id, p]));
     const coachProfile = byId.get(row[coachField]);
     const coacheeProfile = byId.get(row[coacheeField]);
-    const whenFormatted = formatWhen(row.start_time, row.duration_minutes || 45);
+    const whenFormatted = formatSessionWhen(row.start_time, row.duration_minutes || 45);
 
     for (const [recipient, counterpart] of [
       [coacheeProfile, coachProfile],

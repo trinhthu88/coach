@@ -13,6 +13,8 @@ import { getFriendlyErrorMessage } from "@/lib/errors";
 import { formatAssessmentDate } from "@/lib/assessments";
 import { ModuleCard, ModuleEyebrow, ModulePageHeader } from "@/components/programme/module/ModulePage";
 import { ProfileLoadError } from "@/components/programme/primitives";
+import { ProgrammeReadOnlyBanner } from "@/components/programme/ProgrammeReadOnlyBanner";
+import { canActOn } from "@/lib/enrollments";
 import { useAuth } from "@/context/AuthContext";
 import {
   RecordingFileError,
@@ -38,7 +40,7 @@ type StepKey = "quiz" | "recording" | "transcript" | "review";
 export default function FinalAssessmentPage() {
   const { t, i18n } = useTranslation("assessments");
   const vi = i18n.language.startsWith("vi");
-  const { enrollmentId, data, loading, error } = useLearnerFinalAssessment();
+  const { enrollmentId, data, loading, error, isCurrent, displayState } = useLearnerFinalAssessment();
 
   if (loading) {
     return (
@@ -63,6 +65,10 @@ export default function FinalAssessmentPage() {
           ) : undefined
         }
       />
+      {/* After the programme ends (or while it is paused) the result stays
+          readable; the quiz, upload and Submit / Resubmit steps are not
+          offered, and the server refuses them anyway. */}
+      <ProgrammeReadOnlyBanner isCurrent={isCurrent} displayState={displayState} />
       {error ? (
         <ProfileLoadError text={t("final.loadError")} />
       ) : !data || !enrollmentId ? (
@@ -78,8 +84,10 @@ export default function FinalAssessmentPage() {
             </ModuleCard>
           )}
           {data.state === "not_submitted" || data.state === "resubmit_requested" ? (
-            // Keyed by attempt: a new attempt starts from a clean form.
-            <FinalAssessmentSteps key={data.attemptNo} enrollmentId={enrollmentId} fa={data} />
+            canActOn(isCurrent) ? (
+              // Keyed by attempt: a new attempt starts from a clean form.
+              <FinalAssessmentSteps key={data.attemptNo} enrollmentId={enrollmentId} fa={data} />
+            ) : null
           ) : (
             <FinalAssessmentStatus fa={data} />
           )}

@@ -24,6 +24,11 @@ const state = vi.hoisted(() => ({
     loading: false,
     error: null as string | null,
     details: { organization_name: "Clariva Demo Organization" } as { organization_name: string } | null,
+    isCurrent: true as boolean | undefined,
+    displayState: "current" as string | undefined,
+  } as {
+    enrollmentId: string | null; loading: boolean; error: string | null;
+    details: { organization_name: string } | null; isCurrent?: boolean; displayState?: string;
   },
   feedbackError: null as string | null,
   feedback: [] as unknown[],
@@ -257,5 +262,32 @@ describe("My Journey — consumes the shared Programme Journey", () => {
     state.reflectionsError = "boom";
     renderPage();
     expect(within(screen.getByTestId("journey-reflections")).getByRole("alert")).toHaveTextContent("Your reflections could not be loaded.");
+  });
+});
+
+describe("My Journey — a programme that has ended stays readable (PR #20 review)", () => {
+  beforeEach(async () => {
+    await i18n.changeLanguage("en");
+    state.goals = [];
+    state.feedback = [];
+    state.reflections = [];
+    state.active = {
+      enrollmentId: ENROLLMENT_ID, loading: false, error: null,
+      details: { organization_name: "Clariva Demo Organization" }, isCurrent: false, displayState: "ended",
+    };
+  });
+
+  it("a learner past their end date sees their journey with the ended banner and no Book button", () => {
+    renderPage();
+    expect(screen.getByTestId("programme-journey")).toBeInTheDocument();
+    expect(screen.getByTestId("programme-read-only-banner")).toHaveTextContent("Your programme has ended");
+    expect(screen.queryByRole("link", { name: /^book/i })).toBeNull();
+    expect(screen.queryByRole("button", { name: /^book/i })).toBeNull();
+  });
+
+  it("a current learner sees no banner", () => {
+    state.active = { ...state.active, isCurrent: true, displayState: "current" };
+    renderPage();
+    expect(screen.queryByTestId("programme-read-only-banner")).toBeNull();
   });
 });

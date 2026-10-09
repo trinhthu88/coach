@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import { CoachListRow, CoacheeRow, Status } from "./types";
-import { resolveCurrentEnrollment } from "@/lib/enrollmentResolver";
+import { fetchAdminCurrentEnrollments } from "@/lib/enrollments";
 import { canonicalModuleUnits, fetchAdminCanonicalProgress } from "@/lib/adminCanonicalProgress";
 
 type ProfileRow = Database["public"]["Tables"]["profiles"]["Row"];
@@ -35,6 +35,7 @@ export function useAdminRegistrations() {
       { data: cps },
       { data: programmeEnrollments },
       { data: delivery },
+      currentByUser,
     ] = await Promise.all([
       supabase.from("profiles").select("id, full_name, email, status, created_at"),
       supabase.from("coach_profiles").select("*"),
@@ -42,6 +43,7 @@ export function useAdminRegistrations() {
       // What each Coach has delivered: held Coaching over the reporting
       // population (admin_coach_delivery_summary, 20261007001100).
       supabase.rpc("admin_coach_delivery_summary"),
+      fetchAdminCurrentEnrollments(),
     ]);
 
     const profilesData = (profiles || []) as Pick<
@@ -54,18 +56,17 @@ export function useAdminRegistrations() {
     const cpById = new Map(cpsData.map((c) => [c.id, c]));
     const deliveryByCoach = new Map((delivery ?? []).map((d) => [d.coach_id, d]));
 
-    // Each person's current enrollment, and its canonical module rows -- the
+    // Each person's enrollment and its canonical module rows -- the
     // learner's Coaching units and the Coach-as-learner's own -- never a
     // local count of session rows.
+    // Each person's enrollment as the server resolves it
+    // (admin_current_enrollments): the current one -- the learner's own
+    // answer, enrollment_is_ongoing -- else their latest record, shown with
+    // its own status (a paused learner stays findable). Never chosen here.
     const enrollmentByUser = new Map<string, NonNullable<typeof programmeEnrollments>[number]>();
     for (const userId of [...new Set([...coacheeIds, ...coachIds])]) {
-      const enrollmentId = resolveCurrentEnrollment(
-        (programmeEnrollments || []).filter((e) => e.user_id === userId).map((e) => ({
-          id: e.id,
-          status: e.status,
-          start_date: e.start_date,
-        })),
-      );
+      const resolved = currentByUser.get(userId);
+      const enrollmentId = resolved?.currentEnrollmentId ?? resolved?.latestEnrollmentId ?? null;
       const enrollment = (programmeEnrollments || []).find((e) => e.id === enrollmentId);
       if (enrollment) enrollmentByUser.set(userId, enrollment);
     }
@@ -108,7 +109,7 @@ export function useAdminRegistrations() {
           status: p.status as Status,
           created_at: p.created_at,
           approval_status: cp?.approval_status || "pending_approval",
-          sessions_completed: deliveryByCoach.get(id)?.delivered_sessions ?? 0,
+          delivered_sessions: deliveryByCoach.get(id)?.delivered_sessions ?? 0,
           coachees_count: deliveryByCoach.get(id)?.learners_served ?? 0,
           rating_avg: cp?.rating_avg == null ? null : Number(cp.rating_avg),
           country_based: cp?.country_based || null,

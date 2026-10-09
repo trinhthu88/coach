@@ -13,9 +13,12 @@ export type ActiveEnrollmentContext =
  * signed-in learner's enrollment here -- never by searching the latest cohort,
  * programme membership or user_id on its own:
  *
- *   authenticated user -> the ONE ongoing enrollment (useEnrollmentContext;
- *   historical enrollments are never chosen implicitly; two ongoing ones are
- *   an explicit error).
+ *   authenticated user -> the enrollment the server says to SHOW
+ *   (learner_display_enrollment): the current one (enrollment_is_ongoing:
+ *   active AND inside its dates), else the latest, read-only. `isCurrent`
+ *   says whether actions (book, submit, schedule) are offered; when it is
+ *   false the page shows ProgrammeReadOnlyBanner. The server refuses those
+ *   actions either way.
  *
  * A resolution failure is returned as `error`, never as an empty enrollment,
  * so a page can say what went wrong instead of rendering empty states.
@@ -28,9 +31,15 @@ export function useActiveEnrollment() {
     userId: user?.id ?? null,
     enrollmentId,
     enrollment: resolver.selectedEnrollment ?? null,
+    /** The enrollment actions use (learner_current_enrollment's answer), or null. */
+    currentEnrollmentId: resolver.currentEnrollmentId ?? null,
+    /** false: show the enrollment read-only (banner, no Book / Submit / Schedule / Resubmit). */
+    isCurrent: resolver.isCurrent,
+    /** current | paused | ended | upcoming, from the server. */
+    displayState: resolver.displayState,
     /** Every enrollment of this learner (active and historical), newest first. */
     ownEnrollmentIds: (resolver.history ?? []).map((e) => e.id),
-    /** "selected" | "missing" (no ongoing enrollment) | "ambiguous" | "invalid" */
+    /** "selected" | "missing" (no enrollment at all) | "invalid" */
     selectionState: resolver.selectionState,
     loading: resolver.loading,
     error: resolver.loadError?.message ?? resolver.selectionError ?? null,

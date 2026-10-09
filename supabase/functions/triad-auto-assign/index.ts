@@ -1,8 +1,9 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { buildCorsHeaders } from "../_shared/cors.ts";
-import { programmeToday } from "../_shared/programmeTime.ts";
+import { formatProgrammeDateTime, programmeToday } from "../_shared/programmeTime.ts";
 
 import { groupPool } from "./grouping.ts";
+import { bucketToRange } from "./slots.ts";
 
 // Admin-invoked (verify_jwt = true), requirement-first:
 //   selected cohort Triad requirement ("Triad N" = cohort_requirement_date_id)
@@ -41,8 +42,6 @@ interface AvailabilityRow {
 
 type BucketSet = Set<string>; // "YYYY-MM-DD|HH" keys, one per free hour
 
-const HOUR_MS = 60 * 60 * 1000;
-
 function bucketsFor(rows: AvailabilityRow[]): BucketSet {
   const set = new Set<string>();
   for (const r of rows) {
@@ -73,13 +72,6 @@ function earliestCommonBucket(sets: BucketSet[]): string | null {
   return candidates[0];
 }
 
-function bucketToRange(bucket: string): { start: string; end: string } {
-  const [date, hourStr] = bucket.split("|");
-  const hour = Number(hourStr);
-  const start = new Date(`${date}T${String(hour).padStart(2, "0")}:00:00Z`);
-  const end = new Date(start.getTime() + HOUR_MS);
-  return { start: start.toISOString(), end: end.toISOString() };
-}
 
 Deno.serve(async (req) => {
   const corsHeaders = buildCorsHeaders(req, {
@@ -226,7 +218,7 @@ Deno.serve(async (req) => {
           title: `You've been placed in a group for Triad ${unit}`,
           title_vi: `Bạn đã được xếp vào nhóm cho Triad ${unit}`,
           body: range
-            ? `Your Triad ${unit} group is with ${others.join(", ")} (due ${due}). Session proposed: ${new Date(range.start).toLocaleString()}.`
+            ? `Your Triad ${unit} group is with ${others.join(", ")} (due ${due}). Session proposed: ${formatProgrammeDateTime(range.start)}.`
             : `Your Triad ${unit} group is with ${others.join(", ")} (due ${due}). No common time was found yet — propose one.`,
           link: "/triads",
         });

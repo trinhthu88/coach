@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   enrollmentQueryKey,
+  getDisplayEnrollment,
   getEnrollmentHistory,
-  getOngoingEnrollment,
   resolveSelectedEnrollmentResult,
   type Enrollment,
 } from "@/lib/enrollments";
@@ -21,38 +21,41 @@ export function useEnrollmentContext(userId: string | undefined, initialEnrollme
     enabled: !!userId,
   });
 
-  const ongoingQuery = useQuery({
-    queryKey: ["ongoing-enrollment", userId],
-    queryFn: () => getOngoingEnrollment(userId as string),
+  // What the pages SHOW is the server's (learner_display_enrollment): the
+  // current enrollment (enrollment_is_ongoing), else the latest one, flagged
+  // read-only as paused / ended / upcoming. Whether the learner can ACT is its
+  // is_current; nothing here reads status or dates.
+  const displayQuery = useQuery({
+    queryKey: ["display-enrollment", userId],
+    queryFn: () => getDisplayEnrollment(),
     enabled: !!userId,
   });
+  const display = displayQuery.data ?? null;
+  const currentEnrollmentId = display?.isCurrent ? display.enrollmentId : null;
 
   const history = historyQuery.data ?? [];
-  const selection = resolveSelectedEnrollmentResult(history, selectedEnrollmentId);
-  // The fallback query is retained for loading/cache compatibility, but can
-  // only select an enrollment when history has exactly one ongoing row.
-  const selectedEnrollment = selection.kind === "selected"
-    ? selection.enrollment
-    : !selectedEnrollmentId && history.length === 0 && ongoingQuery.data
-      ? ongoingQuery.data
-      : null;
+  const selection = resolveSelectedEnrollmentResult(history, selectedEnrollmentId, display?.enrollmentId ?? null);
+  const selectedEnrollment = selection.kind === "selected" ? selection.enrollment : null;
+  // The selected enrollment's standing, as the server gave it. An explicitly
+  // selected enrollment other than the displayed one is not current.
+  const shown = selectedEnrollment && display && selectedEnrollment.id === display.enrollmentId ? display : null;
 
   return {
     history,
-    ongoingEnrollment: ongoingQuery.data ?? null,
+    currentEnrollmentId,
+    /** The selected enrollment is the current one: actions are offered. */
+    isCurrent: selectedEnrollment ? selectedEnrollment.id === currentEnrollmentId : null,
+    /** current | paused | ended | upcoming (learner_display_enrollment); null when unknown. */
+    displayState: shown?.displayState ?? null,
     selectedEnrollment,
     selectedEnrollmentId: selectedEnrollment?.id ?? selectedEnrollmentId,
     selectionState: selection.kind,
-    selectionError: selection.kind === "ambiguous"
-      ? "Multiple ongoing programme enrollments require an explicit selection."
-      : selection.kind === "invalid"
-        ? `Enrollment ${selection.enrollmentId} was not found.`
-        : null,
+    selectionError: selection.kind === "invalid" ? `Enrollment ${selection.enrollmentId} was not found.` : null,
     selectEnrollment: (enrollment: Enrollment | string | null) =>
       setSelectedEnrollmentId(typeof enrollment === "string" ? enrollment : enrollment?.id ?? null),
     enrollmentQueryKey: (resource: string) => enrollmentQueryKey(resource, selectedEnrollment?.id),
-    loading: historyQuery.isLoading || ongoingQuery.isLoading,
+    loading: historyQuery.isLoading || displayQuery.isLoading,
     /** A failed read is an error, never "no enrollment" (learner pages must not render empty states for it). */
-    loadError: (historyQuery.error ?? ongoingQuery.error ?? null) as Error | null,
+    loadError: (historyQuery.error ?? displayQuery.error ?? null) as Error | null,
   };
 }

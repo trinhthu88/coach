@@ -8,6 +8,7 @@ import { useJourneyRatings } from "@/hooks/journey/useJourneyRatings";
 import { useJourneySessions } from "@/hooks/journey/useJourneySessions";
 import { useJourneyReflections } from "@/hooks/journey/useJourneyReflections";
 import { useActiveEnrollmentDetails } from "@/hooks/useActiveEnrollment";
+import { ProgrammeReadOnlyBanner } from "@/components/programme/ProgrammeReadOnlyBanner";
 import { useFlatActionItems, type FlatAction } from "@/hooks/journey/useFlatActionItems";
 import { useEnrollmentActionsSummary } from "@/hooks/dashboard/useEnrollmentActionsSummary";
 import type { JourneySession } from "@/hooks/journey/types";
@@ -218,6 +219,9 @@ export default function CoacheeJourney() {
           </span>
         )}
       </header>
+
+      {/* A programme that has ended or is paused stays readable (learner_display_enrollment). */}
+      <ProgrammeReadOnlyBanner isCurrent={active.isCurrent} displayState={active.displayState} className="mb-[18px]" />
 
       {/* The same shared Programme Journey the Dashboard and Sponsor Leader
           Detail render — full variant: every checkpoint plus detail. */}

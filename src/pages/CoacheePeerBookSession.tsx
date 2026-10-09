@@ -5,6 +5,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { SESSION_DURATIONS as DURATIONS, formatSlotTime as fmtTime, toDateKey as dateKey } from "@/lib/bookingUtils";
 import { useAuth } from "@/context/AuthContext";
 import { useActiveEnrollment } from "@/hooks/useActiveEnrollment";
+import { ProgrammeReadOnlyBanner } from "@/components/programme/ProgrammeReadOnlyBanner";
+import { canActOn } from "@/lib/enrollments";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -49,7 +51,8 @@ export default function CoacheePeerBookSession() {
   const { t } = useTranslation("profile");
   const { partnerId } = useParams<{ partnerId: string }>();
   const { user } = useAuth();
-  const { enrollmentId: activeEnrollmentId } = useActiveEnrollment();
+  const activeEnrollment = useActiveEnrollment();
+  const activeEnrollmentId = activeEnrollment.enrollmentId;
   const enrollmentId = activeEnrollmentId ?? undefined;
   const navigate = useNavigate();
   const partners = useEligiblePeerPartners(enrollmentId);
@@ -188,6 +191,18 @@ export default function CoacheePeerBookSession() {
     return (
       <div className="flex items-center justify-center py-24 text-muted-foreground">
         <Loader2 className="h-6 w-6 animate-spin text-primary" />
+      </div>
+    );
+  }
+  // An ended or paused programme: no slots, only why (learner_display_enrollment).
+  // The booking functions refuse it anyway.
+  if (!canActOn(activeEnrollment.isCurrent)) {
+    return (
+      <div className="space-y-4" data-testid="booking-read-only">
+        <ProgrammeReadOnlyBanner isCurrent={activeEnrollment.isCurrent} displayState={activeEnrollment.displayState} />
+        <Button asChild variant="outline">
+          <Link to="/coachee/peer-practice">{t("coacheePeerPractice.bookSession.partnerNotFound.back")}</Link>
+        </Button>
       </div>
     );
   }

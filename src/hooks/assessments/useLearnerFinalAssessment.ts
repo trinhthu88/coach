@@ -59,6 +59,9 @@ export function useLearnerFinalAssessment() {
   return {
     enrollmentId: active.enrollmentId,
     enrollmentLoading: active.loading,
+    /** learner_display_enrollment: false when the enrollment is shown read-only (no quiz, upload or Submit). */
+    isCurrent: active.isCurrent,
+    displayState: active.displayState,
     data: query.data ?? null,
     loading: active.loading || query.isLoading,
     error: query.isError,

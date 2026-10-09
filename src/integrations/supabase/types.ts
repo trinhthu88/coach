@@ -800,7 +800,6 @@ export type Database = {
           nationality: string | null
           peer_coaching_opt_in: boolean
           rating_avg: number
-          sessions_completed: number
           specialties: string[] | null
           title: string | null
           updated_at: string
@@ -821,7 +820,6 @@ export type Database = {
           nationality?: string | null
           peer_coaching_opt_in?: boolean
           rating_avg?: number
-          sessions_completed?: number
           specialties?: string[] | null
           title?: string | null
           updated_at?: string
@@ -842,7 +840,6 @@ export type Database = {
           nationality?: string | null
           peer_coaching_opt_in?: boolean
           rating_avg?: number
-          sessions_completed?: number
           specialties?: string[] | null
           title?: string | null
           updated_at?: string
@@ -5268,6 +5265,14 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      admin_current_enrollments: {
+        Args: never
+        Returns: {
+          enrollment_id: string
+          latest_enrollment_id: string
+          user_id: string
+        }[]
+      }
       admin_dashboard_summary: { Args: { p_as_of?: string }; Returns: Json }
       admin_enrollment_actions: {
         Args: { p_enrollment_id: string }
@@ -5789,6 +5794,10 @@ export type Database = {
           p_session_id: string
           p_start_time: string
         }
+        Returns: undefined
+      }
+      assert_session_within_enrollment_internal: {
+        Args: { p_enrollment_id: string; p_start: string }
         Returns: undefined
       }
       assessment_create_triad_submission_internal: {
@@ -6671,6 +6680,13 @@ export type Database = {
           upcoming_count: number
         }[]
       }
+      coach_public_delivered_sessions: {
+        Args: never
+        Returns: {
+          coach_id: string
+          delivered_sessions: number
+        }[]
+      }
       coach_refer_client: {
         Args: {
           p_email: string
@@ -6921,6 +6937,10 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      current_enrollment_internal: {
+        Args: { p_as_of?: string; p_user_id: string }
+        Returns: string
       }
       daily_prompt_for_enrollment_internal: {
         Args: { p_as_of: string; p_enrollment_id: string }
@@ -7388,6 +7408,20 @@ export type Database = {
           post_session_pending: boolean
           requirement_id: string
           session_id: string
+        }[]
+      }
+      learner_current_enrollment: {
+        Args: never
+        Returns: {
+          enrollment_id: string
+        }[]
+      }
+      learner_display_enrollment: {
+        Args: never
+        Returns: {
+          display_state: string
+          enrollment_id: string
+          is_current: boolean
         }[]
       }
       learner_enrollment_context: {
@@ -7969,10 +8003,6 @@ export type Database = {
       }
       reschedule_coaching_session: {
         Args: { p_new_slot_id: string; p_reason?: string; p_session_id: string }
-        Returns: string
-      }
-      resolve_current_enrollment: {
-        Args: { p_user_id: string }
         Returns: string
       }
       save_enrollment_activity_actions: {
